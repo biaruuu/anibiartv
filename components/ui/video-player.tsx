@@ -98,9 +98,19 @@ const MENU_TITLES: Record<MenuView, string> = {
 
 // Everything is sized from the player's own width (container queries, `cqw`),
 // so controls stay in proportion from a small phone to a fullscreen 4K screen.
-const BAR_BUTTON = "size-[clamp(2.25rem,5.5cqw,3rem)]"
-const BAR_ICON = "size-[clamp(1.75rem,4.5cqw,2.25rem)]"
+const BAR_BUTTON = "size-[clamp(1.9rem,4.6cqw,3rem)]"
+const BAR_ICON = "size-[clamp(1.6rem,4cqw,2.4rem)]"
 const SHADOW = "drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+const TEXT_SHADOW = "[text-shadow:0_1px_2px_rgb(0_0_0/0.6)]"
+const PILL_HEIGHT = "h-[clamp(1.9rem,4.6cqw,2.75rem)]"
+
+// Frosted glass: translucent fill, background blur, a light edge and a soft
+// highlight along the top. Flat colours only, no gradients.
+const GLASS =
+  "border border-white/20 bg-white/15 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.3),0_6px_20px_rgb(0_0_0/0.25)] backdrop-blur-xl backdrop-saturate-150"
+const GLASS_FROM_MD =
+  "@md:border @md:border-white/20 @md:bg-white/15 @md:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.3),0_6px_20px_rgb(0_0_0/0.25)] @md:backdrop-blur-xl @md:backdrop-saturate-150"
+const GLASS_HOVER = "hover:bg-white/25 dark:hover:bg-white/25"
 
 const trackId = (t: VideoTrack) => t.id ?? `${t.srclang}:${t.src ?? t.label}`
 
@@ -149,6 +159,7 @@ function ControlButton({
   className,
   container,
   side = "bottom",
+  shape,
 }: {
   label: string
   onClick: () => void
@@ -156,6 +167,8 @@ function ControlButton({
   className?: string
   container: HTMLElement | null
   side?: "top" | "bottom"
+  /** Replaces the default round icon-button size. */
+  shape?: string
 }) {
   return (
     <Tooltip>
@@ -163,11 +176,12 @@ function ControlButton({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size={shape ? "default" : "icon"}
           aria-label={label}
           onClick={onClick}
           className={cn(
-            BAR_BUTTON,
+            shape ?? BAR_BUTTON,
+            shape && "p-0",
             "rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 dark:hover:bg-white/15",
             className
           )}
@@ -800,7 +814,7 @@ export function VideoPlayer({
         {/* Flat dim layer while controls are visible */}
         <div
           className={cn(
-            "pointer-events-none absolute inset-0 bg-black/35 transition-opacity duration-300",
+            "pointer-events-none absolute inset-0 bg-black/20 transition-opacity duration-300",
             controlsHidden ? "opacity-0" : "opacity-100"
           )}
         />
@@ -812,7 +826,7 @@ export function VideoPlayer({
               "pointer-events-none absolute inset-x-0 z-[5] flex justify-center px-[4cqw] transition-all duration-300 ease-out",
               controlsHidden
                 ? "bottom-[clamp(0.75rem,3.5cqw,2.5rem)]"
-                : "bottom-[clamp(3.75rem,10cqw,6rem)]"
+                : "bottom-[clamp(5.5rem,14cqw,8.5rem)]"
             )}
           >
             <p
@@ -882,7 +896,7 @@ export function VideoPlayer({
             role="status"
             aria-live="polite"
             className={cn(
-              "pointer-events-none absolute top-[clamp(3rem,9cqw,4.5rem)] left-1/2 z-30 max-w-[90%] -translate-x-1/2 animate-in rounded-full px-4 py-2 text-center font-poppins text-xs font-medium text-white duration-200 fade-in-0 slide-in-from-top-2",
+              "pointer-events-none absolute top-[clamp(3.5rem,9.5cqw,5rem)] left-1/2 z-30 max-w-[90%] -translate-x-1/2 animate-in rounded-full px-4 py-2 text-center font-poppins text-xs font-medium text-white duration-200 fade-in-0 slide-in-from-top-2",
               notice.tone === "error" ? "bg-red-600" : "bg-black/85"
             )}
           >
@@ -893,11 +907,17 @@ export function VideoPlayer({
         {/* Top bar: volume + cast on the left, tools on the right */}
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-[clamp(0.25rem,1.5cqw,1rem)] transition-all duration-300 ease-out",
+            "pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-[clamp(0.5rem,2.2cqw,1.25rem)] transition-all duration-300 ease-out",
             controlsHidden && "-translate-y-2 opacity-0"
           )}
         >
-          <div className={cn("flex items-center", interactive)}>
+          <div
+            className={cn(
+              "flex items-center rounded-full p-[clamp(0.125rem,0.5cqw,0.25rem)]",
+              GLASS,
+              interactive
+            )}
+          >
             <div className="group/vol flex items-center">
               <ControlButton
                 label={muted ? "Unmute (m)" : "Mute (m)"}
@@ -931,12 +951,17 @@ export function VideoPlayer({
             )}
           </div>
 
-          <div className={cn("flex items-center", interactive)}>
+          <div
+            className={cn(
+              "flex items-center rounded-full p-[clamp(0.125rem,0.5cqw,0.25rem)]",
+              GLASS,
+              interactive
+            )}
+          >
             <ControlButton
               label="Screenshot"
               onClick={takeScreenshot}
               container={container}
-              className="hidden @sm:inline-flex"
             >
               <CameraIcon className={cn(BAR_ICON, SHADOW)} />
             </ControlButton>
@@ -944,7 +969,6 @@ export function VideoPlayer({
               label="Download"
               onClick={downloadVideo}
               container={container}
-              className="hidden @sm:inline-flex"
             >
               <DownloadIcon className={cn(BAR_ICON, SHADOW)} />
             </ControlButton>
@@ -992,11 +1016,13 @@ export function VideoPlayer({
             aria-label="Back 10 seconds"
             onClick={() => seekBy(-SEEK_STEP)}
             className={cn(
-              "absolute top-1/2 left-[24%] size-[clamp(2.5rem,7cqw,3.75rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 dark:hover:bg-white/15",
+              "absolute top-1/2 left-[25%] size-[clamp(2.6rem,7cqw,4.5rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:text-white active:scale-95",
+              GLASS,
+              GLASS_HOVER,
               interactive
             )}
           >
-            <SeekBackward10Icon className={cn("size-full", SHADOW)} />
+            <SeekBackward10Icon className={cn("size-[78%]", SHADOW)} />
           </Button>
 
           <button
@@ -1004,16 +1030,18 @@ export function VideoPlayer({
             aria-label={playing ? "Pause video" : "Play video"}
             onClick={togglePlay}
             className={cn(
-              "absolute top-1/2 left-1/2 grid size-[clamp(2.75rem,7cqw,4.5rem)] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors duration-200 outline-none hover:bg-black/70 focus-visible:ring-4 focus-visible:ring-white/40 active:scale-95",
+              "absolute top-1/2 left-1/2 grid size-[clamp(3.1rem,7.5cqw,5rem)] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-white transition-colors duration-200 outline-none focus-visible:ring-4 focus-visible:ring-white/40 active:scale-95",
+              GLASS,
+              GLASS_HOVER,
               interactive
             )}
           >
             {buffering ? (
               <Spinner className="size-1/2" />
             ) : playing ? (
-              <PauseIcon className="size-full" />
+              <PauseIcon className="size-[80%]" />
             ) : (
-              <PlayIcon className="size-full" />
+              <PlayIcon className="size-[80%]" />
             )}
           </button>
 
@@ -1024,41 +1052,52 @@ export function VideoPlayer({
             aria-label="Forward 10 seconds"
             onClick={() => seekBy(SEEK_STEP)}
             className={cn(
-              "absolute top-1/2 left-[76%] size-[clamp(2.5rem,7cqw,3.75rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 dark:hover:bg-white/15",
+              "absolute top-1/2 left-[75%] size-[clamp(2.6rem,7cqw,4.5rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:text-white active:scale-95",
+              GLASS,
+              GLASS_HOVER,
               interactive
             )}
           >
-            <SeekForward10Icon className={cn("size-full", SHADOW)} />
+            <SeekForward10Icon className={cn("size-[78%]", SHADOW)} />
           </Button>
         </div>
 
-        {/* Bottom: time + fullscreen above a thin progress bar */}
+        {/* Bottom: time pill + glass fullscreen button above a thin progress bar */}
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-0 z-10 px-[clamp(0.75rem,2.5cqw,1.5rem)] pb-[clamp(0.25rem,1.5cqw,1rem)] transition-all duration-300 ease-out",
+            "pointer-events-none absolute inset-x-0 bottom-0 z-10 px-[clamp(0.75rem,3.5cqw,3rem)] pb-[clamp(1rem,3.2cqw,2.25rem)] transition-all duration-300 ease-out",
             controlsHidden && "translate-y-2 opacity-0"
           )}
         >
-          <div className="flex items-end justify-between">
+          <div className="mb-[clamp(0.25rem,1cqw,0.75rem)] flex items-end justify-between gap-3">
             <span
               className={cn(
-                "min-w-0 truncate pb-1 font-poppins text-[length:clamp(0.75rem,2.1cqw,1rem)] font-medium text-white tabular-nums",
-                SHADOW
+                "inline-flex min-w-0 items-center rounded-full font-poppins text-[length:clamp(0.75rem,1.8cqw,1rem)] font-medium text-white tabular-nums @md:px-[clamp(0.75rem,2.4cqw,1.5rem)]",
+                PILL_HEIGHT,
+                TEXT_SHADOW,
+                GLASS_FROM_MD
               )}
             >
-              {formatTime(currentTime)}
-              <span className="text-white/75"> / {formatTime(duration)}</span>
-              {title && (
-                <span className="hidden text-white/75 @md:inline"> • {title}</span>
-              )}
+              <span className="truncate">
+                {formatTime(currentTime)}
+                <span className="text-white/75"> / {formatTime(duration)}</span>
+                {title && (
+                  <span className="hidden text-white/75 @md:inline"> • {title}</span>
+                )}
+              </span>
             </span>
-            <div className={interactive}>
+            <div className={cn("shrink-0", interactive)}>
               <ControlButton
                 label={fullscreen ? "Exit fullscreen (f)" : "Fullscreen (f)"}
                 onClick={() => void toggleFullscreen()}
                 container={container}
                 side="top"
-                className="-mr-2 -mb-1"
+                shape={cn(PILL_HEIGHT, "w-[clamp(2.5rem,6.2cqw,3.75rem)]")}
+                className={cn(
+                  "rounded-[clamp(0.9rem,2.4cqw,1.4rem)]",
+                  GLASS,
+                  GLASS_HOVER
+                )}
               >
                 {fullscreen ? (
                   <FullscreenExitIcon className={cn(BAR_ICON, SHADOW)} />
@@ -1103,7 +1142,7 @@ export function VideoPlayer({
 
         {/* Settings menu */}
         {settingsOpen && (
-          <div className="absolute top-[clamp(2.75rem,8cqw,4.5rem)] right-[clamp(0.25rem,2cqw,1rem)] z-30 max-h-[calc(100%-3.5rem)] w-[min(20rem,calc(100%-0.5rem))] origin-top-right animate-in overflow-y-auto rounded-xl border border-white/10 bg-black/85 p-1.5 font-poppins text-white shadow-2xl backdrop-blur-xl duration-150 fade-in-0 zoom-in-95">
+          <div className="absolute top-[clamp(3.25rem,9cqw,5rem)] right-[clamp(0.5rem,2.2cqw,1.25rem)] z-30 max-h-[calc(100%-3.5rem)] w-[min(20rem,calc(100%-0.5rem))] origin-top-right animate-in overflow-y-auto rounded-xl border border-white/10 bg-black/60 p-1.5 font-poppins text-white shadow-2xl backdrop-blur-2xl backdrop-saturate-150 duration-150 fade-in-0 zoom-in-95">
             {menuView === "main" && (
               <>
                 {tracks.length > 0 && (

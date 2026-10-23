@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.0
+
+### Changed
+- Glass bubble redesign of the player controls, matching the reference photos: a frosted-glass pill at the top left (volume, cast) and top right (screenshot, download, captions, settings); glass circles for skip back 10, play/pause and skip forward 10 at 25%, 50% and 75%; a glass time pill (with the video title on wider players) and a glass fullscreen button above a thin progress bar.
+- Sizes follow the proportions in the reference at both phone and fullscreen widths. The screenshot and download buttons are now always visible.
+- The dim layer over the video is lighter, since the glass provides the contrast.
+- The settings menu uses a stronger frosted-glass background.
+- Captions sit higher while controls are visible so they never touch the new bottom row.
+
 ## 1.3.0
 
 ### Fixed
