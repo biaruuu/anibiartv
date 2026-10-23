@@ -1,6 +1,6 @@
 # Videoplayer
 
-A modern, responsive video player web app built with **Next.js**, **shadcn/ui** and **Tailwind CSS v4**. Flat design, no gradients. Captions render in **Poppins**, icons come from **Vidstack**, and a **Dynamic Island** style pill shows what is happening.
+A modern, responsive video player web app built with **Next.js**, **shadcn/ui** and **Tailwind CSS v4**. Flat design, no gradients. Captions render in **Poppins** and icons come from **Vidstack**.
 
 ## Deploy to Vercel
 
@@ -21,7 +21,9 @@ Open http://localhost:3000. Requires Node.js 20.9 or newer.
 
 ## Features
 
-- **Dynamic Island.** A black capsule at the top centre rests with a mini equalizer and the video title, then springs open to show play/pause, seeking, volume, speed, captions, subtitle delay, screenshots and more. On phones it stays hidden until something happens.
+- **Tap to show or hide controls.** Tapping or clicking the picture only shows or hides the controls; it never pauses. Pause with the play/pause button or Space / K. Controls stay visible while paused and auto-hide after 3 seconds of playback.
+- **Always 16:9 and fully responsive.** The player keeps a 16:9 frame at every size, and every control, caption and menu scales with the player's own width (CSS container queries), from a small phone to a fullscreen 4K screen.
+- **Subtitles from a link.** Paste a link to an SRT, VTT or ASS file in the Upload tab. Thumbnail preview tracks (image sprite references) are detected and rejected with an explanation. The first playlist video, Agent 327, ships with real subtitles in six languages so you can preview the caption style.
 - **Subtitles that work with real files.** Add `.srt`, `.vtt`, `.ass` or `.ssa` files (several at once if you like). The player parses them itself, so styling tags and ASS override codes are stripped cleanly. Older Windows-1252 files are detected automatically. Pick between tracks and adjust **Subtitle delay** in settings.
 - **Open files from your device.** Use the buttons or just drag and drop a video and subtitles onto the player. Nothing is uploaded; files stay in your browser.
 - **Stream from a link.** Paste a direct MP4 or WebM URL.
@@ -59,7 +61,7 @@ If a video won't play, the file format is usually the cause. MP4 (H.264 + AAC) a
 ```
 app/                         Next.js app router (layout, page, manifest, global styles)
 components/player-app.tsx    The page: player, playlist, upload tab
-components/ui/               shadcn/ui components, video-player.tsx, dynamic-island.tsx
+components/ui/               shadcn/ui components and video-player.tsx
 components/icons/vidstack.tsx  Vidstack icons as React components
 lib/captions.ts              SRT / VTT / ASS parser
 lib/videos.ts                Sample playlist

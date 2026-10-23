@@ -25,15 +25,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Equalizer } from "@/components/ui/dynamic-island"
 import { Input } from "@/components/ui/input"
 import { Kbd } from "@/components/ui/kbd"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Spinner } from "@/components/ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { VideoPlayer, type VideoTrack } from "@/components/ui/video-player"
-import { decodeText, parseCaptions, type CaptionFormat, type Cue } from "@/lib/captions"
+import {
+  decodeText,
+  isThumbnailTrack,
+  parseCaptions,
+  type CaptionFormat,
+  type Cue,
+} from "@/lib/captions"
 import { VIDEOS, type Video } from "@/lib/videos"
 import { cn } from "@/lib/utils"
 
@@ -90,6 +96,9 @@ export function PlayerApp() {
   const [status, setStatus] = React.useState<Status>(null)
   const [dragging, setDragging] = React.useState(false)
   const [tab, setTab] = React.useState("playlist")
+  const [subtitleUrl, setSubtitleUrl] = React.useState("")
+  const [subtitleUrlError, setSubtitleUrlError] = React.useState<string | null>(null)
+  const [subtitleLoading, setSubtitleLoading] = React.useState(false)
 
   const localVideoUrl = React.useRef<string | null>(null)
   const videoInput = React.useRef<HTMLInputElement>(null)
@@ -213,6 +222,71 @@ export function PlayerApp() {
     if (video) loadVideoFile(video)
     if (subtitleFiles.length > 0) await addSubtitleFiles(subtitleFiles)
     setTab("upload")
+  }
+
+  const submitSubtitleUrl = async (e: React.FormEvent) => {
+    e.preventDefault()
+    let parsed: URL
+    try {
+      parsed = new URL(subtitleUrl.trim())
+    } catch {
+      setSubtitleUrlError("Enter a valid link, e.g. https://example.com/subtitles.vtt")
+      return
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      setSubtitleUrlError("Only http and https links are supported.")
+      return
+    }
+    if (parsed.protocol === "http:" && window.location.protocol === "https:") {
+      setSubtitleUrlError("This site uses HTTPS, so the subtitle link must be https:// too.")
+      return
+    }
+
+    setSubtitleUrlError(null)
+    setSubtitleLoading(true)
+    try {
+      const response = await fetch(parsed.toString())
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const { cues, format } = parseCaptions(
+        decodeText(await response.arrayBuffer())
+      )
+
+      if (isThumbnailTrack(cues)) {
+        setSubtitleUrlError(
+          "That link is a thumbnail preview track (image references for the seek bar), not subtitles. Use a link to an SRT, VTT or ASS subtitle file."
+        )
+        return
+      }
+      if (cues.length === 0) {
+        setSubtitleUrlError("No subtitle lines were found in that file.")
+        return
+      }
+
+      const lastSegment = safeDecode(
+        parsed.pathname.split("/").filter(Boolean).pop() ?? ""
+      )
+      setSubtitles((previous) => [
+        {
+          id: `${Date.now()}-link`,
+          name: stripExtension(lastSegment) || parsed.hostname,
+          format,
+          cues,
+        },
+        ...previous,
+      ])
+      setSubtitleUrl("")
+      setStatus({
+        kind: "success",
+        title: "Subtitles added",
+        text: `${cues.length} lines loaded from ${parsed.hostname} and turned on.`,
+      })
+    } catch {
+      setSubtitleUrlError(
+        "Couldn't load that link. Check the address. The host may also block other websites from reading it (CORS)."
+      )
+    } finally {
+      setSubtitleLoading(false)
+    }
   }
 
   const removeSubtitle = (id: string) => {
@@ -416,7 +490,7 @@ export function PlayerApp() {
                               )}
                               {active && (
                                 <div className="absolute inset-0 grid place-items-center bg-black/55 text-white">
-                                  <Equalizer className="h-5" />
+                                  <PlayIcon className="size-8" />
                                 </div>
                               )}
                             </div>
@@ -537,6 +611,51 @@ export function PlayerApp() {
                       </ul>
                     </div>
                   )}
+
+                  <form
+                    onSubmit={(e) => void submitSubtitleUrl(e)}
+                    className="space-y-2"
+                    noValidate
+                  >
+                    <Label htmlFor="subtitle-link">Add subtitles from a link</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="subtitle-link"
+                        type="url"
+                        inputMode="url"
+                        placeholder="https://example.com/subtitles.vtt"
+                        value={subtitleUrl}
+                        onChange={(e) => {
+                          setSubtitleUrl(e.target.value)
+                          setSubtitleUrlError(null)
+                        }}
+                        aria-invalid={subtitleUrlError ? true : undefined}
+                      />
+                      <Button
+                        type="submit"
+                        size="icon"
+                        aria-label="Add subtitles from link"
+                        disabled={!subtitleUrl.trim() || subtitleLoading}
+                        className="shrink-0"
+                      >
+                        {subtitleLoading ? (
+                          <Spinner className="size-5" />
+                        ) : (
+                          <AddIcon className="size-6" />
+                        )}
+                      </Button>
+                    </div>
+                    {subtitleUrlError ? (
+                      <p role="alert" className="text-sm text-destructive">
+                        {subtitleUrlError}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        SRT, VTT or ASS. The host must allow other websites to
+                        load the file.
+                      </p>
+                    )}
+                  </form>
 
                   <Separator />
 

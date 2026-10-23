@@ -158,6 +158,20 @@ export function decodeText(buffer: ArrayBuffer): string {
   }
 }
 
+/**
+ * True for WebVTT "thumbnails" tracks used for seek-bar previews. Their cue
+ * text is an image reference like `storyboard.jpg#xywh=0,0,180,101`, not
+ * dialogue, so they must not be shown as subtitles.
+ */
+export function isThumbnailTrack(cues: Cue[]): boolean {
+  return (
+    cues.length > 0 &&
+    cues.every((cue) =>
+      /(#xywh=|\.(?:jpe?g|png|webp|avif|gif)(?:[?#]|$))/i.test(cue.text.trim())
+    )
+  )
+}
+
 /** Text of every cue visible at `time` (seconds). */
 export function activeText(cues: Cue[], time: number): string {
   let out = ""

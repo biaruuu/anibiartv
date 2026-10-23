@@ -17,7 +17,28 @@ const sampleCaptions: VideoTrack[] = [
   { src: "/captions/fil.vtt", srclang: "fil", label: "Filipino" },
 ]
 
+const AGENT_327 = "https://files.vidstack.io/agent-327"
+
+// Real subtitle files (dialogue) hosted by Vidstack for their Agent 327 demo.
+const agentSubtitles: VideoTrack[] = [
+  { id: "agent-en", srclang: "en", label: "English", src: `${AGENT_327}/subs/english.vtt` },
+  { id: "agent-es", srclang: "es", label: "Spanish", src: `${AGENT_327}/subs/spanish.vtt` },
+  { id: "agent-fr", srclang: "fr", label: "French", src: `${AGENT_327}/subs/french.vtt` },
+  { id: "agent-de", srclang: "de", label: "German", src: `${AGENT_327}/subs/german.vtt` },
+  { id: "agent-it", srclang: "it", label: "Italian", src: `${AGENT_327}/subs/italian.vtt` },
+  { id: "agent-ru", srclang: "ru", label: "Russian", src: `${AGENT_327}/subs/russian.vtt` },
+]
+
 export const VIDEOS: Video[] = [
+  {
+    id: "agent-327",
+    title: "Agent 327: Operation Barbershop",
+    description:
+      "A secret agent walks into a barbershop. Has real dialogue subtitles in six languages, so you can preview the caption style.",
+    src: `${AGENT_327}/720p.mp4`,
+    poster: `${AGENT_327}/poster.png`,
+    tracks: agentSubtitles,
+  },
   {
     id: "big-buck-bunny",
     title: "Big Buck Bunny",

@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0
+
+### Removed
+- The Dynamic Island pill. Quick feedback (screenshot saved, caption load errors) now uses a small plain notice, and double-tap or arrow-key seeking shows a seek icon.
+
+### Changed
+- Tapping or clicking the picture no longer pauses the video. It shows the controls, and tapping again hides them. Pause with the centre button or Space / K. Controls stay visible while paused and auto-hide after 3 seconds of playback.
+- Touch screens no longer re-show the controls right after a tap hides them (emulated mouse events are ignored).
+- The play button and every other control are smaller and now scale with the player's width instead of fixed pixel sizes.
+- Captions scale with the player and use proportional padding.
+- The time row shows the video title next to the duration on wider players.
+- The player is always 16:9 (except in fullscreen, where it fills the screen) and works at every width.
+
+### Added
+- Add subtitles from a link in the Upload tab. Thumbnail preview tracks like `thumbnails.vtt` are detected and rejected with a clear message.
+- Agent 327 sample video with real subtitles in English, Spanish, French, German, Italian and Russian, shown first in the playlist.
+
 ## 1.1.0
 
 ### Added
