@@ -15,12 +15,10 @@ import {
   FullscreenIcon,
   InfoIcon,
   MuteIcon,
-  NextIcon,
   PauseIcon,
   PictureInPictureIcon,
   PlaybackSpeedCircleIcon,
   PlayIcon,
-  PreviousIcon,
   RepeatIcon,
   RepeatOnIcon,
   SeekBackward10Icon,
@@ -61,8 +59,6 @@ export type VideoPlayerProps = {
   autoPlay?: boolean
   className?: string
   onEnded?: () => void
-  onNext?: () => void
-  onPrevious?: () => void
 }
 
 type WebkitVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
@@ -72,12 +68,33 @@ type CastVideo = HTMLVideoElement & {
 type LockableOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape" | "portrait") => Promise<void>
 }
-type MenuView = "main" | "captions" | "speed" | "sync"
+type MenuView = "main" | "captions" | "style" | "speed" | "sync"
 type Notice = { text: string; tone: "default" | "error" }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
 const SEEK_STEP = 10
 const AUTO_HIDE_MS = 3000
+
+const CAPTION_SIZES = {
+  sm: { label: "Small", scale: 0.85 },
+  md: { label: "Medium", scale: 1 },
+  lg: { label: "Large", scale: 1.3 },
+} as const
+const CAPTION_STYLES = {
+  box: "Dark box",
+  outline: "Outline",
+} as const
+type CaptionSize = keyof typeof CAPTION_SIZES
+type CaptionStyle = keyof typeof CAPTION_STYLES
+const CAPTION_PREFS_KEY = "videoplayer:caption-style"
+
+const MENU_TITLES: Record<MenuView, string> = {
+  main: "Settings",
+  captions: "Captions",
+  style: "Caption style",
+  speed: "Speed",
+  sync: "Subtitle delay",
+}
 
 // Everything is sized from the player's own width (container queries, `cqw`),
 // so controls stay in proportion from a small phone to a fullscreen 4K screen.
@@ -225,8 +242,6 @@ export function VideoPlayer({
   autoPlay = false,
   className,
   onEnded,
-  onNext,
-  onPrevious,
 }: VideoPlayerProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const hideTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -261,6 +276,8 @@ export function VideoPlayer({
   const [cueText, setCueText] = React.useState("")
   const [cueVersion, setCueVersion] = React.useState(0)
   const [captionOffset, setCaptionOffset] = React.useState(0)
+  const [captionSize, setCaptionSize] = React.useState<CaptionSize>("md")
+  const [captionStyle, setCaptionStyle] = React.useState<CaptionStyle>("box")
   const [notice, setNotice] = React.useState<Notice | null>(null)
   const [flash, setFlash] = React.useState<{
     dir: "back" | "forward"
@@ -347,6 +364,24 @@ export function VideoPlayer({
         ? 0
         : Math.min(30, Math.max(-30, Math.round((current + delta) * 10) / 10))
     )
+  }
+
+  const saveCaptionPrefs = (size: CaptionSize, style: CaptionStyle) => {
+    try {
+      localStorage.setItem(CAPTION_PREFS_KEY, JSON.stringify({ size, style }))
+    } catch {
+      // Storage blocked; the choice still applies for this visit.
+    }
+  }
+
+  const chooseCaptionSize = (size: CaptionSize) => {
+    setCaptionSize(size)
+    saveCaptionPrefs(size, captionStyle)
+  }
+
+  const chooseCaptionStyle = (style: CaptionStyle) => {
+    setCaptionStyle(style)
+    saveCaptionPrefs(captionSize, style)
   }
 
   const toggleFullscreen = React.useCallback(async () => {
@@ -479,6 +514,17 @@ export function VideoPlayer({
   React.useEffect(() => {
     settingsOpenRef.current = settingsOpen
   }, [settingsOpen])
+
+  // Remember the viewer's caption style. Storage can be blocked, so it is optional.
+  React.useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(CAPTION_PREFS_KEY) ?? "null")
+      if (saved?.size in CAPTION_SIZES) setCaptionSize(saved.size)
+      if (saved?.style in CAPTION_STYLES) setCaptionStyle(saved.style)
+    } catch {
+      // Ignore: defaults are fine.
+    }
+  }, [])
 
   // The video can finish loading metadata before React hydrates, so catch up.
   React.useEffect(() => {
@@ -759,19 +805,32 @@ export function VideoPlayer({
           )}
         />
 
-        {/* Captions: Poppins, sized from the player width */}
+        {/* Captions: Poppins, sized from the player width, with a readable style */}
         {cueText && (
           <div
             className={cn(
-              "pointer-events-none absolute inset-x-0 z-[5] flex justify-center px-[3cqw] transition-all duration-300 ease-out",
+              "pointer-events-none absolute inset-x-0 z-[5] flex justify-center px-[4cqw] transition-all duration-300 ease-out",
               controlsHidden
-                ? "bottom-[clamp(0.75rem,3cqw,2.5rem)]"
+                ? "bottom-[clamp(0.75rem,3.5cqw,2.5rem)]"
                 : "bottom-[clamp(3.75rem,10cqw,6rem)]"
             )}
           >
-            <span className="max-w-[92%] rounded-[0.4em] bg-black/75 px-[0.8em] py-[0.35em] text-center font-poppins text-[length:clamp(0.8rem,2.4cqw,2.25rem)] leading-snug font-medium whitespace-pre-line text-white">
-              {cueText}
-            </span>
+            <p
+              style={{
+                fontSize: `calc(clamp(0.9rem, 2.8cqw, 2.75rem) * ${CAPTION_SIZES[captionSize].scale})`,
+              }}
+              className="max-w-full text-center font-poppins leading-[1.55] font-semibold whitespace-pre-line text-white"
+            >
+              <span
+                className={
+                  captionStyle === "box"
+                    ? "rounded-[0.3em] bg-black/80 px-[0.55em] py-[0.1em] box-decoration-clone"
+                    : "caption-outline"
+                }
+              >
+                {cueText}
+              </span>
+            </p>
           </div>
         )}
 
@@ -919,10 +978,10 @@ export function VideoPlayer({
           </div>
         </div>
 
-        {/* Centre: skip, previous, play/pause, next, skip */}
+        {/* Centre: play/pause, with the 10 second buttons well to either side (Netflix style) */}
         <div
           className={cn(
-            "pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-[clamp(0.25rem,3cqw,2.5rem)] transition-opacity duration-300",
+            "pointer-events-none absolute inset-0 z-10 transition-opacity duration-300",
             controlsHidden || error ? "opacity-0" : "opacity-100"
           )}
         >
@@ -933,35 +992,19 @@ export function VideoPlayer({
             aria-label="Back 10 seconds"
             onClick={() => seekBy(-SEEK_STEP)}
             className={cn(
-              "hidden size-[clamp(2.25rem,6cqw,3.25rem)] rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 @md:inline-flex dark:hover:bg-white/15",
+              "absolute top-1/2 left-[24%] size-[clamp(2.5rem,7cqw,3.75rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 dark:hover:bg-white/15",
               interactive
             )}
           >
             <SeekBackward10Icon className={cn("size-full", SHADOW)} />
           </Button>
 
-          {onPrevious && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Previous video"
-              onClick={onPrevious}
-              className={cn(
-                "size-[clamp(2.25rem,6cqw,3.5rem)] rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 dark:hover:bg-white/15",
-                interactive
-              )}
-            >
-              <PreviousIcon className={cn("size-full", SHADOW)} />
-            </Button>
-          )}
-
           <button
             type="button"
             aria-label={playing ? "Pause video" : "Play video"}
             onClick={togglePlay}
             className={cn(
-              "grid size-[clamp(2.75rem,7cqw,4.5rem)] place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-all duration-200 outline-none hover:bg-black/70 focus-visible:ring-4 focus-visible:ring-white/40 active:scale-95",
+              "absolute top-1/2 left-1/2 grid size-[clamp(2.75rem,7cqw,4.5rem)] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors duration-200 outline-none hover:bg-black/70 focus-visible:ring-4 focus-visible:ring-white/40 active:scale-95",
               interactive
             )}
           >
@@ -974,22 +1017,6 @@ export function VideoPlayer({
             )}
           </button>
 
-          {onNext && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Next video"
-              onClick={onNext}
-              className={cn(
-                "size-[clamp(2.25rem,6cqw,3.5rem)] rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 dark:hover:bg-white/15",
-                interactive
-              )}
-            >
-              <NextIcon className={cn("size-full", SHADOW)} />
-            </Button>
-          )}
-
           <Button
             type="button"
             variant="ghost"
@@ -997,7 +1024,7 @@ export function VideoPlayer({
             aria-label="Forward 10 seconds"
             onClick={() => seekBy(SEEK_STEP)}
             className={cn(
-              "hidden size-[clamp(2.25rem,6cqw,3.25rem)] rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 @md:inline-flex dark:hover:bg-white/15",
+              "absolute top-1/2 left-[76%] size-[clamp(2.5rem,7cqw,3.75rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 dark:hover:bg-white/15",
               interactive
             )}
           >
@@ -1095,6 +1122,14 @@ export function VideoPlayer({
                     onClick={() => setMenuView("sync")}
                   />
                 )}
+                {tracks.length > 0 && (
+                  <MenuRow
+                    icon={<ClosedCaptionsOnIcon />}
+                    label="Caption style"
+                    value={CAPTION_SIZES[captionSize].label}
+                    onClick={() => setMenuView("style")}
+                  />
+                )}
                 <MenuRow
                   icon={<PlaybackSpeedCircleIcon />}
                   label="Speed"
@@ -1130,11 +1165,7 @@ export function VideoPlayer({
                   className="mb-1 flex w-full items-center gap-1 rounded-lg px-2 py-2.5 text-sm font-semibold transition-colors hover:bg-white/10"
                 >
                   <ChevronLeftIcon className="size-5" />
-                  {menuView === "captions"
-                    ? "Captions"
-                    : menuView === "speed"
-                      ? "Speed"
-                      : "Subtitle delay"}
+                  {MENU_TITLES[menuView]}
                 </button>
                 <div className="mx-2 mb-1 h-px bg-white/10" />
               </>
@@ -1167,6 +1198,33 @@ export function VideoPlayer({
                   onClick={() => changeSpeed(s)}
                 />
               ))}
+
+            {menuView === "style" && (
+              <>
+                <p className="px-3 pt-1 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">
+                  Size
+                </p>
+                {(Object.keys(CAPTION_SIZES) as CaptionSize[]).map((key) => (
+                  <OptionRow
+                    key={key}
+                    label={CAPTION_SIZES[key].label}
+                    selected={captionSize === key}
+                    onClick={() => chooseCaptionSize(key)}
+                  />
+                ))}
+                <p className="px-3 pt-3 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">
+                  Background
+                </p>
+                {(Object.keys(CAPTION_STYLES) as CaptionStyle[]).map((key) => (
+                  <OptionRow
+                    key={key}
+                    label={CAPTION_STYLES[key]}
+                    selected={captionStyle === key}
+                    onClick={() => chooseCaptionStyle(key)}
+                  />
+                ))}
+              </>
+            )}
 
             {menuView === "sync" && (
               <div className="space-y-3 p-2">

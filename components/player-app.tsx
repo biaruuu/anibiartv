@@ -1,19 +1,22 @@
 "use client"
 
 import * as React from "react"
+import {
+  AudioLines,
+  Captions,
+  CircleAlert,
+  CircleCheck,
+  FolderOpen,
+  Link2,
+  ListVideo,
+  Play,
+  Plus,
+  Subtitles,
+  Upload,
+  X,
+} from "lucide-react"
 
 import pkg from "../package.json"
-import {
-  AddIcon,
-  CheckIcon,
-  ClosedCaptionsIcon,
-  ComputerIcon,
-  InfoIcon,
-  LinkIcon,
-  PlayIcon,
-  SubtitlesIcon,
-  XMarkIcon,
-} from "@/components/icons/vidstack"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -30,7 +33,9 @@ import { Kbd } from "@/components/ui/kbd"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { VideoPlayer, type VideoTrack } from "@/components/ui/video-player"
 import {
@@ -90,6 +95,7 @@ function safeDecode(value: string) {
 export function PlayerApp() {
   const [current, setCurrent] = React.useState<Video>(VIDEOS[0])
   const [autoPlay, setAutoPlay] = React.useState(false)
+  const [autoplayNext, setAutoplayNext] = React.useState(true)
   const [url, setUrl] = React.useState("")
   const [urlError, setUrlError] = React.useState<string | null>(null)
   const [subtitles, setSubtitles] = React.useState<Subtitle[]>([])
@@ -143,9 +149,8 @@ export function PlayerApp() {
     setAutoPlay(true)
   }, [])
 
-  const goTo = (offset: number) => {
-    if (!inPlaylist) return
-    play(VIDEOS[(index + offset + VIDEOS.length) % VIDEOS.length])
+  const playNext = () => {
+    if (inPlaylist && index < VIDEOS.length - 1) play(VIDEOS[index + 1])
   }
 
   const loadVideoFile = (file: File) => {
@@ -171,7 +176,7 @@ export function PlayerApp() {
     for (const file of files) {
       try {
         const { cues, format } = parseCaptions(decodeText(await file.arrayBuffer()))
-        if (cues.length === 0) {
+        if (cues.length === 0 || isThumbnailTrack(cues)) {
           failed.push(file.name)
           continue
         }
@@ -192,7 +197,10 @@ export function PlayerApp() {
       const lines = added.reduce((sum, s) => sum + s.cues.length, 0)
       setStatus({
         kind: "success",
-        title: added.length === 1 ? "Subtitles added" : `${added.length} subtitle files added`,
+        title:
+          added.length === 1
+            ? "Subtitles added"
+            : `${added.length} subtitle files added`,
         text:
           `${lines} lines loaded and turned on.` +
           (failed.length ? ` Couldn't read: ${failed.join(", ")}.` : ""),
@@ -222,6 +230,11 @@ export function PlayerApp() {
     if (video) loadVideoFile(video)
     if (subtitleFiles.length > 0) await addSubtitleFiles(subtitleFiles)
     setTab("upload")
+  }
+
+  const removeSubtitle = (id: string) => {
+    setSubtitles((previous) => previous.filter((s) => s.id !== id))
+    setStatus(null)
   }
 
   const submitSubtitleUrl = async (e: React.FormEvent) => {
@@ -287,11 +300,6 @@ export function PlayerApp() {
     } finally {
       setSubtitleLoading(false)
     }
-  }
-
-  const removeSubtitle = (id: string) => {
-    setSubtitles((previous) => previous.filter((s) => s.id !== id))
-    setStatus(null)
   }
 
   const submitUrl = (e: React.FormEvent) => {
@@ -364,14 +372,14 @@ export function PlayerApp() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col bg-muted/30">
+    <div className="flex min-h-svh flex-col overflow-x-clip bg-muted/30">
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <PlayIcon className="size-6" />
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <Play className="size-4 fill-current" />
             </div>
-            <span className="text-base font-semibold tracking-tight">
+            <span className="truncate text-base font-semibold tracking-tight">
               Videoplayer
             </span>
             <Badge variant="outline" className="hidden sm:inline-flex">
@@ -382,10 +390,11 @@ export function PlayerApp() {
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:py-8">
-        <section className="min-w-0 space-y-5">
+      <main className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 gap-6 px-4 py-4 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start lg:py-8">
+        <section className="min-w-0 space-y-4 sm:space-y-5">
+          {/* The width is capped so the 16:9 player never grows taller than the screen. */}
           <div
-            className="relative"
+            className="relative mx-auto w-[min(100%,calc((100svh_-_5rem)*16/9))]"
             onDragEnter={onDragEnter}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
@@ -398,15 +407,13 @@ export function PlayerApp() {
               tracks={tracks}
               autoPlay={autoPlay}
               onEnded={() => {
-                if (inPlaylist && index < VIDEOS.length - 1) goTo(1)
+                if (autoplayNext) playNext()
               }}
-              onNext={inPlaylist ? () => goTo(1) : undefined}
-              onPrevious={inPlaylist ? () => goTo(-1) : undefined}
             />
             {dragging && (
               <div className="pointer-events-none absolute inset-0 z-50 grid place-items-center rounded-xl border-2 border-dashed border-primary bg-background/85 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-2 text-center">
-                  <AddIcon className="size-12" />
+                  <Upload className="size-10" />
                   <p className="text-sm font-semibold sm:text-base">
                     Drop to play or add subtitles
                   </p>
@@ -419,7 +426,7 @@ export function PlayerApp() {
           </div>
 
           <Card className="gap-3 py-5">
-            <CardHeader className="gap-1">
+            <CardHeader className="gap-1.5">
               <CardTitle className="text-xl tracking-tight text-balance sm:text-2xl">
                 {current.title}
               </CardTitle>
@@ -433,7 +440,7 @@ export function PlayerApp() {
               )}
               {tracks.map((t) => (
                 <Badge key={t.id ?? `${t.srclang}:${t.src}`} variant="secondary">
-                  <ClosedCaptionsIcon className="size-4!" />
+                  <Captions />
                   {t.label}
                 </Badge>
               ))}
@@ -446,24 +453,24 @@ export function PlayerApp() {
           </Card>
         </section>
 
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           <Card className="gap-0 overflow-hidden py-0">
             <Tabs value={tab} onValueChange={setTab} className="gap-0">
               <div className="border-b p-3">
                 <TabsList>
                   <TabsTrigger value="playlist">
-                    <PlayIcon className="size-5" />
+                    <ListVideo />
                     Up next
                   </TabsTrigger>
                   <TabsTrigger value="upload">
-                    <AddIcon className="size-5" />
+                    <Upload />
                     Upload
                   </TabsTrigger>
                 </TabsList>
               </div>
 
               <TabsContent value="playlist">
-                <ScrollArea className="h-[26rem]">
+                <ScrollArea className="h-[min(26rem,55svh)]">
                   <ul className="space-y-1 p-2">
                     {VIDEOS.map((video) => {
                       const active = video.id === current.id
@@ -479,22 +486,23 @@ export function PlayerApp() {
                             )}
                           >
                             <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-md bg-muted">
+                              <Skeleton className="absolute inset-0 rounded-none" />
                               {video.poster && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={video.poster}
                                   alt=""
                                   loading="lazy"
-                                  className="size-full object-cover"
+                                  className="relative size-full object-cover"
                                 />
                               )}
                               {active && (
                                 <div className="absolute inset-0 grid place-items-center bg-black/55 text-white">
-                                  <PlayIcon className="size-8" />
+                                  <AudioLines className="size-5" />
                                 </div>
                               )}
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-medium">
                                 {video.title}
                               </p>
@@ -508,6 +516,16 @@ export function PlayerApp() {
                     })}
                   </ul>
                 </ScrollArea>
+                <div className="flex items-center justify-between gap-3 border-t px-4 py-3">
+                  <Label htmlFor="autoplay-next" className="cursor-pointer">
+                    Autoplay next video
+                  </Label>
+                  <Switch
+                    id="autoplay-next"
+                    checked={autoplayNext}
+                    onCheckedChange={setAutoplayNext}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="upload">
@@ -523,7 +541,7 @@ export function PlayerApp() {
                     onDrop={onDrop}
                   >
                     <span className="grid size-11 place-items-center rounded-full bg-background shadow-xs ring-1 ring-border">
-                      <AddIcon className="size-7" />
+                      <Upload className="size-5" />
                     </span>
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium">Drop files here</p>
@@ -531,12 +549,12 @@ export function PlayerApp() {
                         Video: MP4, WebM, MKV. Subtitles: SRT, VTT, ASS.
                       </p>
                     </div>
-                    <div className="grid w-full grid-cols-2 gap-2">
+                    <div className="grid w-full grid-cols-1 gap-2 min-[400px]:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                       <Button
                         type="button"
                         onClick={() => videoInput.current?.click()}
                       >
-                        <ComputerIcon className="size-5" />
+                        <FolderOpen />
                         Open video
                       </Button>
                       <Button
@@ -544,7 +562,7 @@ export function PlayerApp() {
                         variant="secondary"
                         onClick={() => subtitleInput.current?.click()}
                       >
-                        <SubtitlesIcon className="size-5" />
+                        <Subtitles />
                         Add subtitles
                       </Button>
                     </div>
@@ -572,7 +590,7 @@ export function PlayerApp() {
 
                   {status && (
                     <Alert variant={status.kind === "error" ? "destructive" : "default"}>
-                      {status.kind === "error" ? <InfoIcon /> : <CheckIcon />}
+                      {status.kind === "error" ? <CircleAlert /> : <CircleCheck />}
                       <AlertTitle>{status.title}</AlertTitle>
                       <AlertDescription>{status.text}</AlertDescription>
                     </Alert>
@@ -587,7 +605,7 @@ export function PlayerApp() {
                             key={s.id}
                             className="flex items-center gap-3 rounded-lg border bg-card py-2 pr-2 pl-3"
                           >
-                            <SubtitlesIcon className="size-6 shrink-0 text-muted-foreground" />
+                            <Subtitles className="size-5 shrink-0 text-muted-foreground" />
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-medium">
                                 {s.name}
@@ -604,7 +622,7 @@ export function PlayerApp() {
                               aria-label={`Remove ${s.name}`}
                               onClick={() => removeSubtitle(s.id)}
                             >
-                              <XMarkIcon className="size-5" />
+                              <X />
                             </Button>
                           </li>
                         ))}
@@ -638,11 +656,7 @@ export function PlayerApp() {
                         disabled={!subtitleUrl.trim() || subtitleLoading}
                         className="shrink-0"
                       >
-                        {subtitleLoading ? (
-                          <Spinner className="size-5" />
-                        ) : (
-                          <AddIcon className="size-6" />
-                        )}
+                        {subtitleLoading ? <Spinner /> : <Plus />}
                       </Button>
                     </div>
                     {subtitleUrlError ? (
@@ -681,7 +695,7 @@ export function PlayerApp() {
                         disabled={!url.trim()}
                         className="shrink-0"
                       >
-                        <LinkIcon className="size-6" />
+                        <Link2 />
                       </Button>
                     </div>
                     {urlError ? (
@@ -724,7 +738,8 @@ export function PlayerApp() {
 
       <footer className="border-t bg-background">
         <div className="mx-auto w-full max-w-7xl px-4 py-5 text-sm text-muted-foreground sm:px-6">
-          Built with Next.js, shadcn/ui and Tailwind CSS. Icons by Vidstack.
+          Built with Next.js, shadcn/ui and Tailwind CSS. Player icons by
+          Vidstack, site icons by Lucide.
         </div>
       </footer>
     </div>

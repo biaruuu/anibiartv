@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.0
+
+### Fixed
+- The page was wider than the phone screen and the player was cut off on the left. The playlist's scroll area stretched the layout to the width of its longest text. The grid now has an explicit single column, the scroll area keeps its width, and the page clips any stray overflow.
+- On short landscape screens the 16:9 player is capped to the screen height instead of running off the bottom.
+
+### Changed
+- The 10-second skip buttons now sit well to the left and right of the play button (Netflix style) instead of beside it.
+- Captions are bolder and larger, with a per-line dark box, and the size scales with the player.
+- Website icons now use Lucide; Vidstack icons are used only inside the video player.
+
+### Added
+- Caption style menu (Settings → Caption style): Small / Medium / Large, and a Dark box or Outline background. Remembered in the browser.
+- "Autoplay next video" switch.
+- shadcn Switch and Skeleton components; poster thumbnails show a skeleton while loading.
+
+### Removed
+- Previous and next buttons from the player controls.
+
 ## 1.2.0
 
 ### Removed
