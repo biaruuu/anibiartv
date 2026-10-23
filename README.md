@@ -22,7 +22,9 @@ Open http://localhost:3000. Requires Node.js 20.9 or newer.
 ## Features
 
 - shadcn/ui `Button`, `Slider`, `Tooltip`, `Card`, `Input`, `Badge`, `Separator`
-- Floating, flat control panel (no gradients) with smooth fade and slide animations
+- Streaming-style layout, flat with no gradients: volume and cast on the top left; screenshot, download, captions and settings on the top right; big round play/pause in the centre; time and fullscreen above a thin progress bar with buffering
+- Fullscreen automatically rotates to landscape on supported devices (Android and other browsers with the Screen Orientation API); iPhone Safari uses its native player, which rotates on its own
+- Settings menu with Captions, Speed, Loop and Picture in picture
 - lucide icons for every control
 - Captions drawn by a custom overlay in **Poppins**, with multiple languages and on/off toggle
 - Playlist with previous, next and auto-advance

@@ -170,7 +170,6 @@ export function PlayerApp() {
       <main className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:py-8">
         <section className="min-w-0 space-y-5">
           <VideoPlayer
-            key={current.id}
             src={current.src}
             poster={current.poster}
             title={current.title}
