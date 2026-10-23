@@ -1,6 +1,6 @@
 # Videoplayer
 
-A modern, responsive video player web app built with **Next.js**, **shadcn/ui**, **Tailwind CSS v4** and **lucide** icons. Flat design, no gradients. Captions are rendered in **Poppins**.
+A modern, responsive video player web app built with **Next.js**, **shadcn/ui** and **Tailwind CSS v4**. Flat design, no gradients. Captions render in **Poppins**, icons come from **Vidstack**, and a **Dynamic Island** style pill shows what is happening.
 
 ## Deploy to Vercel
 
@@ -21,18 +21,26 @@ Open http://localhost:3000. Requires Node.js 20.9 or newer.
 
 ## Features
 
-- shadcn/ui `Button`, `Slider`, `Tooltip`, `Card`, `Input`, `Badge`, `Separator`
-- Streaming-style layout, flat with no gradients: volume and cast on the top left; screenshot, download, captions and settings on the top right; big round play/pause in the centre; time and fullscreen above a thin progress bar with buffering
-- Fullscreen automatically rotates to landscape on supported devices (Android and other browsers with the Screen Orientation API); iPhone Safari uses its native player, which rotates on its own
-- Settings menu with Captions, Speed, Loop and Picture in picture
-- lucide icons for every control
-- Captions drawn by a custom overlay in **Poppins**, with multiple languages and on/off toggle
-- Playlist with previous, next and auto-advance
-- Play your own video from a direct link or from a file on your device (files never leave your browser), and attach your own `.vtt` captions
-- Playback speed 0.5x to 2x, picture-in-picture, fullscreen (with an iOS fallback)
-- Double-tap or double-click the left or right side to seek 10 seconds, the centre for fullscreen
-- Light and dark themes
-- Installable web app manifest
+- **Dynamic Island.** A black capsule at the top centre rests with a mini equalizer and the video title, then springs open to show play/pause, seeking, volume, speed, captions, subtitle delay, screenshots and more. On phones it stays hidden until something happens.
+- **Subtitles that work with real files.** Add `.srt`, `.vtt`, `.ass` or `.ssa` files (several at once if you like). The player parses them itself, so styling tags and ASS override codes are stripped cleanly. Older Windows-1252 files are detected automatically. Pick between tracks and adjust **Subtitle delay** in settings.
+- **Open files from your device.** Use the buttons or just drag and drop a video and subtitles onto the player. Nothing is uploaded; files stay in your browser.
+- **Stream from a link.** Paste a direct MP4 or WebM URL.
+- Streaming-style layout: volume and cast on the top left; screenshot, download, captions and settings on the top right; big round play/pause in the centre; time and fullscreen above a thin progress bar with buffering.
+- Fullscreen automatically rotates to landscape on supported devices (Android and other browsers with the Screen Orientation API). iPhone Safari uses its native player, which rotates on its own.
+- Playlist with previous, next and auto-advance. Switching videos keeps you in fullscreen.
+- Settings menu: Captions, Subtitle delay, Speed (0.5x to 2x), Loop, Picture in picture.
+- Light and dark themes, installable web app manifest.
+- shadcn/ui components: `Button`, `Slider`, `Tooltip`, `Card`, `Tabs`, `Alert`, `Input`, `Label`, `Badge`, `Separator`, `ScrollArea`, `Kbd`.
+
+## Subtitle formats
+
+| Format | Notes |
+| --- | --- |
+| SRT | Plain `.srt` files, with `<i>`/`<b>` tags removed |
+| WebVTT | Cue settings and styling tags are ignored |
+| ASS / SSA | Dialogue lines are read; override codes like `{\an8}` and vector drawings are skipped |
+
+If a video won't play, the file format is usually the cause. MP4 (H.264 + AAC) and WebM work in every browser; MKV and AVI depend on the browser and device.
 
 ## Keyboard shortcuts
 
@@ -44,19 +52,27 @@ Open http://localhost:3000. Requires Node.js 20.9 or newer.
 | M | Mute |
 | F | Fullscreen |
 | C | Captions |
+| Esc | Close the settings menu |
 
 ## Project structure
 
 ```
-app/                     Next.js app router (layout, page, manifest, global styles)
-components/player-app.tsx  The page: player, playlist, "play your own"
-components/ui/           shadcn/ui components and video-player.tsx
-lib/videos.ts            Sample playlist
-public/captions/         Sample .vtt caption files
+app/                         Next.js app router (layout, page, manifest, global styles)
+components/player-app.tsx    The page: player, playlist, upload tab
+components/ui/               shadcn/ui components, video-player.tsx, dynamic-island.tsx
+components/icons/vidstack.tsx  Vidstack icons as React components
+lib/captions.ts              SRT / VTT / ASS parser
+lib/videos.ts                Sample playlist
+public/captions/             Sample .vtt caption files
+licenses/                    Third-party licenses
 ```
 
-## Using your own videos and captions
+## Customising
 
-Edit `lib/videos.ts` to change the playlist, and replace the files in `public/captions/` with your own WebVTT files. Sample videos are hosted by Google's public sample bucket and are open Blender Foundation movies.
+Edit `lib/videos.ts` to change the playlist and replace the files in `public/captions/` with your own subtitles. Sample videos are open Blender Foundation movies hosted in Google's public sample bucket.
 
 To add more shadcn/ui components later: `npx shadcn@latest add <component>` (the project already includes `components.json`).
+
+## Credits
+
+Icons are from [Vidstack media-icons](https://github.com/vidstack/media-icons), MIT licensed (see `licenses/vidstack-media-icons.txt`).

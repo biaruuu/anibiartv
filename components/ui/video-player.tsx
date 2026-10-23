@@ -1,37 +1,45 @@
 "use client"
 
 import * as React from "react"
-import {
-  AlertCircle,
-  Camera,
-  Cast,
-  Captions,
-  CaptionsOff,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Gauge,
-  Loader2,
-  Maximize,
-  Minimize,
-  Pause,
-  PictureInPicture2,
-  Play,
-  Repeat,
-  RotateCcw,
-  RotateCw,
-  Settings,
-  SkipBack,
-  SkipForward,
-  Volume1,
-  Volume2,
-  VolumeX,
-} from "lucide-react"
 
+import {
+  CameraIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChromecastIcon,
+  ClosedCaptionsIcon,
+  ClosedCaptionsOnIcon,
+  DownloadIcon,
+  FullscreenExitIcon,
+  FullscreenIcon,
+  InfoIcon,
+  MuteIcon,
+  NextIcon,
+  PauseIcon,
+  PictureInPictureIcon,
+  PlaybackSpeedCircleIcon,
+  PlayIcon,
+  PreviousIcon,
+  RepeatIcon,
+  RepeatOnIcon,
+  SeekBackward10Icon,
+  SeekForward10Icon,
+  SettingsIcon,
+  TimerIcon,
+  VolumeHighIcon,
+  VolumeLowIcon,
+} from "@/components/icons/vidstack"
 import { cn } from "@/lib/utils"
+import { activeText, decodeText, parseCaptions, type Cue } from "@/lib/captions"
 import { Button } from "@/components/ui/button"
+import {
+  DynamicIsland,
+  Equalizer,
+  type IslandMessage,
+} from "@/components/ui/dynamic-island"
 import { Slider } from "@/components/ui/slider"
+import { Spinner } from "@/components/ui/spinner"
 import {
   Tooltip,
   TooltipContent,
@@ -40,9 +48,14 @@ import {
 } from "@/components/ui/tooltip"
 
 export type VideoTrack = {
-  src: string
+  /** Unique id. Defaults to srclang + src/label. */
+  id?: string
   srclang: string
   label: string
+  /** URL of an SRT, VTT or ASS file to fetch... */
+  src?: string
+  /** ...or already parsed cues (used for files the viewer adds). */
+  cues?: Cue[]
 }
 
 export type VideoPlayerProps = {
@@ -64,11 +77,14 @@ type CastVideo = HTMLVideoElement & {
 type LockableOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape" | "portrait") => Promise<void>
 }
-type MenuView = "main" | "captions" | "speed"
+type MenuView = "main" | "captions" | "speed" | "sync"
+type IslandInput = Omit<IslandMessage, "key">
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
 const SEEK_STEP = 10
-const ICON = "size-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+const ICON = "size-7 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
+
+const trackId = (t: VideoTrack) => t.id ?? `${t.srclang}:${t.src ?? t.label}`
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00"
@@ -77,6 +93,15 @@ function formatTime(seconds: number) {
   const s = Math.floor(seconds % 60)
   const ss = s.toString().padStart(2, "0")
   return h > 0 ? `${h}:${m.toString().padStart(2, "0")}:${ss}` : `${m}:${ss}`
+}
+
+function formatOffset(seconds: number) {
+  return `${seconds > 0 ? "+" : seconds < 0 ? "-" : ""}${Math.abs(seconds).toFixed(1)}s`
+}
+
+function volumeIcon(volume: number, muted: boolean) {
+  if (muted || volume === 0) return MuteIcon
+  return volume < 0.5 ? VolumeLowIcon : VolumeHighIcon
 }
 
 /** Rotate the device to landscape (or portrait for tall videos) while fullscreen. */
@@ -105,7 +130,6 @@ function ControlButton({
   children,
   className,
   container,
-  disabled,
   side = "bottom",
 }: {
   label: string
@@ -113,7 +137,6 @@ function ControlButton({
   children: React.ReactNode
   className?: string
   container: HTMLElement | null
-  disabled?: boolean
   side?: "top" | "bottom"
 }) {
   return (
@@ -124,7 +147,6 @@ function ControlButton({
           variant="ghost"
           size="icon"
           aria-label={label}
-          disabled={disabled}
           onClick={onClick}
           className={cn(
             "size-10 rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 sm:size-11 dark:hover:bg-white/15",
@@ -162,12 +184,12 @@ function MenuRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors hover:bg-white/10"
+      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/10"
     >
-      <span className="shrink-0 text-white/80 [&_svg]:size-5">{icon}</span>
+      <span className="shrink-0 text-white/80 [&_svg]:size-6">{icon}</span>
       <span className="flex-1 font-medium">{label}</span>
-      {value && <span className="truncate text-white/70">{value}</span>}
-      {chevron && <ChevronRight className="size-4 shrink-0 text-white/70" />}
+      {value && <span className="max-w-[40%] truncate text-white/70">{value}</span>}
+      {chevron && <ChevronRightIcon className="size-5 shrink-0 text-white/70" />}
     </button>
   )
 }
@@ -188,7 +210,7 @@ function OptionRow({
       className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/10"
     >
       <span className="truncate">{label}</span>
-      {selected && <Check className="size-4 shrink-0" />}
+      {selected && <CheckIcon className="size-5 shrink-0" />}
     </button>
   )
 }
@@ -207,10 +229,12 @@ export function VideoPlayer({
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const hideTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const clickTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const flashTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const noticeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const islandTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const settingsOpenRef = React.useRef(false)
   const pointerType = React.useRef("mouse")
+  const cueCache = React.useRef(new Map<string, Cue[]>())
+  const cuesRef = React.useRef<Cue[]>([])
+  const offsetRef = React.useRef(0)
 
   // The player element itself. Kept in state so tooltips can portal into it
   // (required for them to stay visible in fullscreen).
@@ -234,30 +258,31 @@ export function VideoPlayer({
   const [castSupported, setCastSupported] = React.useState(false)
   const [scrubbing, setScrubbing] = React.useState(false)
   const [cueText, setCueText] = React.useState("")
-  const [notice, setNotice] = React.useState<string | null>(null)
-  const [flash, setFlash] = React.useState<{
-    dir: "back" | "forward"
-    key: number
-  } | null>(null)
+  const [cueVersion, setCueVersion] = React.useState(0)
+  const [captionOffset, setCaptionOffset] = React.useState(0)
+  const [island, setIsland] = React.useState<IslandMessage | null>(null)
 
-  const firstLang = tracks[0]?.srclang ?? null
-  const trackKey = tracks.map((t) => `${t.srclang}:${t.src}`).join("|")
-  const [captionLang, setCaptionLang] = React.useState<string | null>(
-    firstLang
-  )
+  const trackKey = tracks.map(trackId).join("|")
+  const firstId = tracks[0] ? trackId(tracks[0]) : null
+  const [captionId, setCaptionId] = React.useState<string | null>(firstId)
+  const activeTrack = tracks.find((t) => trackId(t) === captionId)
 
-  /* ---------- helpers ---------- */
-  const showNotice = React.useCallback((text: string) => {
-    if (noticeTimer.current) clearTimeout(noticeTimer.current)
-    setNotice(text)
-    noticeTimer.current = setTimeout(() => setNotice(null), 2600)
+  /* ---------- Dynamic Island ---------- */
+  const pushIsland = React.useCallback((message: IslandInput, ms = 2000) => {
+    if (islandTimer.current) clearTimeout(islandTimer.current)
+    setIsland({ ...message, key: Date.now() })
+    islandTimer.current = setTimeout(() => setIsland(null), ms)
   }, [])
 
+  /* ---------- helpers ---------- */
   const updateBuffered = (v: HTMLVideoElement) => {
     const ranges = v.buffered
     let end = 0
     for (let i = 0; i < ranges.length; i++) {
-      if (ranges.start(i) <= v.currentTime + 0.5 && ranges.end(i) >= v.currentTime) {
+      if (
+        ranges.start(i) <= v.currentTime + 0.5 &&
+        ranges.end(i) >= v.currentTime
+      ) {
         end = ranges.end(i)
         break
       }
@@ -268,38 +293,139 @@ export function VideoPlayer({
   const togglePlay = React.useCallback(() => {
     const v = videoRef.current
     if (!v) return
-    if (v.paused) void v.play().catch(() => undefined)
-    else v.pause()
-  }, [])
+    if (v.paused) {
+      void v.play().catch(() => undefined)
+      pushIsland({
+        icon: <PlayIcon className="size-6" />,
+        title: "Playing",
+        subtitle: title,
+      })
+    } else {
+      v.pause()
+      pushIsland({
+        icon: <PauseIcon className="size-6" />,
+        title: "Paused",
+        subtitle: title,
+      })
+    }
+  }, [pushIsland, title])
 
-  const seekBy = React.useCallback((delta: number) => {
-    const v = videoRef.current
-    if (!v) return
-    v.currentTime = Math.min(
-      Math.max(v.currentTime + delta, 0),
-      v.duration || 0
-    )
-  }, [])
+  const seekBy = React.useCallback(
+    (delta: number) => {
+      const v = videoRef.current
+      if (!v) return
+      const next = Math.min(Math.max(v.currentTime + delta, 0), v.duration || 0)
+      v.currentTime = next
+      pushIsland(
+        {
+          icon:
+            delta < 0 ? (
+              <SeekBackward10Icon className="size-6" />
+            ) : (
+              <SeekForward10Icon className="size-6" />
+            ),
+          title: delta < 0 ? "Back 10 seconds" : "Forward 10 seconds",
+          value: formatTime(next),
+          progress: v.duration ? next / v.duration : 0,
+        },
+        1400
+      )
+    },
+    [pushIsland]
+  )
 
   const toggleMute = React.useCallback(() => {
     const v = videoRef.current
     if (!v) return
     v.muted = !v.muted
     setMuted(v.muted)
-  }, [])
+    const Icon = volumeIcon(v.volume, v.muted)
+    pushIsland(
+      {
+        icon: <Icon className="size-6" />,
+        title: v.muted ? "Muted" : "Sound on",
+        progress: v.muted ? 0 : v.volume,
+        value: v.muted ? undefined : `${Math.round(v.volume * 100)}%`,
+      },
+      1400
+    )
+  }, [pushIsland])
 
-  const changeVolume = React.useCallback((value: number) => {
-    const v = videoRef.current
-    if (!v) return
-    v.volume = value
-    v.muted = value === 0
-    setVolume(value)
-    setMuted(value === 0)
-  }, [])
+  const changeVolume = React.useCallback(
+    (value: number) => {
+      const v = videoRef.current
+      if (!v) return
+      v.volume = value
+      v.muted = value === 0
+      setVolume(value)
+      setMuted(value === 0)
+      const Icon = volumeIcon(value, value === 0)
+      pushIsland(
+        {
+          icon: <Icon className="size-6" />,
+          title: value === 0 ? "Muted" : "Volume",
+          progress: value,
+          value: `${Math.round(value * 100)}%`,
+        },
+        1400
+      )
+    },
+    [pushIsland]
+  )
 
   const changeSpeed = (value: number) => {
     if (videoRef.current) videoRef.current.playbackRate = value
     setSpeed(value)
+    pushIsland({
+      icon: <PlaybackSpeedCircleIcon className="size-6" />,
+      title: "Playback speed",
+      value: value === 1 ? "Normal" : `${value}x`,
+    })
+  }
+
+  const toggleLoop = () => {
+    const next = !loop
+    setLoop(next)
+    pushIsland({
+      icon: next ? (
+        <RepeatOnIcon className="size-6" />
+      ) : (
+        <RepeatIcon className="size-6" />
+      ),
+      title: next ? "Loop on" : "Loop off",
+    })
+  }
+
+  const selectCaption = (id: string | null) => {
+    setCaptionId(id)
+    const track = tracks.find((t) => trackId(t) === id)
+    pushIsland({
+      icon: id ? (
+        <ClosedCaptionsOnIcon className="size-6" />
+      ) : (
+        <ClosedCaptionsIcon className="size-6" />
+      ),
+      title: "Captions",
+      value: track?.label ?? "Off",
+    })
+  }
+
+  const toggleCaptions = () => selectCaption(captionId ? null : firstId)
+
+  const adjustOffset = (delta: number | "reset") => {
+    const next =
+      delta === "reset"
+        ? 0
+        : Math.min(30, Math.max(-30, Math.round((captionOffset + delta) * 10) / 10))
+    setCaptionOffset(next)
+    pushIsland(
+      {
+        icon: <TimerIcon className="size-6" />,
+        title: "Subtitle delay",
+        value: formatOffset(next),
+      },
+      1400
+    )
   }
 
   const toggleFullscreen = React.useCallback(async () => {
@@ -332,10 +458,6 @@ export function VideoPlayer({
     }
   }, [])
 
-  const toggleCaptions = React.useCallback(() => {
-    setCaptionLang((current) => (current ? null : firstLang))
-  }, [firstLang])
-
   const castVideo = async () => {
     try {
       await (videoRef.current as CastVideo | null)?.remote?.prompt()
@@ -354,7 +476,11 @@ export function VideoPlayer({
       canvas.getContext("2d")?.drawImage(v, 0, 0)
       canvas.toBlob((blob) => {
         if (!blob) {
-          showNotice("Screenshot isn't available for this video")
+          pushIsland({
+            icon: <InfoIcon className="size-6" />,
+            title: "Screenshot unavailable",
+            tone: "error",
+          })
           return
         }
         const url = URL.createObjectURL(blob)
@@ -365,11 +491,20 @@ export function VideoPlayer({
         a.click()
         a.remove()
         setTimeout(() => URL.revokeObjectURL(url), 1000)
-        showNotice("Screenshot saved")
+        pushIsland({
+          icon: <CameraIcon className="size-6" />,
+          title: "Screenshot saved",
+          subtitle: formatTime(v.currentTime),
+        })
       }, "image/png")
     } catch {
       // Cross-origin videos without CORS headers can't be captured.
-      showNotice("This video's host doesn't allow screenshots")
+      pushIsland({
+        icon: <InfoIcon className="size-6" />,
+        title: "Screenshot blocked",
+        subtitle: "This video's host doesn't allow it",
+        tone: "error",
+      })
     }
   }
 
@@ -390,25 +525,23 @@ export function VideoPlayer({
     } catch {
       external = true
     }
-    showNotice(
-      external
-        ? "Opened in a new tab. Use your browser's save option."
-        : "Download started"
-    )
+    pushIsland({
+      icon: <DownloadIcon className="size-6" />,
+      title: external ? "Opened in a new tab" : "Download started",
+      subtitle: external ? "Use your browser's save option" : title,
+    })
   }
 
-  const flashSeek = (dir: "back" | "forward") => {
-    if (flashTimer.current) clearTimeout(flashTimer.current)
-    setFlash({ dir, key: Date.now() })
-    flashTimer.current = setTimeout(() => setFlash(null), 650)
-  }
-
-  /* ---------- settings menu ---------- */
+  /* ---------- controls ---------- */
   const revealControls = React.useCallback(() => {
     setShowControls(true)
     if (hideTimer.current) clearTimeout(hideTimer.current)
     hideTimer.current = setTimeout(() => {
-      if (videoRef.current && !videoRef.current.paused && !settingsOpenRef.current) {
+      if (
+        videoRef.current &&
+        !videoRef.current.paused &&
+        !settingsOpenRef.current
+      ) {
         setShowControls(false)
       }
     }, 2800)
@@ -434,15 +567,15 @@ export function VideoPlayer({
     settingsOpenRef.current = settingsOpen
   }, [settingsOpen])
 
-  // Reset per-video state when the source changes (the element is reused so
-  // fullscreen survives moving to the next video).
+  // The video can finish loading metadata before React hydrates, so catch up.
   React.useEffect(() => {
-    setCurrentTime(0)
-    setDuration(0)
-    setBuffered(0)
-    setError(false)
-    setPlaying(false)
-    setCueText("")
+    const v = videoRef.current
+    if (!v) return
+    if (v.error) setError(true)
+    if (v.readyState >= 1) {
+      setDuration(v.duration)
+      updateBuffered(v)
+    }
   }, [src])
 
   React.useEffect(() => {
@@ -458,17 +591,14 @@ export function VideoPlayer({
     () => () => {
       if (hideTimer.current) clearTimeout(hideTimer.current)
       if (clickTimer.current) clearTimeout(clickTimer.current)
-      if (flashTimer.current) clearTimeout(flashTimer.current)
-      if (noticeTimer.current) clearTimeout(noticeTimer.current)
+      if (islandTimer.current) clearTimeout(islandTimer.current)
     },
     []
   )
 
   React.useEffect(() => {
     setPipSupported(Boolean(document.pictureInPictureEnabled))
-    setCastSupported(
-      Boolean((videoRef.current as CastVideo | null)?.remote)
-    )
+    setCastSupported(Boolean((videoRef.current as CastVideo | null)?.remote))
     const onChange = () => {
       const active = Boolean(document.fullscreenElement)
       setFullscreen(active)
@@ -482,39 +612,72 @@ export function VideoPlayer({
     }
   }, [])
 
-  /* ---------- captions (custom overlay, rendered in Poppins) ---------- */
+  /* ---------- captions (own parser, own timing, rendered in Poppins) ---------- */
+  // When the available tracks change (for example a subtitle file was added),
+  // switch to the first one.
   React.useEffect(() => {
-    setCaptionLang(firstLang)
-  }, [firstLang])
+    setCaptionId(firstId)
+  }, [firstId])
 
+  // Download and parse any caption file that is referenced by URL.
   React.useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-    const cleanups: Array<() => void> = []
-
-    for (let i = 0; i < video.textTracks.length; i++) {
-      const track = video.textTracks[i]
-      if (captionLang && track.language === captionLang) {
-        // "hidden" loads cues and fires events without the browser drawing them.
-        track.mode = "hidden"
-        const onCue = () => {
-          const text = Array.from(track.activeCues ?? [])
-            .map((cue) => (cue as VTTCue).text)
-            .join("\n")
-            .replace(/<[^>]+>/g, "")
-          setCueText(text)
-        }
-        track.addEventListener("cuechange", onCue)
-        cleanups.push(() => track.removeEventListener("cuechange", onCue))
-        onCue()
-      } else {
-        track.mode = "disabled"
-      }
+    const controller = new AbortController()
+    for (const track of tracks) {
+      const id = trackId(track)
+      if (track.cues || !track.src || cueCache.current.has(id)) continue
+      fetch(track.src, { signal: controller.signal })
+        .then((response) => {
+          if (!response.ok) throw new Error(String(response.status))
+          return response.arrayBuffer()
+        })
+        .then((buffer) => {
+          cueCache.current.set(id, parseCaptions(decodeText(buffer)).cues)
+          setCueVersion((v) => v + 1)
+        })
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === "AbortError") return
+          pushIsland({
+            icon: <InfoIcon className="size-6" />,
+            title: "Couldn't load captions",
+            subtitle: track.label,
+            tone: "error",
+          })
+        })
     }
-    if (!captionLang) setCueText("")
+    return () => controller.abort()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trackKey, pushIsland])
 
-    return () => cleanups.forEach((fn) => fn())
-  }, [captionLang, trackKey])
+  const activeCues = React.useMemo(() => {
+    if (!activeTrack) return []
+    return activeTrack.cues ?? cueCache.current.get(trackId(activeTrack)) ?? []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [captionId, trackKey, cueVersion])
+
+  const syncCue = React.useCallback(() => {
+    const v = videoRef.current
+    if (!v) return
+    const text = activeText(cuesRef.current, v.currentTime - offsetRef.current)
+    setCueText((previous) => (previous === text ? previous : text))
+  }, [])
+
+  React.useEffect(() => {
+    cuesRef.current = activeCues
+    offsetRef.current = captionOffset
+    syncCue()
+  }, [activeCues, captionOffset, syncCue])
+
+  // Check the cue on every frame while playing so captions are frame accurate.
+  React.useEffect(() => {
+    if (!playing) return
+    let frame = 0
+    const loopFrame = () => {
+      syncCue()
+      frame = requestAnimationFrame(loopFrame)
+    }
+    frame = requestAnimationFrame(loopFrame)
+    return () => cancelAnimationFrame(frame)
+  }, [playing, syncCue])
 
   /* ---------- gestures ---------- */
   const onVideoClick = () => {
@@ -542,15 +705,9 @@ export function VideoPlayer({
     }
     const rect = e.currentTarget.getBoundingClientRect()
     const ratio = (e.clientX - rect.left) / rect.width
-    if (ratio < 0.33) {
-      seekBy(-SEEK_STEP)
-      flashSeek("back")
-    } else if (ratio > 0.67) {
-      seekBy(SEEK_STEP)
-      flashSeek("forward")
-    } else {
-      void toggleFullscreen()
-    }
+    if (ratio < 0.33) seekBy(-SEEK_STEP)
+    else if (ratio > 0.67) seekBy(SEEK_STEP)
+    else void toggleFullscreen()
   }
 
   /* ---------- keyboard shortcuts ---------- */
@@ -570,13 +727,11 @@ export function VideoPlayer({
       case "j":
         e.preventDefault()
         seekBy(-SEEK_STEP)
-        flashSeek("back")
         break
       case "arrowright":
       case "l":
         e.preventDefault()
         seekBy(SEEK_STEP)
-        flashSeek("forward")
         break
       case "arrowup":
         e.preventDefault()
@@ -607,13 +762,22 @@ export function VideoPlayer({
     revealControls()
   }
 
-  const VolumeIcon =
-    muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
+  const VolumeIcon = volumeIcon(volume, muted)
   const controlsHidden = !showControls && playing
   const interactive = controlsHidden ? "pointer-events-none" : "pointer-events-auto"
   const bufferedPct = duration ? Math.min(100, (buffered / duration) * 100) : 0
-  const activeCaption = tracks.find((t) => t.srclang === captionLang)
   const buffering = loading && playing && !error
+
+  const compact = (
+    <div className="flex max-w-full items-center gap-2 px-3">
+      {playing ? (
+        <Equalizer />
+      ) : (
+        <PlayIcon className="size-5 shrink-0" />
+      )}
+      <span className="truncate text-xs font-medium">{title ?? "Video"}</span>
+    </div>
+  )
 
   return (
     <TooltipProvider delayDuration={250}>
@@ -629,7 +793,7 @@ export function VideoPlayer({
           pointerType.current = e.pointerType
         }}
         className={cn(
-          "group relative aspect-video w-full overflow-hidden rounded-xl border bg-black outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&:fullscreen]:rounded-none [&:fullscreen]:border-0",
+          "group relative aspect-video w-full overflow-hidden rounded-xl border bg-black shadow-sm outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&:fullscreen]:rounded-none [&:fullscreen]:border-0",
           controlsHidden && "cursor-none",
           className
         )}
@@ -645,6 +809,14 @@ export function VideoPlayer({
           className="size-full object-contain"
           onClick={onVideoClick}
           onDoubleClick={onVideoDoubleClick}
+          onLoadStart={() => {
+            setCurrentTime(0)
+            setDuration(0)
+            setBuffered(0)
+            setError(false)
+            setLoading(true)
+          }}
+          onEmptied={() => setPlaying(false)}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
           onPlaying={() => setLoading(false)}
@@ -662,28 +834,29 @@ export function VideoPlayer({
             onEnded?.()
           }}
           onLoadedMetadata={(e) => {
-            setDuration(e.currentTarget.duration)
+            const v = e.currentTarget
+            setDuration(v.duration)
             // A new source resets the rate, so re-apply the chosen speed.
-            e.currentTarget.playbackRate = speed
-            updateBuffered(e.currentTarget)
+            v.playbackRate = speed
+            updateBuffered(v)
+            pushIsland(
+              {
+                icon: <PlayIcon className="size-6" />,
+                title: "Now playing",
+                subtitle: title,
+                value: formatTime(v.duration),
+              },
+              2400
+            )
           }}
           onDurationChange={(e) => setDuration(e.currentTarget.duration)}
           onProgress={(e) => updateBuffered(e.currentTarget)}
+          onSeeked={syncCue}
           onTimeUpdate={(e) => {
             if (!scrubbing) setCurrentTime(e.currentTarget.currentTime)
             updateBuffered(e.currentTarget)
           }}
-        >
-          {tracks.map((t) => (
-            <track
-              key={`${t.srclang}:${t.src}`}
-              kind="captions"
-              src={t.src}
-              srcLang={t.srclang}
-              label={t.label}
-            />
-          ))}
-        </video>
+        />
 
         {/* Flat dim layer while controls are visible */}
         <div
@@ -707,60 +880,36 @@ export function VideoPlayer({
           </div>
         )}
 
-        {/* Double-tap seek feedback */}
-        {flash && (
-          <div
-            key={flash.key}
-            className={cn(
-              "pointer-events-none absolute top-1/2 -translate-y-1/2",
-              flash.dir === "back" ? "left-[12%]" : "right-[12%]"
-            )}
-          >
-            <div className="flex size-20 animate-in flex-col items-center justify-center gap-0.5 rounded-full bg-black/60 text-white backdrop-blur-md duration-200 fade-in-0 zoom-in-90">
-              {flash.dir === "back" ? (
-                <RotateCcw className="size-6" />
-              ) : (
-                <RotateCw className="size-6" />
-              )}
-              <span className="font-poppins text-xs font-medium">
-                {SEEK_STEP}s
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Buffering while controls are hidden */}
         {buffering && controlsHidden && (
           <div className="pointer-events-none absolute inset-0 grid place-items-center">
-            <Loader2 className="size-12 animate-spin text-white drop-shadow" />
+            <Spinner className="size-12 text-white drop-shadow" />
           </div>
         )}
 
         {/* Error */}
         {error && (
           <div className="absolute inset-0 z-20 grid place-items-center bg-black p-6 text-center">
-            <div className="flex max-w-xs flex-col items-center gap-2 font-poppins text-white">
-              <AlertCircle className="size-9 text-white/70" />
+            <div className="flex max-w-sm flex-col items-center gap-2 font-poppins text-white">
+              <InfoIcon className="size-10 text-white/70" />
               <p className="text-sm font-semibold sm:text-base">
-                This video couldn&apos;t be loaded
+                This video couldn&apos;t be played
               </p>
               <p className="text-xs text-white/60 sm:text-sm">
-                Check the link or try a different file.
+                Check the link, or try another file. MP4 (H.264) and WebM play
+                in every browser; some formats like MKV or AVI don&apos;t.
               </p>
             </div>
           </div>
         )}
 
-        {/* Notice (screenshot, download) */}
-        {notice && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="pointer-events-none absolute top-16 left-1/2 z-30 max-w-[90%] -translate-x-1/2 animate-in rounded-full bg-black/80 px-4 py-2 text-center font-poppins text-xs font-medium text-white duration-200 fade-in-0 slide-in-from-top-2 sm:text-sm"
-          >
-            {notice}
-          </div>
-        )}
+        {/* Dynamic Island */}
+        <DynamicIsland
+          message={island}
+          compact={compact}
+          hidden={controlsHidden}
+          className="absolute inset-x-2 top-2 z-20 sm:top-3"
+        />
 
         {/* Top bar: volume + cast on the left, tools on the right */}
         <div
@@ -769,7 +918,7 @@ export function VideoPlayer({
             controlsHidden && "-translate-y-2 opacity-0"
           )}
         >
-          <div className={cn("flex items-center gap-1", interactive)}>
+          <div className={cn("flex items-center", interactive)}>
             <div className="group/vol flex items-center">
               <ControlButton
                 label={muted ? "Unmute (m)" : "Mute (m)"}
@@ -798,36 +947,36 @@ export function VideoPlayer({
                 onClick={() => void castVideo()}
                 container={container}
               >
-                <Cast className={ICON} />
+                <ChromecastIcon className={ICON} />
               </ControlButton>
             )}
           </div>
 
-          <div className={cn("flex items-center gap-1", interactive)}>
+          <div className={cn("flex items-center", interactive)}>
             <ControlButton
               label="Screenshot"
               onClick={takeScreenshot}
               container={container}
             >
-              <Camera className={ICON} />
+              <CameraIcon className={ICON} />
             </ControlButton>
             <ControlButton
               label="Download"
               onClick={downloadVideo}
               container={container}
             >
-              <Download className={ICON} />
+              <DownloadIcon className={ICON} />
             </ControlButton>
             {tracks.length > 0 && (
               <ControlButton
-                label={captionLang ? "Hide captions (c)" : "Show captions (c)"}
+                label={captionId ? "Hide captions (c)" : "Show captions (c)"}
                 onClick={toggleCaptions}
                 container={container}
               >
-                {captionLang ? (
-                  <Captions className={ICON} />
+                {captionId ? (
+                  <ClosedCaptionsOnIcon className={ICON} />
                 ) : (
-                  <CaptionsOff className={ICON} />
+                  <ClosedCaptionsIcon className={ICON} />
                 )}
               </ControlButton>
             )}
@@ -836,7 +985,7 @@ export function VideoPlayer({
               onClick={toggleSettings}
               container={container}
             >
-              <Settings
+              <SettingsIcon
                 className={cn(
                   ICON,
                   "transition-transform duration-300",
@@ -847,13 +996,27 @@ export function VideoPlayer({
           </div>
         </div>
 
-        {/* Centre: previous, play/pause, next */}
+        {/* Centre: skip, previous, play/pause, next, skip */}
         <div
           className={cn(
-            "pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-5 transition-opacity duration-300 sm:gap-10",
+            "pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-3 transition-opacity duration-300 sm:gap-6",
             controlsHidden || error ? "opacity-0" : "opacity-100"
           )}
         >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Back 10 seconds"
+            onClick={() => seekBy(-SEEK_STEP)}
+            className={cn(
+              "hidden size-12 rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 sm:inline-flex dark:hover:bg-white/15",
+              interactive
+            )}
+          >
+            <SeekBackward10Icon className="size-9 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />
+          </Button>
+
           {onPrevious && (
             <Button
               type="button"
@@ -866,7 +1029,7 @@ export function VideoPlayer({
                 interactive
               )}
             >
-              <SkipBack className="size-6 fill-current drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />
+              <PreviousIcon className="size-8 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] sm:size-9" />
             </Button>
           )}
 
@@ -880,11 +1043,11 @@ export function VideoPlayer({
             )}
           >
             {buffering ? (
-              <Loader2 className="size-8 animate-spin sm:size-10" />
+              <Spinner className="size-9 sm:size-11" />
             ) : playing ? (
-              <Pause className="size-8 fill-current sm:size-10" />
+              <PauseIcon className="size-11 sm:size-14" />
             ) : (
-              <Play className="size-8 translate-x-0.5 fill-current sm:size-10" />
+              <PlayIcon className="size-11 sm:size-14" />
             )}
           </button>
 
@@ -900,9 +1063,23 @@ export function VideoPlayer({
                 interactive
               )}
             >
-              <SkipForward className="size-6 fill-current drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />
+              <NextIcon className="size-8 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] sm:size-9" />
             </Button>
           )}
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Forward 10 seconds"
+            onClick={() => seekBy(SEEK_STEP)}
+            className={cn(
+              "hidden size-12 rounded-full text-white hover:bg-white/15 hover:text-white active:scale-95 sm:inline-flex dark:hover:bg-white/15",
+              interactive
+            )}
+          >
+            <SeekForward10Icon className="size-9 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" />
+          </Button>
         </div>
 
         {/* Bottom: time + fullscreen above a thin progress bar */}
@@ -926,9 +1103,9 @@ export function VideoPlayer({
                 className="-mr-2 -mb-1"
               >
                 {fullscreen ? (
-                  <Minimize className={ICON} />
+                  <FullscreenExitIcon className={ICON} />
                 ) : (
-                  <Maximize className={ICON} />
+                  <FullscreenIcon className={ICON} />
                 )}
               </ControlButton>
             </div>
@@ -973,28 +1150,36 @@ export function VideoPlayer({
               <>
                 {tracks.length > 0 && (
                   <MenuRow
-                    icon={<Captions />}
+                    icon={<ClosedCaptionsIcon />}
                     label="Captions"
-                    value={activeCaption?.label ?? "Off"}
+                    value={activeTrack?.label ?? "Off"}
                     onClick={() => setMenuView("captions")}
                   />
                 )}
+                {captionId && (
+                  <MenuRow
+                    icon={<TimerIcon />}
+                    label="Subtitle delay"
+                    value={formatOffset(captionOffset)}
+                    onClick={() => setMenuView("sync")}
+                  />
+                )}
                 <MenuRow
-                  icon={<Gauge />}
+                  icon={<PlaybackSpeedCircleIcon />}
                   label="Speed"
                   value={speed === 1 ? "Normal" : `${speed}x`}
                   onClick={() => setMenuView("speed")}
                 />
                 <MenuRow
-                  icon={<Repeat />}
+                  icon={loop ? <RepeatOnIcon /> : <RepeatIcon />}
                   label="Loop"
                   value={loop ? "On" : "Off"}
                   chevron={false}
-                  onClick={() => setLoop((l) => !l)}
+                  onClick={toggleLoop}
                 />
                 {pipSupported && (
                   <MenuRow
-                    icon={<PictureInPicture2 />}
+                    icon={<PictureInPictureIcon />}
                     label="Picture in picture"
                     chevron={false}
                     onClick={() => {
@@ -1011,10 +1196,14 @@ export function VideoPlayer({
                 <button
                   type="button"
                   onClick={() => setMenuView("main")}
-                  className="mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-2.5 text-sm font-semibold transition-colors hover:bg-white/10"
+                  className="mb-1 flex w-full items-center gap-1 rounded-lg px-2 py-2.5 text-sm font-semibold transition-colors hover:bg-white/10"
                 >
-                  <ChevronLeft className="size-4" />
-                  {menuView === "captions" ? "Captions" : "Speed"}
+                  <ChevronLeftIcon className="size-5" />
+                  {menuView === "captions"
+                    ? "Captions"
+                    : menuView === "speed"
+                      ? "Speed"
+                      : "Subtitle delay"}
                 </button>
                 <div className="mx-2 mb-1 h-px bg-white/10" />
               </>
@@ -1024,15 +1213,15 @@ export function VideoPlayer({
               <>
                 <OptionRow
                   label="Off"
-                  selected={captionLang === null}
-                  onClick={() => setCaptionLang(null)}
+                  selected={captionId === null}
+                  onClick={() => selectCaption(null)}
                 />
                 {tracks.map((t) => (
                   <OptionRow
-                    key={`${t.srclang}:${t.src}`}
+                    key={trackId(t)}
                     label={t.label}
-                    selected={captionLang === t.srclang}
-                    onClick={() => setCaptionLang(t.srclang)}
+                    selected={captionId === trackId(t)}
+                    onClick={() => selectCaption(trackId(t))}
                   />
                 ))}
               </>
@@ -1047,6 +1236,37 @@ export function VideoPlayer({
                   onClick={() => changeSpeed(s)}
                 />
               ))}
+
+            {menuView === "sync" && (
+              <div className="space-y-3 p-2">
+                <p className="text-center text-2xl font-semibold tabular-nums">
+                  {formatOffset(captionOffset)}
+                </p>
+                <p className="text-center text-xs text-white/60">
+                  Positive delays subtitles. Negative shows them earlier.
+                </p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[-0.5, -0.1, 0.1, 0.5].map((step) => (
+                    <button
+                      key={step}
+                      type="button"
+                      onClick={() => adjustOffset(step)}
+                      className="rounded-md bg-white/10 py-2 text-xs font-medium tabular-nums transition-colors hover:bg-white/20"
+                    >
+                      {step > 0 ? "+" : "-"}
+                      {Math.abs(step)}s
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => adjustOffset("reset")}
+                  className="w-full rounded-md bg-white py-2 text-xs font-semibold text-black transition-colors hover:bg-white/85"
+                >
+                  Reset
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
