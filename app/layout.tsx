@@ -1,28 +1,45 @@
-import type { Metadata } from "next"
-import { Poppins } from "next/font/google"
+import type { Metadata, Viewport } from "next"
+import { GeistSans } from "geist/font/sans"
+import "@fontsource/poppins/400.css"
+import "@fontsource/poppins/500.css"
+import "@fontsource/poppins/600.css"
+import "@fontsource/poppins/700.css"
 
 import "./globals.css"
-
-// Exposes --font-poppins, which the video player uses for captions, title and time.
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-poppins",
-  display: "swap",
-})
+import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
-  title: "Video Player",
-  description: "A responsive video player built with shadcn/ui",
+  title: {
+    default: "Videoplayer",
+    template: "%s | Videoplayer",
+  },
+  description:
+    "A modern, responsive video player with Poppins captions, playlists and keyboard shortcuts. Built with Next.js and shadcn/ui.",
+  applicationName: "Videoplayer",
+  icons: { icon: "/icon.svg" },
+}
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 }
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={poppins.variable}>
-      <body className="bg-background text-foreground antialiased">
-        {children}
+    <html lang="en" suppressHydrationWarning className={GeistSans.variable}>
+      <body className="min-h-svh bg-background font-sans text-foreground antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )

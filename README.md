@@ -1,51 +1,60 @@
-# shadcn/ui Video Player
+# Videoplayer
 
-A responsive, smooth video player built on shadcn/ui components with lucide icons and Poppins captions.
+A modern, responsive video player web app built with **Next.js**, **shadcn/ui**, **Tailwind CSS v4** and **lucide** icons. Flat design, no gradients. Captions are rendered in **Poppins**.
 
-## Setup
+## Deploy to Vercel
 
-In an existing Next.js + Tailwind project:
+1. Go to [vercel.com/new](https://vercel.com/new) and import this GitHub repository.
+2. Leave the defaults. Vercel detects Next.js automatically (build command `next build`).
+3. Click **Deploy**.
+
+Tip: run `npm install` once locally and commit the generated `package-lock.json` so deployments install the exact same versions every time.
+
+## Run locally
 
 ```bash
-npx shadcn@latest add button slider tooltip
-npm install lucide-react
+npm install
+npm run dev
 ```
 
-Then copy these into your project:
-
-| File | Purpose |
-| --- | --- |
-| `components/ui/video-player.tsx` | The player component |
-| `app/layout.tsx` (Poppins part) | Loads Poppins and exposes `--font-poppins` |
-| `public/captions/*.vtt` | Your caption files |
-
-If you are not using Next.js, load Poppins any way you like (Google Fonts `<link>` works). The component falls back to the family name `Poppins` automatically.
-
-## Usage
-
-```tsx
-<VideoPlayer
-  title="My Video"
-  src="/videos/demo.mp4"
-  poster="/videos/poster.jpg"
-  tracks={[
-    { src: "/captions/en.vtt", srclang: "en", label: "English" },
-    { src: "/captions/fil.vtt", srclang: "fil", label: "Filipino" },
-  ]}
-/>
-```
+Open http://localhost:3000. Requires Node.js 20.9 or newer.
 
 ## Features
 
-- shadcn `Button`, `Slider`, `Tooltip` for all controls
-- lucide icons: Play, Pause, Rewind/Forward 10s, Volume (3 states), Captions, Settings, Picture-in-Picture, Fullscreen
-- Captions drawn by a custom overlay in **Poppins** (the browser's native caption styling is disabled)
-- Multiple caption languages, playback speed 0.5x–2x
-- Auto-hiding controls with fade/slide animation; captions glide down when controls hide
-- Responsive: icon sizes shrink on mobile, volume slider and PiP hide on small screens, text scales up in larger layouts
-- Keyboard: Space/K, ←/→ (or J/L), ↑/↓, M, F, C. Double-click video for fullscreen
+- shadcn/ui `Button`, `Slider`, `Tooltip`, `Card`, `Input`, `Badge`, `Separator`
+- Floating, flat control panel (no gradients) with smooth fade and slide animations
+- lucide icons for every control
+- Captions drawn by a custom overlay in **Poppins**, with multiple languages and on/off toggle
+- Playlist with previous, next and auto-advance
+- Play your own video from a direct link or from a file on your device (files never leave your browser), and attach your own `.vtt` captions
+- Playback speed 0.5x to 2x, picture-in-picture, fullscreen (with an iOS fallback)
+- Double-tap or double-click the left or right side to seek 10 seconds, the centre for fullscreen
+- Light and dark themes
+- Installable web app manifest
 
-## Notes
+## Keyboard shortcuts
 
-- Captions need the video and `.vtt` files to be same-origin or served with CORS headers (the `<video>` uses `crossOrigin="anonymous"`).
-- The shadcn Slider markup uses `data-slot` attributes (current shadcn versions). If you are on an older version, adjust the `[&_[data-slot=...]]` selectors in the className to match your `slider.tsx`.
+| Key | Action |
+| --- | --- |
+| Space / K | Play or pause |
+| ← / → (or J / L) | Seek 10 seconds |
+| ↑ / ↓ | Volume |
+| M | Mute |
+| F | Fullscreen |
+| C | Captions |
+
+## Project structure
+
+```
+app/                     Next.js app router (layout, page, manifest, global styles)
+components/player-app.tsx  The page: player, playlist, "play your own"
+components/ui/           shadcn/ui components and video-player.tsx
+lib/videos.ts            Sample playlist
+public/captions/         Sample .vtt caption files
+```
+
+## Using your own videos and captions
+
+Edit `lib/videos.ts` to change the playlist, and replace the files in `public/captions/` with your own WebVTT files. Sample videos are hosted by Google's public sample bucket and are open Blender Foundation movies.
+
+To add more shadcn/ui components later: `npx shadcn@latest add <component>` (the project already includes `components.json`).
