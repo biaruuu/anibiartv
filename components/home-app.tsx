@@ -48,10 +48,12 @@ function Hero({
   items,
   index,
   setIndex,
+  onRetry,
 }: {
   items: Anime[] | null
   index: number
   setIndex: (i: number) => void
+  onRetry: () => void
 }) {
   const [logos, setLogos] = React.useState<Record<number, string | null>>({})
   const a = items?.[index]
@@ -66,7 +68,16 @@ function Hero({
   }, [a, logos])
 
   if (!items) return <div className="h-[78svh] min-h-[28rem] md:h-[70svh]" />
-  if (!a) return <div className="h-24" />
+  if (!a) {
+    return (
+      <div className="flex flex-col items-center gap-3 px-4 pt-28 pb-8 text-center text-sm text-white/60">
+        <p>Couldn&apos;t load featured anime.</p>
+        <Button variant="secondary" size="sm" onClick={onRetry}>
+          Try again
+        </Button>
+      </div>
+    )
+  }
 
   const desc = stripHtml(a.description ?? "")
   const logo = logos[a.id]
@@ -359,10 +370,12 @@ function RankedPanel({
 }) {
   const [items, setItems] = React.useState<Anime[] | null>(null)
   const [failed, setFailed] = React.useState(false)
+  const [retry, setRetry] = React.useState(0)
   const [shown, setShown] = React.useState(PANEL_STEP)
 
   React.useEffect(() => {
     const ctrl = new AbortController()
+    setFailed(false)
     load(ctrl.signal)
       .then(setItems)
       .catch((e: unknown) => {
@@ -371,7 +384,7 @@ function RankedPanel({
     return () => ctrl.abort()
     // `load` is a stable module-level function.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [retry])
 
   const visible = items?.slice(0, shown) ?? []
 
@@ -383,7 +396,12 @@ function RankedPanel({
       </h2>
 
       {failed ? (
-        <p className="p-4 text-sm text-white/60">Couldn&apos;t load this list. Try again later.</p>
+        <div className="flex items-center justify-between gap-3 p-3 text-sm text-white/60">
+          <span>Couldn&apos;t load this list.</span>
+          <Button variant="secondary" size="sm" onClick={() => setRetry((n) => n + 1)}>
+            Try again
+          </Button>
+        </div>
       ) : (
         <ul className="space-y-2">
           {!items &&
@@ -481,6 +499,7 @@ function RankedLists() {
 export function HomeApp() {
   const [trending, setTrending] = React.useState<Anime[] | null>(null)
   const [heroIndex, setHeroIndex] = React.useState(0)
+  const [heroRetry, setHeroRetry] = React.useState(0)
 
   React.useEffect(() => {
     if (!trending || trending.length < 2) return
@@ -492,16 +511,26 @@ export function HomeApp() {
     const ctrl = new AbortController()
     getTrending(ctrl.signal)
       .then(setTrending)
-      .catch(() => setTrending([]))
+      .catch((e: unknown) => {
+        if ((e as Error).name !== "AbortError") setTrending([])
+      })
     return () => ctrl.abort()
-  }, [])
+  }, [heroRetry])
 
   return (
     <div className="relative min-h-svh overflow-x-clip bg-[#111214] font-poppins text-white">
       <SiteHeader />
 
       <main>
-        <Hero items={trending} index={heroIndex} setIndex={setHeroIndex} />
+        <Hero
+          items={trending}
+          index={heroIndex}
+          setIndex={setHeroIndex}
+          onRetry={() => {
+            setTrending(null)
+            setHeroRetry((n) => n + 1)
+          }}
+        />
         <LatestEpisodes />
         <RankedLists />
       </main>

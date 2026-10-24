@@ -5,7 +5,7 @@ const ENDPOINT = "https://graphql.anilist.co"
 
 export type Anime = {
   id: number
-  title: { romaji: string | null; english: string | null }
+  title: { romaji: string | null; english: string | null; native?: string | null }
   coverImage: { extraLarge: string | null; large: string | null; color: string | null }
   bannerImage?: string | null
   description?: string | null
@@ -22,19 +22,149 @@ export type LatestEpisode = { id: number; airingAt: number; episode: number; med
 
 export const animeTitle = (a: Anime) => a.title.english ?? a.title.romaji ?? "Untitled"
 
-async function query<T>(q: string, variables: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ query: q, variables }),
-    signal,
-  })
-  if (!res.ok) {
-    throw new Error(res.status === 429 ? "AniList is busy. Try again in a minute." : `AniList error ${res.status}`)
+/* ------------------------------ request layer ------------------------------ */
+// AniList allows about 90 requests a minute per IP and answers with 429 (which the
+// browser often reports as the unhelpful "Failed to fetch"). So every request goes
+// through: a cache (memory + sessionStorage), de-duplication of identical in-flight
+// requests, a small concurrency limit, and retries with backoff.
+
+const MEMORY_TTL = 5 * 60 * 1000
+const STORE_TTL = 20 * 60 * 1000
+const MAX_ACTIVE = 3
+const MAX_RETRIES = 3
+
+const memory = new Map<string, { at: number; data: unknown }>()
+const inflight = new Map<string, Promise<unknown>>()
+let active = 0
+const waiting: (() => void)[] = []
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+async function acquire() {
+  if (active >= MAX_ACTIVE) await new Promise<void>((r) => waiting.push(r))
+  active++
+}
+function release() {
+  active--
+  waiting.shift()?.()
+}
+
+function hash(str: string) {
+  let h = 5381
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36) + str.length.toString(36)
+}
+
+function readStore(key: string): { at: number; data: unknown } | null {
+  try {
+    const raw = sessionStorage.getItem(`anibiar:q:${key}`)
+    return raw ? (JSON.parse(raw) as { at: number; data: unknown }) : null
+  } catch {
+    return null
   }
-  const json = await res.json()
-  if (json.errors?.length) throw new Error(json.errors[0].message)
-  return json.data as T
+}
+function writeStore(key: string, entry: { at: number; data: unknown }) {
+  try {
+    const raw = JSON.stringify(entry)
+    if (raw.length < 400_000) sessionStorage.setItem(`anibiar:q:${key}`, raw)
+  } catch {
+    /* storage full or blocked: the memory cache still works */
+  }
+}
+
+async function request(body: string): Promise<unknown> {
+  let lastError: Error = new Error("Couldn't reach AniList.")
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    await acquire()
+    let res: Response | null = null
+    try {
+      res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body,
+      })
+    } catch {
+      // Network error, or a 429 whose response had no CORS headers.
+      lastError = new Error("Couldn't reach AniList. Check your connection and try again.")
+    } finally {
+      release()
+    }
+
+    if (res) {
+      if (res.ok) {
+        const json = await res.json()
+        if (json.errors?.length) throw new Error(json.errors[0].message)
+        return json.data
+      }
+      if (res.status === 429 || res.status >= 500) {
+        lastError = new Error(
+          res.status === 429 ? "AniList is busy right now. Try again in a moment." : `AniList is having problems (${res.status}).`
+        )
+        const retryAfter = Number(res.headers.get("Retry-After"))
+        if (attempt < MAX_RETRIES) {
+          await sleep(retryAfter > 0 ? Math.min(retryAfter, 10) * 1000 : 1500 * (attempt + 1))
+          continue
+        }
+        throw lastError
+      }
+      throw new Error(`AniList error ${res.status}`)
+    }
+    if (attempt < MAX_RETRIES) await sleep(1000 * 2 ** attempt)
+  }
+  throw lastError
+}
+
+function withAbort<T>(p: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return p
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(new DOMException("Aborted", "AbortError"))
+    if (signal.aborted) return abort()
+    signal.addEventListener("abort", abort, { once: true })
+    p.then(
+      (v) => {
+        signal.removeEventListener("abort", abort)
+        resolve(v)
+      },
+      (e) => {
+        signal.removeEventListener("abort", abort)
+        reject(e)
+      }
+    )
+  })
+}
+
+async function query<T>(q: string, variables: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+  const body = JSON.stringify({ query: q, variables })
+  const key = hash(body)
+  const now = Date.now()
+
+  const mem = memory.get(key)
+  if (mem && now - mem.at < MEMORY_TTL) return mem.data as T
+  const stored = typeof window !== "undefined" ? readStore(key) : null
+  if (stored && now - stored.at < STORE_TTL) {
+    memory.set(key, stored)
+    return stored.data as T
+  }
+
+  let pending = inflight.get(key)
+  if (!pending) {
+    pending = request(body)
+      .then((data) => {
+        const entry = { at: Date.now(), data }
+        memory.set(key, entry)
+        if (typeof window !== "undefined") writeStore(key, entry)
+        return data
+      })
+      .catch((e: Error) => {
+        // Better to show slightly old data than an error.
+        const old = memory.get(key) ?? stored
+        if (old) return old.data
+        throw e
+      })
+      .finally(() => inflight.delete(key))
+    inflight.set(key, pending)
+  }
+  return withAbort(pending as Promise<T>, signal)
 }
 
 const MEDIA_FIELDS = `
@@ -122,6 +252,72 @@ export async function searchAnimePage(search: string, page: number, perPage: num
     signal
   )
   return { items: data.Page.media, hasNext: data.Page.pageInfo.hasNextPage }
+}
+
+/* --------------------------------- smart search --------------------------------- */
+
+export const normalize = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[×✕]/g, "x")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+
+type SearchHit = Anime & { synonyms: string[] | null; popularity: number | null }
+
+function score(hit: SearchHit, term: string, tokens: string[]) {
+  const titles = [hit.title.english, hit.title.romaji, hit.title.native, ...(hit.synonyms ?? [])]
+    .filter((t): t is string => Boolean(t))
+    .map(normalize)
+  let best = 0
+  for (const t of titles) {
+    let s = 0
+    if (t === term) s = 100
+    else if (t.startsWith(term)) s = 80
+    else if (t.split(" ").some((w) => w.startsWith(tokens[0] ?? term)) && tokens.every((k) => t.includes(k))) s = 65
+    else if (t.includes(term)) s = 55
+    else if (tokens.length > 1 && tokens.every((k) => t.includes(k))) s = 45
+    else if (tokens.some((k) => t.includes(k))) s = 15
+    best = Math.max(best, s)
+  }
+  return best + Math.min(10, Math.log10((hit.popularity ?? 0) + 1) * 2)
+}
+
+/**
+ * Search tuned for "type a few letters, find the show": asks AniList (which also searches
+ * synonyms) for a wide page, then ranks exact and prefix title matches first and
+ * lets popularity break ties, so the popular show you meant beats an obscure OVA.
+ */
+export async function searchSmart(raw: string, limit: number, signal?: AbortSignal): Promise<Anime[]> {
+  const term = normalize(raw)
+  if (!term) return []
+  const tokens = term.split(" ").filter(Boolean)
+  const run = async (q: string) => {
+    const data = await query<{ Page: { media: SearchHit[] } }>(
+      `query ($search: String) {
+        Page(page: 1, perPage: 12) {
+          media(type: ANIME, search: $search, isAdult: false, sort: SEARCH_MATCH) {
+            ${MEDIA_FIELDS}
+            title { romaji english native }
+            synonyms popularity status averageScore
+          }
+        }
+      }`,
+      { search: q },
+      signal
+    )
+    return data.Page.media
+  }
+  let hits = await run(raw.trim())
+  // Nothing found: the last word is often a typo or a partial word, so try without it.
+  if (hits.length === 0 && tokens.length > 1) hits = await run(tokens.slice(0, -1).join(" "))
+  return hits
+    .map((h, i) => ({ h, s: score(h, term, tokens) - i * 0.01 }))
+    .sort((x, y) => y.s - x.s)
+    .slice(0, limit)
+    .map((x) => x.h)
 }
 
 export function timeAgo(unix: number) {

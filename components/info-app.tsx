@@ -247,6 +247,7 @@ function Carousel({ children }: { children: React.ReactNode }) {
 export function InfoApp({ id }: { id: number }) {
   const [a, setA] = React.useState<Detail | null | undefined>(undefined)
   const [error, setError] = React.useState<string | null>(null)
+  const [retry, setRetry] = React.useState(0)
 
   React.useEffect(() => {
     const ctrl = new AbortController()
@@ -261,7 +262,7 @@ export function InfoApp({ id }: { id: number }) {
         if ((e as Error).name !== "AbortError") setError((e as Error).message)
       })
     return () => ctrl.abort()
-  }, [id])
+  }, [id, retry])
 
   return (
     <div className="min-h-svh overflow-x-clip bg-[#111214] font-poppins text-white">
@@ -270,9 +271,16 @@ export function InfoApp({ id }: { id: number }) {
         <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 pt-40 pb-24 text-center">
           <CircleAlert className="size-8 text-red-400" />
           <p className="text-white/80">{error ?? "This anime could not be found."}</p>
-          <Button asChild variant="secondary">
-            <Link href="/">Back to home</Link>
-          </Button>
+          <div className="flex gap-2">
+            {error && (
+              <Button variant="secondary" onClick={() => setRetry((n) => n + 1)}>
+                Try again
+              </Button>
+            )}
+            <Button asChild variant="secondary">
+              <Link href="/">Back to home</Link>
+            </Button>
+          </div>
         </div>
       ) : a === undefined ? (
         <div className="mx-auto max-w-7xl space-y-6 px-4 pt-24 sm:px-8">
@@ -811,19 +819,35 @@ function Characters({ a }: { a: Detail }) {
   const [error, setError] = React.useState<string | null>(null)
   const [retry, setRetry] = React.useState(0)
 
-  // AniList's own character total is capped at 500, so it can't be trusted.
-  // Load every page (25 at a time) and count what actually arrives.
+  // AniList's own character total is capped at 500, so it can't be trusted. The first
+  // 25 load right away; the rest load (25 at a time) when "Show all" is pressed.
+  const nextPage = React.useRef(2)
   React.useEffect(() => {
     const ctrl = new AbortController()
     setEdges(null)
     setDone(false)
+    setAll(false)
     setError(null)
+    nextPage.current = 2
+    getCharacters(a.id, lang, 1, ctrl.signal)
+      .then((r) => {
+        setEdges(r.edges)
+        setDone(!r.hasNext)
+      })
+      .catch((e: unknown) => {
+        if ((e as Error).name !== "AbortError") setError((e as Error).message)
+      })
+    return () => ctrl.abort()
+  }, [a.id, lang, retry])
+
+  React.useEffect(() => {
+    if (!all || done || !edges) return
+    const ctrl = new AbortController()
     ;(async () => {
-      let all: CharacterEdge[] = []
-      for (let page = 1; page <= 12; page++) {
-        const r = await getCharacters(a.id, lang, page, ctrl.signal)
-        all = [...all, ...r.edges]
-        setEdges(all)
+      while (nextPage.current <= 12) {
+        const r = await getCharacters(a.id, lang, nextPage.current, ctrl.signal)
+        nextPage.current += 1
+        setEdges((prev) => [...(prev ?? []), ...r.edges])
         if (!r.hasNext) break
       }
       setDone(true)
@@ -831,7 +855,9 @@ function Characters({ a }: { a: Detail }) {
       if ((e as Error).name !== "AbortError") setError((e as Error).message)
     })
     return () => ctrl.abort()
-  }, [a.id, lang, retry])
+    // `edges` only gates the start; the loop appends through the setter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all, done, a.id, lang])
 
   if (edges && edges.length === 0 && !error) return null
   const shown = edges ? (all ? edges : edges.slice(0, SHOWN_FIRST)) : []

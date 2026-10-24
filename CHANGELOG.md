@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.11.1
+
+### Fixed
+- "Failed to fetch" and "AniList is busy" errors. AniList allows about 90 requests a minute and the app was sending too many at once (and the browser reports a rate-limited response as "Failed to fetch"). All requests now go through one layer that caches results (memory and session), shares identical in-flight requests, limits how many run at once, and retries with a short backoff. If a request still fails but older data exists, that is shown instead.
+- Characters load the first 25 right away and fetch the rest only when you press Show all.
+- Every list now has a Try again button when it can't load (featured, Top Airing, Upcoming, info page).
+
+### Changed
+- Search is now a glass panel over the dimmed page, like Miruro's.
+- Smart search: results update as you type (about 0.2 s), exact and starting-with title matches come first (English, romaji, native and alternate titles) with popularity as the tie-breaker, the typed letters are bold in each title, and if nothing matches the last word is dropped and tried again. Up and down arrows move through results and Enter opens one.
+- Empty search shows your recent searches and what is trending.
+- The header has a light glass blur once you scroll, like Miruro's.
+
 ## 1.11.0
 
 ### Fixed
