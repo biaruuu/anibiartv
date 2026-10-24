@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0
+
+### Changed
+- The settings menu is now a glass bubble: a frosted panel with a notch pointing at the settings button, and every row (Captions, Subtitle delay, Caption style, Speed, Loop, Picture in picture) is its own glass capsule. It scales with the player width and scrolls inside the player in short landscape views.
+- The time and title pill is outline only (no glass fill).
+- Thinner glass everywhere: lighter fill, less blur, hairline edge, slimmer buttons and pills.
+- Captions now default to Small size with the Outline background. Older saved caption choices are ignored once so the new defaults apply.
+
 ## 1.4.0
 
 ### Changed

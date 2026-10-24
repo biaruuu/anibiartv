@@ -86,7 +86,7 @@ const CAPTION_STYLES = {
 } as const
 type CaptionSize = keyof typeof CAPTION_SIZES
 type CaptionStyle = keyof typeof CAPTION_STYLES
-const CAPTION_PREFS_KEY = "videoplayer:caption-style"
+const CAPTION_PREFS_KEY = "videoplayer:caption-style:v2"
 
 const MENU_TITLES: Record<MenuView, string> = {
   main: "Settings",
@@ -98,18 +98,18 @@ const MENU_TITLES: Record<MenuView, string> = {
 
 // Everything is sized from the player's own width (container queries, `cqw`),
 // so controls stay in proportion from a small phone to a fullscreen 4K screen.
-const BAR_BUTTON = "size-[clamp(1.9rem,4.6cqw,3rem)]"
-const BAR_ICON = "size-[clamp(1.6rem,4cqw,2.4rem)]"
+const BAR_BUTTON = "size-[clamp(1.8rem,4cqw,2.75rem)]"
+const BAR_ICON = "size-[clamp(1.5rem,3.6cqw,2.2rem)]"
 const SHADOW = "drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
 const TEXT_SHADOW = "[text-shadow:0_1px_2px_rgb(0_0_0/0.6)]"
-const PILL_HEIGHT = "h-[clamp(1.9rem,4.6cqw,2.75rem)]"
+const PILL_HEIGHT = "h-[clamp(1.8rem,4.1cqw,2.6rem)]"
 
-// Frosted glass: translucent fill, background blur, a light edge and a soft
-// highlight along the top. Flat colours only, no gradients.
+// Thin frosted glass: a light translucent fill, background blur, a hairline
+// edge and a faint highlight along the top. Flat colours only, no gradients.
 const GLASS =
-  "border border-white/20 bg-white/15 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.3),0_6px_20px_rgb(0_0_0/0.25)] backdrop-blur-xl backdrop-saturate-150"
-const GLASS_FROM_MD =
-  "@md:border @md:border-white/20 @md:bg-white/15 @md:shadow-[inset_0_1px_0_0_rgb(255_255_255/0.3),0_6px_20px_rgb(0_0_0/0.25)] @md:backdrop-blur-xl @md:backdrop-saturate-150"
+  "border border-white/15 bg-white/10 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.22),0_4px_14px_rgb(0_0_0/0.22)] backdrop-blur-lg backdrop-saturate-150"
+// The time and title pill is outline only (no fill, no blur) from medium widths up.
+const OUTLINE_FROM_MD = "@md:border @md:border-white/45"
 const GLASS_HOVER = "hover:bg-white/25 dark:hover:bg-white/25"
 
 const trackId = (t: VideoTrack) => t.id ?? `${t.srclang}:${t.src ?? t.label}`
@@ -200,6 +200,11 @@ function ControlButton({
   )
 }
 
+// Each row is its own thin glass capsule. Sizes are in `em`, so the whole menu
+// scales with the font size set on the menu from the player width.
+const ROW =
+  "flex w-full items-center gap-[0.75em] rounded-[1em] border border-white/10 bg-white/[0.07] px-[0.9em] py-[0.6em] text-left shadow-[inset_0_1px_0_0_rgb(255_255_255/0.08)] transition-colors hover:bg-white/15 active:bg-white/20"
+
 function MenuRow({
   icon,
   label,
@@ -214,15 +219,11 @@ function MenuRow({
   chevron?: boolean
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/10"
-    >
-      <span className="shrink-0 text-white/80 [&_svg]:size-6">{icon}</span>
+    <button type="button" onClick={onClick} className={ROW}>
+      <span className="shrink-0 text-white [&_svg]:size-[1.6em]">{icon}</span>
       <span className="flex-1 font-medium">{label}</span>
-      {value && <span className="max-w-[40%] truncate text-white/70">{value}</span>}
-      {chevron && <ChevronRightIcon className="size-5 shrink-0 text-white/70" />}
+      {value && <span className="max-w-[45%] truncate text-white/60">{value}</span>}
+      {chevron && <ChevronRightIcon className="size-[1.4em] shrink-0" />}
     </button>
   )
 }
@@ -240,10 +241,10 @@ function OptionRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/10"
+      className={cn(ROW, "justify-between", selected && "border-white/25 bg-white/15")}
     >
       <span className="truncate">{label}</span>
-      {selected && <CheckIcon className="size-5 shrink-0" />}
+      {selected && <CheckIcon className="size-[1.4em] shrink-0" />}
     </button>
   )
 }
@@ -290,8 +291,8 @@ export function VideoPlayer({
   const [cueText, setCueText] = React.useState("")
   const [cueVersion, setCueVersion] = React.useState(0)
   const [captionOffset, setCaptionOffset] = React.useState(0)
-  const [captionSize, setCaptionSize] = React.useState<CaptionSize>("md")
-  const [captionStyle, setCaptionStyle] = React.useState<CaptionStyle>("box")
+  const [captionSize, setCaptionSize] = React.useState<CaptionSize>("sm")
+  const [captionStyle, setCaptionStyle] = React.useState<CaptionStyle>("outline")
   const [notice, setNotice] = React.useState<Notice | null>(null)
   const [flash, setFlash] = React.useState<{
     dir: "back" | "forward"
@@ -913,7 +914,7 @@ export function VideoPlayer({
         >
           <div
             className={cn(
-              "flex items-center rounded-full p-[clamp(0.125rem,0.5cqw,0.25rem)]",
+              "flex items-center rounded-full p-[clamp(0.125rem,0.32cqw,0.25rem)]",
               GLASS,
               interactive
             )}
@@ -953,7 +954,7 @@ export function VideoPlayer({
 
           <div
             className={cn(
-              "flex items-center rounded-full p-[clamp(0.125rem,0.5cqw,0.25rem)]",
+              "flex items-center rounded-full p-[clamp(0.125rem,0.32cqw,0.25rem)]",
               GLASS,
               interactive
             )}
@@ -1075,7 +1076,7 @@ export function VideoPlayer({
                 "inline-flex min-w-0 items-center rounded-full font-poppins text-[length:clamp(0.75rem,1.8cqw,1rem)] font-medium text-white tabular-nums @md:px-[clamp(0.75rem,2.4cqw,1.5rem)]",
                 PILL_HEIGHT,
                 TEXT_SHADOW,
-                GLASS_FROM_MD
+                OUTLINE_FROM_MD
               )}
             >
               <span className="truncate">
@@ -1092,7 +1093,7 @@ export function VideoPlayer({
                 onClick={() => void toggleFullscreen()}
                 container={container}
                 side="top"
-                shape={cn(PILL_HEIGHT, "w-[clamp(2.5rem,6.2cqw,3.75rem)]")}
+                shape={cn(PILL_HEIGHT, "w-[clamp(2.4rem,5.6cqw,3.4rem)]")}
                 className={cn(
                   "rounded-[clamp(0.9rem,2.4cqw,1.4rem)]",
                   GLASS,
@@ -1140,161 +1141,163 @@ export function VideoPlayer({
           </div>
         </div>
 
-        {/* Settings menu */}
+        {/* Settings menu: a glass panel of glass rows with a notch pointing at the button */}
         {settingsOpen && (
-          <div className="absolute top-[clamp(3.25rem,9cqw,5rem)] right-[clamp(0.5rem,2.2cqw,1.25rem)] z-30 max-h-[calc(100%-3.5rem)] w-[min(20rem,calc(100%-0.5rem))] origin-top-right animate-in overflow-y-auto rounded-xl border border-white/10 bg-black/60 p-1.5 font-poppins text-white shadow-2xl backdrop-blur-2xl backdrop-saturate-150 duration-150 fade-in-0 zoom-in-95">
-            {menuView === "main" && (
-              <>
-                {tracks.length > 0 && (
+          <div className="absolute top-[clamp(3.1rem,7.4cqw,4.4rem)] right-[clamp(0.5rem,2.2cqw,1.25rem)] z-30 flex max-h-[calc(100%_-_clamp(3.1rem,7.4cqw,4.4rem)_-_clamp(0.5rem,5cqw,3.5rem))] w-[clamp(14rem,39cqw,26rem)] max-w-[calc(100%_-_1rem)] origin-top-right animate-in flex-col font-poppins text-[length:clamp(0.75rem,1.9cqw,1.05rem)] text-white duration-150 fade-in-0 zoom-in-95">
+            <span
+              aria-hidden="true"
+              className="absolute -top-[0.5em] right-[calc(clamp(0.9rem,2.1cqw,1.4rem)+clamp(0.125rem,0.32cqw,0.25rem)-0.55em)] h-[0.55em] w-[1.1em] bg-black/55 backdrop-blur-2xl [clip-path:polygon(50%_0,100%_100%,0_100%)]"
+            />
+            <div className="min-h-0 space-y-[0.4em] overflow-y-auto rounded-[1.5em] border border-white/15 bg-black/55 p-[0.55em] shadow-[inset_0_1px_0_0_rgb(255_255_255/0.15),0_12px_40px_rgb(0_0_0/0.4)] backdrop-blur-2xl backdrop-saturate-150">
+              {menuView === "main" && (
+                <>
+                  {tracks.length > 0 && (
+                    <MenuRow
+                      icon={<ClosedCaptionsIcon />}
+                      label="Captions"
+                      value={activeTrack?.label ?? "Off"}
+                      onClick={() => setMenuView("captions")}
+                    />
+                  )}
+                  {captionId && (
+                    <MenuRow
+                      icon={<TimerIcon />}
+                      label="Subtitle delay"
+                      value={formatOffset(captionOffset)}
+                      onClick={() => setMenuView("sync")}
+                    />
+                  )}
+                  {tracks.length > 0 && (
+                    <MenuRow
+                      icon={<ClosedCaptionsOnIcon />}
+                      label="Caption style"
+                      value={CAPTION_SIZES[captionSize].label}
+                      onClick={() => setMenuView("style")}
+                    />
+                  )}
                   <MenuRow
-                    icon={<ClosedCaptionsIcon />}
-                    label="Captions"
-                    value={activeTrack?.label ?? "Off"}
-                    onClick={() => setMenuView("captions")}
+                    icon={<PlaybackSpeedCircleIcon />}
+                    label="Speed"
+                    value={speed === 1 ? "Normal" : `${speed}x`}
+                    onClick={() => setMenuView("speed")}
                   />
-                )}
-                {captionId && (
                   <MenuRow
-                    icon={<TimerIcon />}
-                    label="Subtitle delay"
-                    value={formatOffset(captionOffset)}
-                    onClick={() => setMenuView("sync")}
+                    icon={loop ? <RepeatOnIcon /> : <RepeatIcon />}
+                    label="Loop"
+                    value={loop ? "On" : "Off"}
+                    onClick={() => setLoop((l) => !l)}
                   />
-                )}
-                {tracks.length > 0 && (
-                  <MenuRow
-                    icon={<ClosedCaptionsOnIcon />}
-                    label="Caption style"
-                    value={CAPTION_SIZES[captionSize].label}
-                    onClick={() => setMenuView("style")}
-                  />
-                )}
-                <MenuRow
-                  icon={<PlaybackSpeedCircleIcon />}
-                  label="Speed"
-                  value={speed === 1 ? "Normal" : `${speed}x`}
-                  onClick={() => setMenuView("speed")}
-                />
-                <MenuRow
-                  icon={loop ? <RepeatOnIcon /> : <RepeatIcon />}
-                  label="Loop"
-                  value={loop ? "On" : "Off"}
-                  chevron={false}
-                  onClick={() => setLoop((l) => !l)}
-                />
-                {pipSupported && (
-                  <MenuRow
-                    icon={<PictureInPictureIcon />}
-                    label="Picture in picture"
-                    chevron={false}
-                    onClick={() => {
-                      closeSettings()
-                      void togglePip()
-                    }}
-                  />
-                )}
-              </>
-            )}
+                  {pipSupported && (
+                    <MenuRow
+                      icon={<PictureInPictureIcon />}
+                      label="Picture in picture"
+                      chevron={false}
+                      onClick={() => {
+                        closeSettings()
+                        void togglePip()
+                      }}
+                    />
+                  )}
+                </>
+              )}
 
-            {menuView !== "main" && (
-              <>
+              {menuView !== "main" && (
                 <button
                   type="button"
                   onClick={() => setMenuView("main")}
-                  className="mb-1 flex w-full items-center gap-1 rounded-lg px-2 py-2.5 text-sm font-semibold transition-colors hover:bg-white/10"
+                  className={cn(ROW, "font-semibold")}
                 >
-                  <ChevronLeftIcon className="size-5" />
+                  <ChevronLeftIcon className="size-[1.4em] shrink-0" />
                   {MENU_TITLES[menuView]}
                 </button>
-                <div className="mx-2 mb-1 h-px bg-white/10" />
-              </>
-            )}
+              )}
 
-            {menuView === "captions" && (
-              <>
-                <OptionRow
-                  label="Off"
-                  selected={captionId === null}
-                  onClick={() => selectCaption(null)}
-                />
-                {tracks.map((t) => (
+              {menuView === "captions" && (
+                <>
                   <OptionRow
-                    key={trackId(t)}
-                    label={t.label}
-                    selected={captionId === trackId(t)}
-                    onClick={() => selectCaption(trackId(t))}
+                    label="Off"
+                    selected={captionId === null}
+                    onClick={() => selectCaption(null)}
                   />
-                ))}
-              </>
-            )}
-
-            {menuView === "speed" &&
-              SPEEDS.map((s) => (
-                <OptionRow
-                  key={s}
-                  label={s === 1 ? "Normal" : `${s}x`}
-                  selected={speed === s}
-                  onClick={() => changeSpeed(s)}
-                />
-              ))}
-
-            {menuView === "style" && (
-              <>
-                <p className="px-3 pt-1 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">
-                  Size
-                </p>
-                {(Object.keys(CAPTION_SIZES) as CaptionSize[]).map((key) => (
-                  <OptionRow
-                    key={key}
-                    label={CAPTION_SIZES[key].label}
-                    selected={captionSize === key}
-                    onClick={() => chooseCaptionSize(key)}
-                  />
-                ))}
-                <p className="px-3 pt-3 pb-1 text-[11px] font-semibold tracking-wider text-white/50 uppercase">
-                  Background
-                </p>
-                {(Object.keys(CAPTION_STYLES) as CaptionStyle[]).map((key) => (
-                  <OptionRow
-                    key={key}
-                    label={CAPTION_STYLES[key]}
-                    selected={captionStyle === key}
-                    onClick={() => chooseCaptionStyle(key)}
-                  />
-                ))}
-              </>
-            )}
-
-            {menuView === "sync" && (
-              <div className="space-y-3 p-2">
-                <p className="text-center text-2xl font-semibold tabular-nums">
-                  {formatOffset(captionOffset)}
-                </p>
-                <p className="text-center text-xs text-white/60">
-                  Positive delays subtitles. Negative shows them earlier.
-                </p>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[-0.5, -0.1, 0.1, 0.5].map((step) => (
-                    <button
-                      key={step}
-                      type="button"
-                      onClick={() => adjustOffset(step)}
-                      className="rounded-md bg-white/10 py-2 text-xs font-medium tabular-nums transition-colors hover:bg-white/20"
-                    >
-                      {step > 0 ? "+" : "-"}
-                      {Math.abs(step)}s
-                    </button>
+                  {tracks.map((t) => (
+                    <OptionRow
+                      key={trackId(t)}
+                      label={t.label}
+                      selected={captionId === trackId(t)}
+                      onClick={() => selectCaption(trackId(t))}
+                    />
                   ))}
+                </>
+              )}
+
+              {menuView === "style" && (
+                <>
+                  <p className="px-[0.9em] pt-[0.3em] text-[0.75em] font-semibold tracking-wider text-white/50 uppercase">
+                    Size
+                  </p>
+                  {(Object.keys(CAPTION_SIZES) as CaptionSize[]).map((key) => (
+                    <OptionRow
+                      key={key}
+                      label={CAPTION_SIZES[key].label}
+                      selected={captionSize === key}
+                      onClick={() => chooseCaptionSize(key)}
+                    />
+                  ))}
+                  <p className="px-[0.9em] pt-[0.6em] text-[0.75em] font-semibold tracking-wider text-white/50 uppercase">
+                    Background
+                  </p>
+                  {(Object.keys(CAPTION_STYLES) as CaptionStyle[]).map((key) => (
+                    <OptionRow
+                      key={key}
+                      label={CAPTION_STYLES[key]}
+                      selected={captionStyle === key}
+                      onClick={() => chooseCaptionStyle(key)}
+                    />
+                  ))}
+                </>
+              )}
+
+              {menuView === "speed" &&
+                SPEEDS.map((s) => (
+                  <OptionRow
+                    key={s}
+                    label={s === 1 ? "Normal" : `${s}x`}
+                    selected={speed === s}
+                    onClick={() => changeSpeed(s)}
+                  />
+                ))}
+
+              {menuView === "sync" && (
+                <div className="space-y-[0.7em] rounded-[1em] border border-white/10 bg-white/[0.07] p-[0.8em]">
+                  <p className="text-center text-[1.6em] font-semibold tabular-nums">
+                    {formatOffset(captionOffset)}
+                  </p>
+                  <p className="text-center text-[0.8em] text-white/60">
+                    Positive delays subtitles. Negative shows them earlier.
+                  </p>
+                  <div className="grid grid-cols-4 gap-[0.4em]">
+                    {[-0.5, -0.1, 0.1, 0.5].map((step) => (
+                      <button
+                        key={step}
+                        type="button"
+                        onClick={() => adjustOffset(step)}
+                        className="rounded-[0.8em] border border-white/10 bg-white/10 py-[0.5em] text-[0.85em] font-medium tabular-nums transition-colors hover:bg-white/20"
+                      >
+                        {step > 0 ? "+" : "-"}
+                        {Math.abs(step)}s
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => adjustOffset("reset")}
+                    className="w-full rounded-[0.8em] bg-white py-[0.5em] text-[0.85em] font-semibold text-black transition-colors hover:bg-white/85"
+                  >
+                    Reset
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => adjustOffset("reset")}
-                  className="w-full rounded-md bg-white py-2 text-xs font-semibold text-black transition-colors hover:bg-white/85"
-                >
-                  Reset
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>

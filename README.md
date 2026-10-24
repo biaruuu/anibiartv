@@ -27,10 +27,10 @@ Open http://localhost:3000. Requires Node.js 20.9 or newer.
 - **Subtitles that work with real files.** Add `.srt`, `.vtt`, `.ass` or `.ssa` files (several at once if you like). The player parses them itself, so styling tags and ASS override codes are stripped cleanly. Older Windows-1252 files are detected automatically. Pick between tracks and adjust **Subtitle delay** in settings.
 - **Open files from your device.** Use the buttons or just drag and drop a video and subtitles onto the player. Nothing is uploaded; files stay in your browser.
 - **Stream from a link.** Paste a direct MP4 or WebM URL.
-- **Glass bubble controls.** Frosted-glass pills at the top (volume and cast on the left; screenshot, download, captions and settings on the right), glass circles for skip back, play/pause and skip forward, a glass time pill and a glass fullscreen button over a thin progress bar. Flat translucent fills with background blur, no gradients.
+- **Glass bubble controls.** Frosted-glass pills at the top (volume and cast on the left; screenshot, download, captions and settings on the right), glass circles for skip back, play/pause and skip forward, an outlined time/title pill and a glass fullscreen button over a thin progress bar. Thin translucent fills with background blur, no gradients. The settings menu is a glass panel with glass capsule rows and a notch pointing at the settings button.
 - Streaming-style layout: volume and cast on the top left; screenshot, download, captions and settings on the top right; big round play/pause in the centre with the 10-second skip buttons well to either side (Netflix style); time and fullscreen above a thin progress bar with buffering.
 - Fullscreen automatically rotates to landscape on supported devices (Android and other browsers with the Screen Orientation API). iPhone Safari uses its native player, which rotates on its own.
-- **Readable captions.** Bold Poppins that scales with the player, in a dark box or a heavy outline, in three sizes (Settings → Caption style). Your choice is remembered.
+- **Readable captions.** Bold Poppins that scales with the player, in a dark box or a heavy outline, in three sizes (Settings → Caption style). Defaults are Small with Outline. Your choice is remembered.
 - Playlist with auto-advance (turn it off with the Autoplay switch). Switching videos keeps you in fullscreen.
 - Settings menu: Captions, Subtitle delay, Speed (0.5x to 2x), Loop, Picture in picture.
 - Light and dark themes, installable web app manifest.
