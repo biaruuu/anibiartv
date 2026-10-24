@@ -1,5 +1,5 @@
-import { PlayerApp } from "@/components/player-app"
+import { HomeApp } from "@/components/home-app"
 
 export default function Page() {
-  return <PlayerApp />
+  return <HomeApp />
 }

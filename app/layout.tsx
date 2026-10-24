@@ -10,12 +10,12 @@ import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
   title: {
-    default: "AniBiar",
-    template: "%s | AniBiar",
+    default: "AniBiar TV",
+    template: "%s | AniBiar TV",
   },
   description:
-    "A modern, responsive video player with Poppins captions, playlists and keyboard shortcuts. Built with Next.js and shadcn/ui.",
-  applicationName: "AniBiar",
+    "Watch anime with a modern glass-style player, Poppins captions and volume boost.",
+  applicationName: "AniBiar TV",
   icons: { icon: "/icon.svg" },
 }
 
@@ -34,8 +34,8 @@ export default function RootLayout({
       <body className="min-h-svh bg-background font-sans text-foreground antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          forcedTheme="dark"
+          defaultTheme="dark"
           disableTransitionOnChange
         >
           {children}

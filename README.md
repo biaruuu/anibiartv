@@ -2,6 +2,11 @@
 
 A modern, responsive video player web app built with **Next.js**, **shadcn/ui** and **Tailwind CSS v4**. Flat design, no gradients. Captions render in **Poppins**. The video player uses **Vidstack** icons; the rest of the website uses **Lucide** icons.
 
+## Pages
+
+- `/` anime home screen (AniList GraphQL: trending hero, latest episodes, search).
+- `/watch` the video player. Streaming servers are not connected yet, so it plays demo videos.
+
 ## Deploy to Vercel
 
 1. Go to [vercel.com/new](https://vercel.com/new) and import this GitHub repository.

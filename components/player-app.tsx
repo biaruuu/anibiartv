@@ -7,6 +7,7 @@ import {
   CircleAlert,
   CircleCheck,
   FolderOpen,
+  Home,
   Link2,
   ListVideo,
   Play,
@@ -16,8 +17,10 @@ import {
   X,
 } from "lucide-react"
 
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+
 import pkg from "../package.json"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -101,6 +104,9 @@ export function PlayerApp() {
   const [subtitles, setSubtitles] = React.useState<Subtitle[]>([])
   const [status, setStatus] = React.useState<Status>(null)
   const [dragging, setDragging] = React.useState(false)
+  const params = useSearchParams()
+  const animeParam = params.get("title")
+  const epParam = params.get("ep")
   const [tab, setTab] = React.useState("playlist")
   const [subtitleUrl, setSubtitleUrl] = React.useState("")
   const [subtitleUrlError, setSubtitleUrlError] = React.useState<string | null>(null)
@@ -375,34 +381,21 @@ export function PlayerApp() {
     <div className="flex min-h-svh flex-col overflow-x-clip bg-muted/30">
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-xs">
-              <Play className="size-4 fill-current" />
-            </div>
-            <div className="min-w-0 leading-tight">
-              <span className="block truncate text-base font-semibold tracking-tight">
-                AniBiar
-              </span>
-              <span className="hidden text-xs text-muted-foreground sm:block">
-                Watch with captions, your way
-              </span>
-            </div>
-            <Badge variant="secondary" className="ml-1 hidden sm:inline-flex">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href="/" aria-label="AniBiar TV home" className="shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="AniBiar TV" className="h-9 w-auto" />
+            </Link>
+            <Badge variant="secondary" className="hidden sm:inline-flex">
               v{pkg.version}
             </Badge>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:inline-flex"
-              onClick={() => setTab("upload")}
-            >
-              <Upload />
-              Add video
-            </Button>
-            <ThemeToggle />
-          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/">
+              <Home />
+              Home
+            </Link>
+          </Button>
         </div>
       </header>
 
@@ -444,7 +437,9 @@ export function PlayerApp() {
           <Card className="gap-4 py-5 shadow-xs">
             <CardHeader className="gap-1.5">
               <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-                Now playing
+                {animeParam
+                  ? `${animeParam}${epParam ? ` · Episode ${epParam}` : ""}`
+                  : "Now playing"}
               </p>
               <CardTitle className="text-xl tracking-tight text-balance sm:text-2xl">
                 {current.title}
@@ -455,6 +450,9 @@ export function PlayerApp() {
             </CardHeader>
             <Separator />
             <CardContent className="flex flex-wrap gap-2">
+              {animeParam && (
+                <Badge variant="outline">Demo video: streaming servers not connected</Badge>
+              )}
               {tracks.length === 0 && (
                 <Badge variant="outline">No subtitles</Badge>
               )}

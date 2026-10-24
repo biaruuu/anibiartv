@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AniBiar",
-    short_name: "AniBiar",
+    name: "AniBiar TV",
+    short_name: "AniBiar TV",
     description: "A modern, responsive video player with Poppins captions.",
     start_url: "/",
     display: "standalone",

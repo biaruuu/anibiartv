@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.7.0
+
+### Added
+- Anime streaming home screen, styled after the reference: full-bleed featured hero (rotating trending anime, glass chips, Watch Now / Details / +), Latest Episodes grid with Sub/Dub switch and 1/5 pager, glass search and header buttons. Data comes from the AniList GraphQL API.
+- Search (AniList) from the header.
+- The AniBiar TV logo (transparent, text only) in the header.
+- /watch page keeps the glass video player. Cards and buttons open it with the anime title and episode; the video itself is a demo until streaming servers are connected.
+- Volume boost is now the first row in the player settings (0%, 50%, 100%, 200%) and always visible, with an explanation if a host blocks it.
+
+### Changed
+- The site is dark only, to match the reference and the white logo.
+- The player page has a Home button and the logo.
+
 ## 1.6.0
 
 ### Added

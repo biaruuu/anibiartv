@@ -98,7 +98,8 @@ const MENU_TITLES: Record<MenuView, string> = {
 }
 
 const BOOSTS = [1, 1.5, 2, 3] as const
-const boostLabel = (b: number) => (b === 1 ? "Off" : `${Math.round(b * 100)}%`)
+// Shown as the extra volume on top of 100%: 0%, 50%, 100%, 200%.
+const boostLabel = (b: number) => `${Math.round((b - 1) * 100)}%`
 
 // Everything is sized from the player's own width (container queries, `cqw`),
 // so controls stay in proportion from a small phone to a fullscreen 4K screen.
@@ -1212,6 +1213,12 @@ export function VideoPlayer({
             <div className="min-h-0 space-y-[0.4em] overflow-y-auto rounded-[1.5em] border border-white/15 bg-black/55 p-[0.55em] shadow-[inset_0_1px_0_0_rgb(255_255_255/0.15),0_12px_40px_rgb(0_0_0/0.4)] backdrop-blur-2xl backdrop-saturate-150">
               {menuView === "main" && (
                 <>
+                  <MenuRow
+                    icon={<VolumeHighIcon />}
+                    label="Volume boost"
+                    value={cors ? boostLabel(boost) : "Unavailable"}
+                    onClick={() => setMenuView("boost")}
+                  />
                   {tracks.length > 0 && (
                     <MenuRow
                       icon={<ClosedCaptionsIcon />}
@@ -1242,14 +1249,6 @@ export function VideoPlayer({
                     value={speed === 1 ? "Normal" : `${speed}x`}
                     onClick={() => setMenuView("speed")}
                   />
-                  {cors && (
-                    <MenuRow
-                      icon={<VolumeHighIcon />}
-                      label="Volume boost"
-                      value={boostLabel(boost)}
-                      onClick={() => setMenuView("boost")}
-                    />
-                  )}
                   <MenuRow
                     icon={loop ? <RepeatOnIcon /> : <RepeatIcon />}
                     label="Loop"
@@ -1328,17 +1327,26 @@ export function VideoPlayer({
 
               {menuView === "boost" && (
                 <>
-                  {BOOSTS.map((b) => (
-                    <OptionRow
-                      key={b}
-                      label={boostLabel(b)}
-                      selected={boost === b}
-                      onClick={() => changeBoost(b)}
-                    />
-                  ))}
-                  <p className="px-[0.9em] pt-[0.3em] text-[0.8em] text-white/60">
-                    Raises the sound above 100%. Lower your device volume if it gets too loud.
-                  </p>
+                  {cors ? (
+                    BOOSTS.map((b) => (
+                      <OptionRow
+                        key={b}
+                        label={boostLabel(b)}
+                        selected={boost === b}
+                        onClick={() => changeBoost(b)}
+                      />
+                    ))
+                  ) : (
+                    <p className="px-[0.9em] py-[0.5em] text-white/70">
+                      This video&apos;s server doesn&apos;t allow volume boost. Videos you open from
+                      your device always support it.
+                    </p>
+                  )}
+                  {cors && (
+                    <p className="px-[0.9em] pt-[0.3em] text-[0.8em] text-white/60">
+                      Raises the sound above 100%. Lower your device volume if it gets too loud.
+                    </p>
+                  )}
                 </>
               )}
 
