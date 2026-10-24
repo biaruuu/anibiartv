@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.0
+
+### Added
+- Volume boost (Settings → Volume boost): 150%, 200% or 300%, with a soft limiter against distortion.
+
+### Changed
+- The site is now called AniBiar.
+- The time and title in the player are plain text with no pill, outline or glass.
+- Restyled the page with shadcn/ui: richer header, "Now playing" title card, numbered playlist with a count badge, softer card shadows and a new footer.
+- Videos now request CORS access (needed for volume boost). If a host refuses, the player retries without it and hides the boost option.
+
 ## 1.5.0
 
 ### Changed

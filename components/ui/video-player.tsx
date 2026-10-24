@@ -68,7 +68,7 @@ type CastVideo = HTMLVideoElement & {
 type LockableOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape" | "portrait") => Promise<void>
 }
-type MenuView = "main" | "captions" | "style" | "speed" | "sync"
+type MenuView = "main" | "captions" | "style" | "speed" | "sync" | "boost"
 type Notice = { text: string; tone: "default" | "error" }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
@@ -94,7 +94,11 @@ const MENU_TITLES: Record<MenuView, string> = {
   style: "Caption style",
   speed: "Speed",
   sync: "Subtitle delay",
+  boost: "Volume boost",
 }
+
+const BOOSTS = [1, 1.5, 2, 3] as const
+const boostLabel = (b: number) => (b === 1 ? "Off" : `${Math.round(b * 100)}%`)
 
 // Everything is sized from the player's own width (container queries, `cqw`),
 // so controls stay in proportion from a small phone to a fullscreen 4K screen.
@@ -108,8 +112,6 @@ const PILL_HEIGHT = "h-[clamp(1.8rem,4.1cqw,2.6rem)]"
 // edge and a faint highlight along the top. Flat colours only, no gradients.
 const GLASS =
   "border border-white/15 bg-white/10 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.22),0_4px_14px_rgb(0_0_0/0.22)] backdrop-blur-lg backdrop-saturate-150"
-// The time and title pill is outline only (no fill, no blur) from medium widths up.
-const OUTLINE_FROM_MD = "@md:border @md:border-white/45"
 const GLASS_HOVER = "hover:bg-white/25 dark:hover:bg-white/25"
 
 const trackId = (t: VideoTrack) => t.id ?? `${t.srclang}:${t.src ?? t.label}`
@@ -279,6 +281,14 @@ export function VideoPlayer({
   const [buffered, setBuffered] = React.useState(0)
   const [volume, setVolume] = React.useState(1)
   const [muted, setMuted] = React.useState(false)
+  // Volume boost runs the audio through a Web Audio gain node. That needs the
+  // video to be CORS readable, so we ask for it and fall back if the server refuses.
+  const [boost, setBoost] = React.useState(1)
+  const [cors, setCors] = React.useState(true)
+  const audioRef = React.useRef<{
+    ctx: AudioContext
+    gain: GainNode
+  } | null>(null)
   const [speed, setSpeed] = React.useState(1)
   const [loop, setLoop] = React.useState(false)
   const [fullscreen, setFullscreen] = React.useState(false)
@@ -364,6 +374,51 @@ export function VideoPlayer({
     setVolume(value)
     setMuted(value === 0)
   }, [])
+
+  const changeBoost = React.useCallback((value: number) => {
+    const v = videoRef.current
+    if (!v) return
+    try {
+      if (!audioRef.current) {
+        if (value === 1) {
+          setBoost(1)
+          return
+        }
+        const Ctx =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext })
+            .webkitAudioContext
+        if (!Ctx) return
+        const ctx = new Ctx()
+        const source = ctx.createMediaElementSource(v)
+        const gain = ctx.createGain()
+        // A gentle limiter keeps loud peaks from crackling when boosted.
+        const limiter = ctx.createDynamicsCompressor()
+        limiter.threshold.value = -6
+        limiter.knee.value = 12
+        limiter.ratio.value = 12
+        source.connect(gain).connect(limiter).connect(ctx.destination)
+        audioRef.current = { ctx, gain }
+      }
+      const { ctx, gain } = audioRef.current
+      gain.gain.value = value
+      if (ctx.state === "suspended") void ctx.resume()
+      setBoost(value)
+    } catch {
+      setBoost(1)
+    }
+  }, [])
+
+  // The audio context can be suspended by the browser; wake it on play.
+  React.useEffect(() => {
+    if (playing && audioRef.current?.ctx.state === "suspended") {
+      void audioRef.current.ctx.resume()
+    }
+  }, [playing])
+
+  React.useEffect(() => {
+    setCors(true)
+  }, [src])
 
   const changeSpeed = (value: number) => {
     if (videoRef.current) videoRef.current.playbackRate = value
@@ -769,6 +824,7 @@ export function VideoPlayer({
           loop={loop}
           preload="metadata"
           playsInline
+          crossOrigin={cors ? "anonymous" : undefined}
           className="size-full object-contain"
           onClick={onVideoClick}
           onDoubleClick={onVideoDoubleClick}
@@ -789,6 +845,12 @@ export function VideoPlayer({
             setError(false)
           }}
           onError={() => {
+            // A server without CORS headers rejects the request. Retry once
+            // without CORS (playback works, volume boost is unavailable).
+            if (cors && /^https?:/i.test(src) && !audioRef.current) {
+              setCors(false)
+              return
+            }
             setLoading(false)
             setError(true)
           }}
@@ -1073,10 +1135,9 @@ export function VideoPlayer({
           <div className="mb-[clamp(0.25rem,1cqw,0.75rem)] flex items-end justify-between gap-3">
             <span
               className={cn(
-                "inline-flex min-w-0 items-center rounded-full font-poppins text-[length:clamp(0.75rem,1.8cqw,1rem)] font-medium text-white tabular-nums @md:px-[clamp(0.75rem,2.4cqw,1.5rem)]",
+                "inline-flex min-w-0 items-center rounded-full font-poppins text-[length:clamp(0.75rem,1.8cqw,1rem)] font-medium text-white tabular-nums",
                 PILL_HEIGHT,
-                TEXT_SHADOW,
-                OUTLINE_FROM_MD
+                TEXT_SHADOW
               )}
             >
               <span className="truncate">
@@ -1181,6 +1242,14 @@ export function VideoPlayer({
                     value={speed === 1 ? "Normal" : `${speed}x`}
                     onClick={() => setMenuView("speed")}
                   />
+                  {cors && (
+                    <MenuRow
+                      icon={<VolumeHighIcon />}
+                      label="Volume boost"
+                      value={boostLabel(boost)}
+                      onClick={() => setMenuView("boost")}
+                    />
+                  )}
                   <MenuRow
                     icon={loop ? <RepeatOnIcon /> : <RepeatIcon />}
                     label="Loop"
@@ -1254,6 +1323,22 @@ export function VideoPlayer({
                       onClick={() => chooseCaptionStyle(key)}
                     />
                   ))}
+                </>
+              )}
+
+              {menuView === "boost" && (
+                <>
+                  {BOOSTS.map((b) => (
+                    <OptionRow
+                      key={b}
+                      label={boostLabel(b)}
+                      selected={boost === b}
+                      onClick={() => changeBoost(b)}
+                    />
+                  ))}
+                  <p className="px-[0.9em] pt-[0.3em] text-[0.8em] text-white/60">
+                    Raises the sound above 100%. Lower your device volume if it gets too loud.
+                  </p>
                 </>
               )}
 

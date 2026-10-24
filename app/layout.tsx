@@ -10,12 +10,12 @@ import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
   title: {
-    default: "Videoplayer",
-    template: "%s | Videoplayer",
+    default: "AniBiar",
+    template: "%s | AniBiar",
   },
   description:
     "A modern, responsive video player with Poppins captions, playlists and keyboard shortcuts. Built with Next.js and shadcn/ui.",
-  applicationName: "Videoplayer",
+  applicationName: "AniBiar",
   icons: { icon: "/icon.svg" },
 }
 

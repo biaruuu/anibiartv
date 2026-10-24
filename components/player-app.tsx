@@ -376,17 +376,33 @@ export function PlayerApp() {
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-xs">
               <Play className="size-4 fill-current" />
             </div>
-            <span className="truncate text-base font-semibold tracking-tight">
-              Videoplayer
-            </span>
-            <Badge variant="outline" className="hidden sm:inline-flex">
+            <div className="min-w-0 leading-tight">
+              <span className="block truncate text-base font-semibold tracking-tight">
+                AniBiar
+              </span>
+              <span className="hidden text-xs text-muted-foreground sm:block">
+                Watch with captions, your way
+              </span>
+            </div>
+            <Badge variant="secondary" className="ml-1 hidden sm:inline-flex">
               v{pkg.version}
             </Badge>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={() => setTab("upload")}
+            >
+              <Upload />
+              Add video
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -425,8 +441,11 @@ export function PlayerApp() {
             )}
           </div>
 
-          <Card className="gap-3 py-5">
+          <Card className="gap-4 py-5 shadow-xs">
             <CardHeader className="gap-1.5">
+              <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                Now playing
+              </p>
               <CardTitle className="text-xl tracking-tight text-balance sm:text-2xl">
                 {current.title}
               </CardTitle>
@@ -434,6 +453,7 @@ export function PlayerApp() {
                 {current.description}
               </CardDescription>
             </CardHeader>
+            <Separator />
             <CardContent className="flex flex-wrap gap-2">
               {tracks.length === 0 && (
                 <Badge variant="outline">No subtitles</Badge>
@@ -454,13 +474,16 @@ export function PlayerApp() {
         </section>
 
         <aside className="min-w-0 space-y-6">
-          <Card className="gap-0 overflow-hidden py-0">
+          <Card className="gap-0 overflow-hidden py-0 shadow-xs">
             <Tabs value={tab} onValueChange={setTab} className="gap-0">
               <div className="border-b p-3">
                 <TabsList>
                   <TabsTrigger value="playlist">
                     <ListVideo />
                     Up next
+                    <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[0.7rem]">
+                      {VIDEOS.length}
+                    </Badge>
                   </TabsTrigger>
                   <TabsTrigger value="upload">
                     <Upload />
@@ -472,7 +495,7 @@ export function PlayerApp() {
               <TabsContent value="playlist">
                 <ScrollArea className="h-[min(26rem,55svh)]">
                   <ul className="space-y-1 p-2">
-                    {VIDEOS.map((video) => {
+                    {VIDEOS.map((video, index) => {
                       const active = video.id === current.id
                       return (
                         <li key={video.id}>
@@ -482,9 +505,14 @@ export function PlayerApp() {
                             aria-current={active ? "true" : undefined}
                             className={cn(
                               "flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-                              active ? "bg-accent" : "hover:bg-accent/60"
+                              active
+                                ? "bg-accent ring-1 ring-border"
+                                : "hover:bg-accent/60"
                             )}
                           >
+                            <span className="w-4 shrink-0 text-center text-xs text-muted-foreground tabular-nums">
+                              {index + 1}
+                            </span>
                             <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-md bg-muted">
                               <Skeleton className="absolute inset-0 rounded-none" />
                               {video.poster && (
@@ -713,7 +741,7 @@ export function PlayerApp() {
             </Tabs>
           </Card>
 
-          <Card className="hidden gap-4 sm:flex">
+          <Card className="hidden gap-4 shadow-xs sm:flex">
             <CardHeader>
               <CardTitle className="text-base">Keyboard shortcuts</CardTitle>
             </CardHeader>
@@ -737,9 +765,12 @@ export function PlayerApp() {
       </main>
 
       <footer className="border-t bg-background">
-        <div className="mx-auto w-full max-w-7xl px-4 py-5 text-sm text-muted-foreground sm:px-6">
-          Built with Next.js, shadcn/ui and Tailwind CSS. Player icons by
-          Vidstack, site icons by Lucide.
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p className="font-medium text-foreground">AniBiar</p>
+          <p>
+            Built with Next.js, shadcn/ui and Tailwind CSS. Player icons by
+            Vidstack, site icons by Lucide.
+          </p>
         </div>
       </footer>
     </div>
