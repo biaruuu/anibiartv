@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, History, Menu, Search, Star, Subtitles, TrendingUp, X } from "lucide-react"
 
+import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { animeTitle, getTrending, infoHref, searchSmart, type Anime } from "@/lib/anilist"
 import { cn } from "@/lib/utils"
@@ -22,7 +23,7 @@ function Logo({ className }: { className?: string }) {
 
 const STATUS_LABEL: Record<string, string> = {
   FINISHED: "Finished",
-  RELEASING: "Releasing",
+  RELEASING: "Airing",
   NOT_YET_RELEASED: "Upcoming",
   CANCELLED: "Cancelled",
   HIATUS: "Hiatus",
@@ -95,7 +96,7 @@ function ResultRow({
             <Highlight text={animeTitle(a)} term={term} />
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] text-white/60 sm:text-xs">
-            {a.format && <span>{a.format.replace("_", " ")}</span>}
+            {a.format && <span>{a.format}</span>}
             {a.seasonYear && (
               <>
                 <Dot />
@@ -131,6 +132,18 @@ function ResultRow({
           </div>
         </div>
       </Link>
+    </li>
+  )
+}
+
+function ResultSkeleton() {
+  return (
+    <li className="flex items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-5" aria-hidden="true">
+      <Skeleton className="h-14 w-10 shrink-0 rounded-md bg-white/10 sm:h-20 sm:w-14" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <Skeleton className="h-4 w-2/3 bg-white/10" />
+        <Skeleton className="h-3 w-full max-w-xs bg-white/10" />
+      </div>
     </li>
   )
 }
@@ -185,14 +198,20 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
     }
   }, [term])
 
+  // The page behind stays scrollable (like Miruro). A tap outside the panel closes it;
+  // scrolling does not, because it never fires a click.
+  const panel = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
+    const onClick = (e: MouseEvent) => {
+      if (!panel.current?.contains(e.target as Node)) onClose()
+    }
     window.addEventListener("keydown", onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = "hidden"
+    const t = setTimeout(() => document.addEventListener("click", onClick, true), 0)
     return () => {
       window.removeEventListener("keydown", onKey)
-      document.body.style.overflow = prev
+      clearTimeout(t)
+      document.removeEventListener("click", onClick, true)
     }
   }, [onClose])
 
@@ -236,10 +255,12 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   const showResults = term.length >= 2
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/35" onClick={onClose}>
+    <>
+      {/* Dims the page but lets touches and wheel scrolling pass through to it. */}
+      <div className="pointer-events-none fixed inset-0 z-[55] bg-black/40" aria-hidden="true" />
       <div
-        className="border-b border-white/15 bg-[#111214]/55 backdrop-blur-xl backdrop-saturate-150"
-        onClick={(e) => e.stopPropagation()}
+        ref={panel}
+        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 bg-[#111214]/70 backdrop-blur-xl backdrop-saturate-150"
       >
         <form onSubmit={submit} className="mx-auto flex h-16 w-full max-w-3xl items-center gap-2 px-3 sm:h-[4.5rem] sm:px-4">
           <button
@@ -290,6 +311,13 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
           {showResults ? (
             <>
               {error && !results.length && <p className="px-5 py-4 text-sm text-red-300">{error}</p>}
+              {loading && results.length === 0 && !error && (
+                <ul>
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <ResultSkeleton key={i} />
+                  ))}
+                </ul>
+              )}
               {!error && !loading && results.length === 0 && (
                 <p className="px-5 py-4 text-sm text-white/60">No results for &ldquo;{term}&rdquo;.</p>
               )}
@@ -354,6 +382,13 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
                   </ul>
                 </div>
               )}
+              {trending.length === 0 && (
+                <ul>
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <ResultSkeleton key={i} />
+                  ))}
+                </ul>
+              )}
               {trending.length > 0 && (
                 <div className="pt-2">
                   <p className="inline-flex items-center gap-1.5 px-4 pb-1 text-xs text-white/50 sm:px-5">
@@ -367,14 +402,11 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
                   </ul>
                 </div>
               )}
-              {recent.length === 0 && trending.length === 0 && (
-                <p className="px-5 py-4 text-sm text-white/50">Type at least 2 letters to search.</p>
-              )}
             </>
           )}
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -396,7 +428,7 @@ export function SiteHeader() {
         className={cn(
           "fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200",
           scrolled || menuOpen
-            ? "border-white/15 bg-[#111214]/70 backdrop-blur-md backdrop-saturate-150"
+            ? "border-white/15 bg-[#111214]/60 backdrop-blur-lg backdrop-saturate-150"
             : "border-transparent bg-transparent"
         )}
       >

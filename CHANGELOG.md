@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.11.2
+
+### Fixed
+- The page could not be scrolled while search was open. The page behind the search now scrolls normally (the dim layer lets touches through); tapping outside the panel or pressing back closes search.
+- The search panel now sizes to its results instead of covering the whole screen.
+
+### Changed
+- Search results show the same data as Miruro: format as AniList reports it (TV, OVA, ONA, MOVIE, TV_SHORT), year, episodes, score and status (Finished, Airing, Upcoming).
+- Skeleton rows while search results and trending are loading.
+- Slightly stronger glass on the header.
+
 ## 1.11.1
 
 ### Fixed
