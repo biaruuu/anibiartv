@@ -82,8 +82,8 @@ function ResultRow({
   if (a.episodes) parts.push(<span key="e">{a.episodes} ep</span>)
   if (aired > 0) {
     parts.push(
-      <span key="c" className="inline-flex items-center gap-1 rounded bg-white/[0.08] px-1.5 py-1">
-        <Captions className="size-3.5" />
+      <span key="c" className="inline-flex items-center gap-1 rounded bg-white/[0.08] px-1 py-0.5">
+        <Captions className="size-3" />
         {aired}
       </span>
     )
@@ -91,7 +91,7 @@ function ResultRow({
   if (a.averageScore) {
     parts.push(
       <span key="s" className="inline-flex items-center gap-1">
-        <Star className="size-3.5 fill-current" />
+        <Star className="size-3 fill-current" />
         {(a.averageScore / 10).toFixed(1)}
       </span>
     )
@@ -103,7 +103,7 @@ function ResultRow({
         href={infoHref(a)}
         onClick={onPick}
         className={cn(
-          "flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/[0.08] sm:gap-4 sm:px-5",
+          "flex items-center gap-3 px-3 py-2 transition-colors hover:bg-white/[0.08] sm:gap-4 sm:px-5 sm:py-2.5",
           active && "bg-white/[0.1]"
         )}
       >
@@ -117,12 +117,13 @@ function ResultRow({
           <p className="truncate text-sm font-medium text-white/95 sm:text-[0.95rem]">
             <Highlight text={animeTitle(a)} term={term} />
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] leading-none text-white/60 sm:text-xs">
+          {/* Each item carries its own leading dot, so a wrap never strands a dot at a line end. */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.68rem] leading-none text-white/60 sm:text-xs">
             {parts.map((part, i) => (
-              <React.Fragment key={i}>
+              <span key={i} className="inline-flex items-center gap-1.5 whitespace-nowrap">
                 {i > 0 && <Dot />}
                 {part}
-              </React.Fragment>
+              </span>
             ))}
           </div>
         </div>

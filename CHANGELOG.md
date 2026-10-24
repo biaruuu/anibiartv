@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.1
+
+### Fixed
+- Search results: the status (Finished, Airing) dropped to a second line even when there was room, and a separator dot could be left at the end of a line. The details row is now smaller and tighter and each item brings its own separator, so it stays on one line whenever it fits and wraps cleanly otherwise.
+
 ## 1.12.0
 
 ### Changed
