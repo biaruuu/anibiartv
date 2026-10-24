@@ -7,6 +7,7 @@ import {
   ChevronRight,
   CircleAlert,
   Info,
+  Menu,
   Play,
   Plus,
   Search,
@@ -33,8 +34,7 @@ import { cn } from "@/lib/utils"
 const MAX_PAGES = 5
 
 // Thin frosted glass, flat colours only.
-const GLASS =
-  "border border-white/15 bg-white/10 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.2)] backdrop-blur-lg backdrop-saturate-150"
+const GLASS = "border border-white/15 bg-white/[0.08]"
 
 const stripHtml = (s: string) => s.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
 
@@ -42,7 +42,7 @@ function Logo({ className }: { className?: string }) {
   return (
     <Link href="/" aria-label="AniBiar TV home" className="shrink-0">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo.png" alt="AniBiar TV" className={cn("h-9 w-auto sm:h-11", className)} />
+      <img src="/logo.png" alt="AniBiar TV" className={cn("h-8 w-auto sm:h-10", className)} />
     </Link>
   )
 }
@@ -197,25 +197,25 @@ function Hero({ items }: { items: Anime[] | null }) {
       ))}
       <div className="absolute inset-0 bg-black/45" />
 
-      <div className="absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-7xl flex-col gap-4 px-5 pb-12 sm:px-8 md:pb-16">
-        <h1 className="max-w-3xl text-3xl leading-tight font-bold tracking-tight text-balance text-white drop-shadow-[0_2px_8px_rgb(0_0_0/0.6)] sm:text-5xl">
+      <div className="absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pb-10 sm:gap-4 sm:px-8 md:pb-14">
+        <h1 className="max-w-3xl text-2xl leading-tight font-bold tracking-tight text-balance text-white drop-shadow-[0_2px_8px_rgb(0_0_0/0.6)] sm:text-4xl lg:text-5xl">
           {animeTitle(a)}
         </h1>
         <div className="flex flex-wrap gap-2">
           {chips.map((c) => (
-            <span key={c} className={cn("rounded-full px-4 py-1.5 text-sm text-white", GLASS)}>
+            <span key={c} className={cn("rounded-full px-3 py-1 text-xs text-white/90 sm:px-4 sm:py-1.5 sm:text-sm", GLASS)}>
               {c}
             </span>
           ))}
         </div>
         {desc && (
-          <p className="line-clamp-3 max-w-2xl text-base text-white/75 sm:text-lg">{desc}</p>
+          <p className="line-clamp-3 max-w-2xl text-sm leading-relaxed text-white/70 sm:text-base">{desc}</p>
         )}
         <div className="flex flex-wrap items-center gap-3">
           <Button
             asChild
             size="lg"
-            className="h-12 rounded-xl bg-white px-6 text-base font-semibold text-black hover:bg-white/90"
+            className="h-10 rounded-lg bg-white px-5 text-sm font-semibold text-black hover:bg-white/90 sm:h-11 sm:text-base"
           >
             <Link href={watchHref(a, 1)}>
               <Play className="fill-current" />
@@ -225,7 +225,7 @@ function Hero({ items }: { items: Anime[] | null }) {
           <Button
             asChild
             size="lg"
-            className={cn("h-12 rounded-xl px-6 text-base font-semibold text-white hover:bg-white/20", GLASS)}
+            className="h-10 rounded-lg bg-white/10 px-5 text-sm font-semibold text-white hover:bg-white/20 sm:h-11 sm:text-base"
           >
             <Link href={watchHref(a)}>
               <Info />
@@ -236,7 +236,7 @@ function Hero({ items }: { items: Anime[] | null }) {
             type="button"
             size="icon"
             aria-label="Add to list"
-            className={cn("size-12 rounded-xl text-white hover:bg-white/20", GLASS)}
+            className="size-10 rounded-lg bg-white/10 text-white hover:bg-white/20 sm:size-11"
           >
             <Plus />
           </Button>
@@ -271,7 +271,7 @@ function EpisodeCard({ item }: { item: LatestEpisode }) {
   const meta = a.format === "TV_SHORT" ? "TV" : (a.format ?? "TV").replace("_", " ")
   return (
     <Link href={watchHref(a, item.episode)} className="group block min-w-0">
-      <div className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-white/5">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={a.coverImage.extraLarge ?? a.coverImage.large ?? ""}
@@ -282,33 +282,32 @@ function EpisodeCard({ item }: { item: LatestEpisode }) {
         <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
         <span
           className={cn(
-            "absolute top-2 right-2 grid size-10 place-items-center rounded-full text-white opacity-0 transition-opacity group-hover:opacity-100",
-            GLASS
+            "absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100"
           )}
         >
-          <Plus className="size-5" />
+          <Plus className="size-4" />
         </span>
         <span className="absolute inset-0 grid place-items-center text-white opacity-0 transition-opacity group-hover:opacity-100">
-          <Play className="size-12 fill-current drop-shadow-lg" />
+          <Play className="size-10 fill-current drop-shadow-lg" />
         </span>
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/80 to-transparent px-3 pt-10 pb-2.5 text-sm font-semibold text-white sm:text-base">
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/80 to-transparent px-2 pt-8 pb-2 text-[0.7rem] font-semibold whitespace-nowrap text-white min-[400px]:text-xs sm:px-3 sm:text-sm">
           <span>EP {item.episode}</span>
           <span>{timeAgo(item.airingAt)}</span>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-1.5 text-sm text-white/70">
-        <span className="inline-flex items-center gap-1 rounded-md bg-white/[0.07] px-2.5 py-1.5 group-hover:bg-lime-300/10">
-          <Subtitles className="size-4" />
+      <div className="mt-2 flex flex-wrap gap-1 text-[0.65rem] leading-none text-white/70 sm:gap-1.5 sm:text-xs">
+        <span className="inline-flex items-center gap-1 rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5 group-hover:bg-lime-300/10">
+          <Subtitles className="size-3 sm:size-3.5" />
           {item.episode}
         </span>
-        <span className="rounded-md bg-white/[0.07] px-2.5 py-1.5 group-hover:bg-lime-300/10">{meta}</span>
+        <span className="rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5 group-hover:bg-lime-300/10">{meta}</span>
         {a.seasonYear && (
-          <span className="rounded-md bg-white/[0.07] px-2.5 py-1.5 group-hover:bg-lime-300/10">
+          <span className="rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5 group-hover:bg-lime-300/10">
             {a.seasonYear}
           </span>
         )}
       </div>
-      <h3 className="mt-2.5 line-clamp-2 text-base leading-snug font-medium text-white transition-colors group-hover:text-lime-300 sm:text-lg">
+      <h3 className="mt-1.5 line-clamp-2 text-xs leading-snug font-medium text-white transition-colors group-hover:text-lime-300 sm:text-sm lg:text-base">
         {animeTitle(a)}
       </h3>
     </Link>
@@ -345,16 +344,16 @@ function LatestEpisodes() {
   }
 
   return (
-    <section ref={top} className="mx-auto w-full max-w-7xl scroll-mt-20 px-4 py-8 sm:px-8">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <h2 className="truncate text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+    <section ref={top} className="mx-auto w-full max-w-7xl scroll-mt-20 px-4 py-6 sm:px-8 sm:py-8">
+      <div className="mb-4 flex items-center justify-between gap-2 sm:mb-6">
+        <h2 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight text-white sm:text-2xl">
           Latest Episodes
         </h2>
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           <div
             role="tablist"
             aria-label="Audio"
-            className="flex rounded-full border border-white/20 p-1"
+            className="flex rounded-full border border-white/20 p-0.5"
           >
             {(["sub", "dub"] as const).map((m) => (
               <button
@@ -364,25 +363,25 @@ function LatestEpisodes() {
                 aria-selected={mode === m}
                 onClick={() => setMode(m)}
                 className={cn(
-                  "rounded-full px-5 py-1.5 text-base font-semibold capitalize transition-colors sm:px-6",
-                  mode === m ? "bg-[#c4b5fd] text-[#1b1530]" : "text-white/70 hover:text-white"
+                  "rounded-full px-3.5 py-1 text-xs font-semibold capitalize transition-colors sm:px-5 sm:py-1.5 sm:text-sm",
+                  mode === m ? "bg-white text-black" : "text-white/70 hover:text-white"
                 )}
               >
                 {m}
               </button>
             ))}
           </div>
-          <div className="flex items-center rounded-full border border-white/20 p-1">
+          <div className="flex items-center rounded-full border border-white/20 p-0.5">
             <button
               type="button"
               aria-label="Previous page"
               disabled={page <= 1}
               onClick={() => go(page - 1)}
-              className="grid size-8 place-items-center rounded-full text-white/80 hover:bg-white/10 disabled:opacity-30"
+              className="grid size-6 place-items-center rounded-full text-white/80 sm:size-7 hover:bg-white/10 disabled:opacity-30"
             >
-              <ChevronLeft className="size-5" />
+              <ChevronLeft className="size-4" />
             </button>
-            <span className="min-w-12 text-center text-sm font-medium text-white tabular-nums">
+            <span className="min-w-8 text-center text-xs font-medium sm:min-w-10 sm:text-sm text-white tabular-nums">
               {page}/{lastPage}
             </span>
             <button
@@ -390,9 +389,9 @@ function LatestEpisodes() {
               aria-label="Next page"
               disabled={page >= lastPage}
               onClick={() => go(page + 1)}
-              className="grid size-8 place-items-center rounded-full text-white/80 hover:bg-white/10 disabled:opacity-30"
+              className="grid size-6 place-items-center rounded-full text-white/80 sm:size-7 hover:bg-white/10 disabled:opacity-30"
             >
-              <ChevronRight className="size-5" />
+              <ChevronRight className="size-4" />
             </button>
           </div>
         </div>
@@ -414,14 +413,14 @@ function LatestEpisodes() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-x-3 gap-y-8 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        <div className="grid grid-cols-3 gap-x-2.5 gap-y-5 sm:gap-x-4 sm:gap-y-7 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {items
             ? items.map((it) => <EpisodeCard key={it.id} item={it} />)
             : Array.from({ length: 12 }, (_, i) => (
                 <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-[2/3] rounded-2xl bg-white/5" />
-                  <Skeleton className="h-8 w-3/4 bg-white/5" />
-                  <Skeleton className="h-5 w-full bg-white/5" />
+                  <Skeleton className="aspect-[2/3] rounded-xl bg-white/5" />
+                  <Skeleton className="h-4 w-3/4 bg-white/5" />
+                  <Skeleton className="h-3 w-full bg-white/5" />
                 </div>
               ))}
         </div>
@@ -436,6 +435,7 @@ export function HomeApp() {
   const [trending, setTrending] = React.useState<Anime[] | null>(null)
   const [searching, setSearching] = React.useState(false)
   const [scrolled, setScrolled] = React.useState(false)
+  const [menuOpen, setMenuOpen] = React.useState(false)
 
   React.useEffect(() => {
     const ctrl = new AbortController()
@@ -453,39 +453,47 @@ export function HomeApp() {
   }, [])
 
   return (
-    <div className="min-h-svh overflow-x-clip bg-[#111214] text-white">
+    <div className="min-h-svh overflow-x-clip bg-[#111214] font-poppins text-white">
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-40 transition-colors duration-300",
-          scrolled ? "bg-[#111214]/80 backdrop-blur-lg" : "bg-transparent"
+          "fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200",
+          scrolled || menuOpen
+            ? "border-white/15 bg-[#111214]"
+            : "border-transparent bg-transparent"
         )}
       >
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-8">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-8">
           <Logo />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               aria-label="Search"
               onClick={() => setSearching(true)}
-              className={cn(
-                "grid size-10 place-items-center rounded-full text-white transition-colors hover:bg-white/20",
-                GLASS
-              )}
+              className="grid size-10 place-items-center rounded-full text-white/90 transition-colors hover:bg-white/10"
             >
               <Search className="size-5" />
             </button>
-            <Link
-              href="/watch"
-              className={cn(
-                "inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium text-white transition-colors hover:bg-white/20",
-                GLASS
-              )}
+            <button
+              type="button"
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+              className="grid size-10 place-items-center rounded-full text-white/90 transition-colors hover:bg-white/10"
             >
-              <Play className="size-4 fill-current" />
-              Player
-            </Link>
+              {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
           </div>
         </div>
+        {menuOpen && (
+          <nav className="mx-auto flex w-full max-w-7xl flex-col px-4 pb-3 text-sm sm:px-8">
+            <Link href="/" className="rounded-lg px-3 py-2.5 text-white hover:bg-white/10">
+              Home
+            </Link>
+            <Link href="/watch" className="rounded-lg px-3 py-2.5 text-white hover:bg-white/10">
+              Video player
+            </Link>
+          </nav>
+        )}
       </header>
 
       <main>

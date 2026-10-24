@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.7.1
+
+### Fixed
+- Home screen was far too large on phones: the heading was cut to "L...", EP labels wrapped, badges and buttons were oversized. Type, spacing and controls are now sized like Miruro (3 posters per row, small badges, compact header and pager).
+- Text no longer gets enlarged by Android's font boost (`text-size-adjust`).
+
+### Changed
+- Removed the strong glass from the home page. The header is flat (transparent, solid on scroll), the hero chips are subtle and the Details and + buttons are flat.
+- Sub/Dub switch is white when selected instead of purple.
+- Header has search and menu icons; the menu links to Home and the video player.
+- The home page uses Poppins.
+
 ## 1.7.0
 
 ### Added
