@@ -29,7 +29,7 @@ import {
   VOICE_LANGUAGES,
   type CharacterEdge,
   type Detail,
-  type FranchiseEntry,
+  type FranchiseGraph,
   type Mini,
 } from "@/lib/anilist"
 import { getArtwork, type Artwork } from "@/lib/logos"
@@ -580,68 +580,148 @@ function Trailer({ a, title }: { a: Detail; title: string }) {
 
 /* --------------------------- franchise and related -------------------------- */
 
-const SUB_LABEL: Record<string, string> = { SIDE_STORY: "Side story", SPIN_OFF: "Spin-off", SUMMARY: "Summary" }
+const SUB_LABEL: Record<string, string> = {
+  SIDE_STORY: "Side story",
+  SPIN_OFF: "Spin-off",
+  SUMMARY: "Summary",
+  PARENT: "Parent story",
+}
 
-type ShowEntry = { node: Mini & { type?: string }; badge: string; label: string; labelClass: string; current: boolean; year: number; rank: number }
+type ShowEntry = {
+  node: Mini & { type?: string }
+  badge: string
+  label: string
+  labelClass: string
+  current: boolean
+  date: number
+  main: boolean
+  parent: number | null
+}
+
+const dateKey = (d?: { year: number | null; month: number | null; day: number | null }) =>
+  d?.year ? d.year * 10000 + (d.month ?? 1) * 100 + (d.day ?? 1) : 99999999
+
+/**
+ * Everything here comes from AniList's own relation data:
+ * - Prequel / Sequel: reachable from this entry through PREQUEL / SEQUEL links.
+ * - Side story / Spin-off / Summary / Parent story: the relation AniList lists.
+ * - Order: real start dates (year, month, day).
+ */
+function buildShow(a: Detail, graph: FranchiseGraph | null): ShowEntry[] {
+  const before = new Map<number, number[]>() // x -> things that come before x
+  const after = new Map<number, number[]>()
+  const add = (m: Map<number, number[]>, k: number, v: number) => m.set(k, [...(m.get(k) ?? []), v])
+  for (const l of graph?.links ?? []) {
+    if (l.type === "SEQUEL") {
+      add(before, l.to, l.from)
+      add(after, l.from, l.to)
+    } else {
+      add(before, l.from, l.to)
+      add(after, l.to, l.from)
+    }
+  }
+  const reach = (start: number, adj: Map<number, number[]>) => {
+    const seen = new Set<number>()
+    const stack = [start]
+    while (stack.length) {
+      for (const n of adj.get(stack.pop()!) ?? []) {
+        if (!seen.has(n)) {
+          seen.add(n)
+          stack.push(n)
+        }
+      }
+    }
+    return seen
+  }
+  const prequels = reach(a.id, before)
+  const sequels = reach(a.id, after)
+
+  const raw = [
+    { node: a as Mini & { type?: string }, date: dateKey(a.startDate), rel: "CURRENT", parent: null as number | null },
+    ...(graph?.entries ?? []).map((e) => ({
+      node: e.node as Mini & { type?: string },
+      date: dateKey(e.node.startDate),
+      rel: e.rel,
+      parent: e.parent as number | null,
+    })),
+  ]
+  const main = (id: number) => id === a.id || prequels.has(id) || sequels.has(id)
+  const byDate = (x: { date: number }, y: { date: number }) => x.date - y.date
+
+  let season = 0
+  const counted = new Map<number, number>()
+  raw
+    .filter((e) => main(e.node.id))
+    .sort(byDate)
+    .forEach((e) => {
+      const f = e.node.format
+      if (f === "TV" || f === "ONA" || f === "TV_SHORT") counted.set(e.node.id, ++season)
+    })
+
+  return raw.map((e) => {
+    const f = e.node.format
+    const isMain = main(e.node.id)
+    const current = e.node.id === a.id
+    const n = counted.get(e.node.id)
+    let label = "Specials"
+    let labelClass = "text-sky-300"
+    if (n) {
+      label = `Season ${n}`
+      labelClass = current ? "text-sky-400" : "text-orange-400"
+    } else if (f === "MOVIE") {
+      label = "Movie"
+      labelClass = "text-pink-300"
+    } else if (f === "TV" || f === "ONA" || f === "TV_SHORT") {
+      label = formatName(f)
+    }
+    const badge = current
+      ? "Current"
+      : prequels.has(e.node.id)
+        ? "Prequel"
+        : sequels.has(e.node.id)
+          ? "Sequel"
+          : (SUB_LABEL[e.rel] ?? "Related")
+    return { node: e.node, badge, label, labelClass, current, date: e.date, main: isMain, parent: e.parent }
+  })
+}
 
 function Franchise({ a }: { a: Detail }) {
   const [order, setOrder] = React.useState("Release order")
-  const [chain, setChain] = React.useState<FranchiseEntry[] | null>(null)
+  const [graph, setGraph] = React.useState<FranchiseGraph | null>(null)
   const [failed, setFailed] = React.useState(false)
 
   React.useEffect(() => {
     const ctrl = new AbortController()
-    setChain(null)
+    setGraph(null)
     setFailed(false)
     getFranchise(a.id, ctrl.signal)
-      .then(setChain)
+      .then(setGraph)
       .catch((e: unknown) => {
         if ((e as Error).name !== "AbortError") setFailed(true)
       })
     return () => ctrl.abort()
   }, [a.id])
 
-  const show = React.useMemo<ShowEntry[]>(() => {
-    const year = (n: { seasonYear: number | null; startDate?: { year: number | null } }) =>
-      n.seasonYear ?? n.startDate?.year ?? 9999
-    const all = [
-      { node: a as Mini & { type?: string }, rel: "CURRENT" },
-      ...(chain ?? []).map((c) => ({ node: c.node as Mini & { type?: string }, rel: c.rel })),
-    ]
-    const rank = (f: string | null) => (f === "TV" || f === "ONA" || f === "TV_SHORT" ? 0 : f === "MOVIE" ? 1 : 2)
-    const dated = all
-      .map((e) => ({ ...e, year: year(e.node as never) }))
-      .sort((x, y) => x.year - y.year)
-    const curYear = year(a)
-    let season = 0
-    return dated.map((e) => {
-      const f = e.node.format
-      const current = e.rel === "CURRENT"
-      let label: string
-      let labelClass = "text-orange-400"
-      if (f === "TV" || f === "ONA" || f === "TV_SHORT") {
-        season += 1
-        label = `Season ${season}`
-        labelClass = current ? "text-sky-400" : "text-orange-400"
-      } else if (f === "MOVIE") {
-        label = "Movie"
-        labelClass = "text-pink-300"
-      } else {
-        label = "Specials"
-        labelClass = "text-sky-300"
-      }
-      const badge = current
-        ? "Current"
-        : (SUB_LABEL[e.rel] ?? (e.year < curYear ? "Prequel" : "Sequel"))
-      return { node: e.node, badge, label, labelClass, current, year: e.year, rank: rank(f) }
-    })
-  }, [a, chain])
+  const show = React.useMemo(() => buildShow(a, graph), [a, graph])
 
   const shown = React.useMemo(() => {
-    if (order === "Story order") {
-      return [...show].sort((x, y) => x.rank - y.rank || x.year - y.year)
+    const byDate = [...show].sort((x, y) => x.date - y.date)
+    if (order !== "Story order") return byDate
+    // Main entries in release order, each followed by its own specials and side stories.
+    const out: ShowEntry[] = []
+    const placed = new Set<number>()
+    const mainList = byDate.filter((e) => e.main)
+    for (const m of mainList) {
+      out.push(m)
+      placed.add(m.node.id)
+      for (const s of byDate) {
+        if (!s.main && s.parent === m.node.id && !placed.has(s.node.id)) {
+          out.push(s)
+          placed.add(s.node.id)
+        }
+      }
     }
-    return show
+    return [...out, ...byDate.filter((e) => !placed.has(e.node.id))]
   }, [show, order])
 
   const related = React.useMemo(() => {
@@ -654,13 +734,15 @@ function Franchise({ a }: { a: Detail }) {
     })
   }, [a, show])
 
+  const loading = graph === null && !failed
+
   return (
     <>
-      {(chain === null && !failed) || show.length > 1 ? (
+      {loading || show.length > 1 ? (
         <section>
           <SectionTitle
             title="Show"
-            sub={chain === null && !failed ? "Loading entries" : `${show.length} entries`}
+            sub={loading ? "Loading entries" : `${show.length} entries`}
             right={
               <Dropdown
                 label="Sort order"
@@ -670,7 +752,7 @@ function Franchise({ a }: { a: Detail }) {
               />
             }
           />
-          {chain === null && !failed ? (
+          {loading ? (
             <Carousel>
               {Array.from({ length: 3 }, (_, i) => (
                 <Skeleton key={i} className="aspect-[2/3] w-[42%] shrink-0 rounded-xl bg-white/5 sm:w-40 md:w-44 lg:w-48" />
@@ -724,45 +806,32 @@ const SHOWN_FIRST = 6
 function Characters({ a }: { a: Detail }) {
   const [lang, setLang] = React.useState("Japanese")
   const [edges, setEdges] = React.useState<CharacterEdge[] | null>(null)
-  const [total, setTotal] = React.useState(0)
-  const [hasNext, setHasNext] = React.useState(false)
-  const [page, setPage] = React.useState(1)
+  const [done, setDone] = React.useState(false)
   const [all, setAll] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [loadingMore, setLoadingMore] = React.useState(false)
   const [retry, setRetry] = React.useState(0)
 
-  // First page, again whenever the voice language changes.
+  // AniList's own character total is capped at 500, so it can't be trusted.
+  // Load every page (25 at a time) and count what actually arrives.
   React.useEffect(() => {
     const ctrl = new AbortController()
     setEdges(null)
+    setDone(false)
     setError(null)
-    setPage(1)
-    getCharacters(a.id, lang, 1, ctrl.signal)
-      .then((r) => {
-        setEdges(r.edges)
-        setTotal(r.total)
-        setHasNext(r.hasNext)
-      })
-      .catch((e: unknown) => {
-        if ((e as Error).name !== "AbortError") setError((e as Error).message)
-      })
+    ;(async () => {
+      let all: CharacterEdge[] = []
+      for (let page = 1; page <= 12; page++) {
+        const r = await getCharacters(a.id, lang, page, ctrl.signal)
+        all = [...all, ...r.edges]
+        setEdges(all)
+        if (!r.hasNext) break
+      }
+      setDone(true)
+    })().catch((e: unknown) => {
+      if ((e as Error).name !== "AbortError") setError((e as Error).message)
+    })
     return () => ctrl.abort()
   }, [a.id, lang, retry])
-
-  const loadMore = async () => {
-    setLoadingMore(true)
-    try {
-      const r = await getCharacters(a.id, lang, page + 1)
-      setEdges((prev) => [...(prev ?? []), ...r.edges])
-      setHasNext(r.hasNext)
-      setPage(page + 1)
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
 
   if (edges && edges.length === 0 && !error) return null
   const shown = edges ? (all ? edges : edges.slice(0, SHOWN_FIRST)) : []
@@ -773,7 +842,12 @@ function Characters({ a }: { a: Detail }) {
         title="Characters"
         right={
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            {total > 0 && <span className="text-xs text-white/60 sm:text-sm">{total}</span>}
+            {edges && edges.length > 0 && (
+              <span className="text-xs text-white/60 sm:text-sm">
+                {edges.length}
+                {done ? "" : "+"}
+              </span>
+            )}
             <Dropdown
               label="Voice actor language"
               value={lang}
@@ -783,7 +857,7 @@ function Characters({ a }: { a: Detail }) {
           </div>
         }
       />
-      {error && !edges ? (
+      {error && !edges?.length ? (
         <div className="flex items-center justify-between gap-3 rounded-xl border border-white/15 p-4 text-sm text-white/70">
           <span>Couldn&apos;t load characters.</span>
           <Button variant="secondary" size="sm" onClick={() => setRetry((r) => r + 1)}>
@@ -826,24 +900,13 @@ function Characters({ a }: { a: Detail }) {
           })}
         </ul>
       )}
-      {edges && edges.length > SHOWN_FIRST && !all && (
-        <button type="button" onClick={() => setAll(true)} className="mt-3 w-full py-2 text-center text-sm text-white/60 hover:text-white">
-          Show all {total || edges.length}
-        </button>
-      )}
-      {all && hasNext && (
+      {edges && edges.length > SHOWN_FIRST && (
         <button
           type="button"
-          disabled={loadingMore}
-          onClick={() => void loadMore()}
-          className="mt-3 w-full py-2 text-center text-sm text-white/60 hover:text-white disabled:opacity-50"
+          onClick={() => setAll((v) => !v)}
+          className="mt-3 w-full py-2 text-center text-sm text-white/60 hover:text-white"
         >
-          {loadingMore ? "Loading" : "Load more characters"}
-        </button>
-      )}
-      {all && !hasNext && edges && edges.length > SHOWN_FIRST && (
-        <button type="button" onClick={() => setAll(false)} className="mt-3 w-full py-2 text-center text-sm text-white/60 hover:text-white">
-          Show less
+          {all ? "Show less" : `Show all ${edges.length}${done ? "" : "+"}`}
         </button>
       )}
     </section>

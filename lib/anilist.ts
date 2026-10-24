@@ -14,6 +14,7 @@ export type Anime = {
   seasonYear: number | null
   genres?: string[]
   averageScore?: number | null
+  status?: string | null
   nextAiringEpisode?: { episode: number } | null
 }
 
@@ -106,17 +107,21 @@ async function getRanked(status: "RELEASING" | "NOT_YET_RELEASED", signal?: Abor
 export const getTopAiring = (signal?: AbortSignal) => getRanked("RELEASING", signal)
 export const getUpcoming = (signal?: AbortSignal) => getRanked("NOT_YET_RELEASED", signal)
 
-export async function searchAnime(search: string, signal?: AbortSignal) {
-  const data = await query<{ Page: { media: Anime[] } }>(
-    `query ($search: String) {
-      Page(page: 1, perPage: 8) {
-        media(type: ANIME, search: $search, isAdult: false, sort: SEARCH_MATCH) { ${MEDIA_FIELDS} }
+export async function searchAnimePage(search: string, page: number, perPage: number, signal?: AbortSignal) {
+  const data = await query<{ Page: { pageInfo: { hasNextPage: boolean }; media: Anime[] } }>(
+    `query ($search: String, $page: Int, $perPage: Int) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage }
+        media(type: ANIME, search: $search, isAdult: false, sort: SEARCH_MATCH) {
+          ${MEDIA_FIELDS}
+          status averageScore
+        }
       }
     }`,
-    { search },
+    { search, page, perPage },
     signal
   )
-  return data.Page.media
+  return { items: data.Page.media, hasNext: data.Page.pageInfo.hasNextPage }
 }
 
 export function timeAgo(unix: number) {
@@ -217,12 +222,12 @@ export const VOICE_LANGUAGES = [
 
 export async function getCharacters(id: number, language: string, page: number, signal?: AbortSignal) {
   const data = await query<{
-    Media: { characters: { pageInfo: { total: number; hasNextPage: boolean }; edges: CharacterEdge[] } } | null
+    Media: { characters: { pageInfo: { hasNextPage: boolean }; edges: CharacterEdge[] } } | null
   }>(
     `query ($id: Int, $page: Int, $lang: StaffLanguage) {
       Media(id: $id, type: ANIME) {
         characters(sort: [ROLE, RELEVANCE], page: $page, perPage: 25) {
-          pageInfo { total hasNextPage }
+          pageInfo { hasNextPage }
           edges {
             role
             node { id name { full } image { large } }
@@ -235,22 +240,36 @@ export async function getCharacters(id: number, language: string, page: number, 
     signal
   )
   const c = data.Media?.characters
-  return { total: c?.pageInfo.total ?? 0, hasNext: c?.pageInfo.hasNextPage ?? false, edges: c?.edges ?? [] }
+  return { hasNext: c?.pageInfo.hasNextPage ?? false, edges: c?.edges ?? [] }
 }
 
 /* --------------- whole franchise: walk prequels/sequels and side stories --------------- */
 
-export type FranchiseEntry = { node: Mini & { type: string; startDate: { year: number | null } }; rel: string }
+export type DateParts = { year: number | null; month: number | null; day: number | null }
+export type FranchiseEntry = {
+  node: Mini & { type: string; startDate: DateParts }
+  /** Relation type of the edge that first reached this entry (as AniList reports it). */
+  rel: string
+  /** The entry whose relations listed this one. */
+  parent: number
+}
+export type FranchiseGraph = {
+  entries: FranchiseEntry[]
+  /** Every PREQUEL / SEQUEL link seen, as AniList reports it: `to` is the `type` of `from`. */
+  links: { from: number; to: number; type: string }[]
+}
 
 const CHAIN = new Set(["PREQUEL", "SEQUEL", "PARENT"])
 const EXTRA = new Set(["SIDE_STORY", "SPIN_OFF", "SUMMARY"])
 
-export async function getFranchise(id: number, signal?: AbortSignal): Promise<FranchiseEntry[]> {
+/** Walks AniList's relation graph so every season, movie, OVA and special of a franchise is found. */
+export async function getFranchise(id: number, signal?: AbortSignal): Promise<FranchiseGraph> {
   const mini = `id title { romaji english } coverImage { extraLarge large color } format episodes seasonYear`
   const known = new Map<number, FranchiseEntry>()
+  const links: FranchiseGraph["links"] = []
   const visited = new Set<number>([id])
   let frontier = [id]
-  for (let depth = 0; depth < 6 && frontier.length > 0 && known.size < 40; depth++) {
+  for (let depth = 0; depth < 8 && frontier.length > 0 && known.size < 60; depth++) {
     const data = await query<{
       Page: {
         media: { id: number; relations: { edges: { relationType: string; node: FranchiseEntry["node"] }[] } }[]
@@ -260,7 +279,7 @@ export async function getFranchise(id: number, signal?: AbortSignal): Promise<Fr
         Page(page: 1, perPage: 50) {
           media(id_in: $ids, type: ANIME) {
             id
-            relations { edges { relationType(version: 2) node { ${mini} type startDate { year } } } }
+            relations { edges { relationType(version: 2) node { ${mini} type startDate { year month day } } } }
           }
         }
       }`,
@@ -270,14 +289,18 @@ export async function getFranchise(id: number, signal?: AbortSignal): Promise<Fr
     const next: number[] = []
     for (const m of data.Page.media) {
       for (const e of m.relations.edges) {
-        if (e.node.type !== "ANIME" || visited.has(e.node.id)) continue
+        if (e.node.type !== "ANIME") continue
+        if (e.relationType === "PREQUEL" || e.relationType === "SEQUEL") {
+          links.push({ from: m.id, to: e.node.id, type: e.relationType })
+        }
+        if (visited.has(e.node.id)) continue
         if (!CHAIN.has(e.relationType) && !EXTRA.has(e.relationType)) continue
         visited.add(e.node.id)
-        known.set(e.node.id, { node: e.node, rel: e.relationType })
+        known.set(e.node.id, { node: e.node, rel: e.relationType, parent: m.id })
         if (CHAIN.has(e.relationType)) next.push(e.node.id)
       }
     }
     frontier = next
   }
-  return [...known.values()]
+  return { entries: [...known.values()], links }
 }

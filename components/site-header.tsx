@@ -2,12 +2,11 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Menu, Search, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { ArrowLeft, Menu, Search, Star, Subtitles, X } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
-import { animeTitle, infoHref, searchAnime, type Anime } from "@/lib/anilist"
+import { animeTitle, infoHref, searchAnimePage, type Anime } from "@/lib/anilist"
 import { cn } from "@/lib/utils"
 
 function Logo({ className }: { className?: string }) {
@@ -21,103 +20,192 @@ function Logo({ className }: { className?: string }) {
 
 /* ------------------------------ search overlay ------------------------------ */
 
+const STATUS_LABEL: Record<string, string> = {
+  FINISHED: "Finished",
+  RELEASING: "Releasing",
+  NOT_YET_RELEASED: "Upcoming",
+  CANCELLED: "Cancelled",
+  HIATUS: "Hiatus",
+}
+
+function Dot() {
+  return <span className="text-white/40">·</span>
+}
+
 function SearchOverlay({ onClose }: { onClose: () => void }) {
+  const router = useRouter()
   const [q, setQ] = React.useState("")
   const [results, setResults] = React.useState<Anime[]>([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const term = q.trim()
 
   React.useEffect(() => {
-    const term = q.trim()
     if (term.length < 2) {
       setResults([])
       setError(null)
+      setLoading(false)
       return
     }
     const ctrl = new AbortController()
     setLoading(true)
     const t = setTimeout(() => {
-      searchAnime(term, ctrl.signal)
+      searchAnimePage(term, 1, 5, ctrl.signal)
         .then((r) => {
-          setResults(r)
+          setResults(r.items)
           setError(null)
         })
         .catch((e: unknown) => {
           if ((e as Error).name !== "AbortError") setError((e as Error).message)
         })
         .finally(() => setLoading(false))
-    }, 350)
+    }, 300)
     return () => {
       clearTimeout(t)
       ctrl.abort()
     }
-  }, [q])
+  }, [term])
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
     window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      window.removeEventListener("keydown", onKey)
+      document.body.style.overflow = prev
+    }
   }, [onClose])
 
+  const submit = (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!term) return
+    onClose()
+    router.push(`/search?q=${encodeURIComponent(term)}`)
+  }
+
   return (
-    <div className="fixed inset-0 z-[60] bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-label="Search anime"
-        className="mx-auto mt-14 w-full max-w-xl overflow-hidden rounded-2xl border border-white/15 bg-[#17181b]/95 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2 border-b border-white/10 p-3">
-          <Search className="ml-1 size-5 shrink-0 text-white/60" />
-          <Input
-            autoFocus
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search anime"
-            className="h-9 border-0 bg-transparent text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
-          />
-          {loading && <Spinner className="shrink-0" />}
-          <Button variant="ghost" size="icon" aria-label="Close search" onClick={onClose}>
-            <X />
-          </Button>
-        </div>
-        <ul className="max-h-[60svh] overflow-y-auto p-2">
-          {error && <li className="p-3 text-sm text-red-400">{error}</li>}
-          {!error && q.trim().length >= 2 && !loading && results.length === 0 && (
-            <li className="p-3 text-sm text-white/60">No results for “{q.trim()}”.</li>
-          )}
-          {!error && q.trim().length < 2 && (
-            <li className="p-3 text-sm text-white/60">Type at least 2 letters.</li>
-          )}
-          {results.map((a) => (
-            <li key={a.id}>
-              <Link
-                href={infoHref(a)}
-                className="flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-white/10"
+    <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="border-b border-white/15 bg-[#111214]/95" onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={submit} className="mx-auto flex h-16 w-full max-w-3xl items-center gap-2 px-3 sm:h-[4.5rem] sm:px-4">
+          <button
+            type="button"
+            aria-label="Close search"
+            onClick={onClose}
+            className="grid size-10 shrink-0 place-items-center rounded-full text-white/90 hover:bg-white/10"
+          >
+            <ArrowLeft className="size-6" />
+          </button>
+          <div className="flex h-11 min-w-0 flex-1 items-center overflow-hidden rounded-lg border border-white/30 sm:h-12">
+            <input
+              autoFocus
+              type="search"
+              inputMode="search"
+              enterKeyHint="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search anime..."
+              aria-label="Search anime"
+              className="h-full min-w-0 flex-1 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/50 sm:text-base [&::-webkit-search-cancel-button]:hidden"
+            />
+            {q && (
+              <button
+                type="button"
+                aria-label="Clear"
+                onClick={() => setQ("")}
+                className="grid size-10 shrink-0 place-items-center text-white/80 hover:text-white"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={a.coverImage.large ?? ""}
-                  alt=""
-                  className="h-16 w-11 shrink-0 rounded-lg bg-white/10 object-cover"
-                />
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{animeTitle(a)}</p>
-                  <p className="text-xs text-white/60">
-                    {[a.format?.replace("_", " "), a.seasonYear, a.episodes && `${a.episodes} eps`]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                <X className="size-5" />
+              </button>
+            )}
+            <button
+              type="submit"
+              aria-label="Search"
+              className="grid h-full w-12 shrink-0 place-items-center border-l border-white/30 text-white/80 hover:bg-white/10 hover:text-white"
+            >
+              {loading ? <Spinner /> : <Search className="size-5" />}
+            </button>
+          </div>
+        </form>
+
+        {term.length >= 2 && (
+          <div className="mx-auto max-h-[calc(100svh-5rem)] w-full max-w-3xl overflow-y-auto pb-3">
+            {error && <p className="px-5 py-4 text-sm text-red-400">{error}</p>}
+            {!error && !loading && results.length === 0 && (
+              <p className="px-5 py-4 text-sm text-white/60">No results for &ldquo;{term}&rdquo;.</p>
+            )}
+            <ul>
+              {results.map((a) => (
+                <li key={a.id}>
+                  <Link
+                    href={infoHref(a)}
+                    onClick={onClose}
+                    className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/[0.06] sm:gap-4 sm:px-5"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={a.coverImage.large ?? ""}
+                      alt=""
+                      className="h-14 w-10 shrink-0 rounded-md bg-white/10 object-cover sm:h-20 sm:w-14"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-white sm:text-base">{animeTitle(a)}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] text-white/60 sm:text-xs">
+                        {a.format && <span>{a.format.replace("_", " ")}</span>}
+                        {a.seasonYear && (
+                          <>
+                            <Dot />
+                            <span>{a.seasonYear}</span>
+                          </>
+                        )}
+                        {a.episodes ? (
+                          <>
+                            <Dot />
+                            <span>{a.episodes} ep</span>
+                            <Dot />
+                            <span className="inline-flex items-center gap-1 rounded bg-white/[0.08] px-1.5 py-0.5">
+                              <Subtitles className="size-3" />
+                              {a.episodes}
+                            </span>
+                          </>
+                        ) : null}
+                        {a.averageScore ? (
+                          <>
+                            <Dot />
+                            <span className="inline-flex items-center gap-1">
+                              <Star className="size-3 fill-current" />
+                              {(a.averageScore / 10).toFixed(1)}
+                            </span>
+                          </>
+                        ) : null}
+                        {a.status && (
+                          <>
+                            <Dot />
+                            <span>{STATUS_LABEL[a.status] ?? a.status}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {results.length > 0 && (
+              <button
+                type="button"
+                onClick={() => submit()}
+                className="mx-auto mt-1 flex items-center gap-2 px-4 py-3 text-sm text-white/70 hover:text-white"
+              >
+                <Search className="size-4" />
+                See all results for &ldquo;{term}&rdquo;
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
 }
-
 
 export function SiteHeader() {
   const [searching, setSearching] = React.useState(false)

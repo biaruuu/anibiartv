@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.11.0
+
+### Fixed
+- Characters showed "500" for every anime. AniList caps its character total at 500, so the number was meaningless. The page now loads every character page (25 at a time) and shows the real count.
+- Show (franchise) is now built only from AniList data: the whole relation graph is walked, entries are ordered by their real start date (year, month, day), Prequel / Sequel come from PREQUEL / SEQUEL links relative to the current entry, and side stories, spin-offs and summaries use the relation AniList lists. Story order places each special after the season it belongs to.
+
+### Changed
+- New search like Miruro's: a full-width bar with a back arrow, outlined input with clear and search buttons, a result list with poster, format, year, episodes, score and status, and "See all results".
+- New results page (`/search?q=`) with a poster grid and Load more.
+
 ## 1.10.1
 
 ### Fixed
