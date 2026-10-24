@@ -5,12 +5,15 @@ import Link from "next/link"
 import {
   ChevronLeft,
   ChevronRight,
+  CalendarDays,
+  ChevronDown,
   CircleAlert,
   Info,
   Menu,
   Play,
   Plus,
   Search,
+  Star,
   Subtitles,
   X,
 } from "lucide-react"
@@ -22,6 +25,8 @@ import { Spinner } from "@/components/ui/spinner"
 import {
   animeTitle,
   getLatestEpisodes,
+  getTopAiring,
+  getUpcoming,
   getTrending,
   searchAnime,
   timeAgo,
@@ -451,6 +456,138 @@ function LatestEpisodes() {
   )
 }
 
+/* ------------------------- top airing / upcoming lists ------------------------- */
+
+const PANEL_STEP = 5
+
+function RankedPanel({
+  title,
+  dot,
+  load,
+}: {
+  title: string
+  dot: string
+  load: (signal: AbortSignal) => Promise<Anime[]>
+}) {
+  const [items, setItems] = React.useState<Anime[] | null>(null)
+  const [failed, setFailed] = React.useState(false)
+  const [shown, setShown] = React.useState(PANEL_STEP)
+
+  React.useEffect(() => {
+    const ctrl = new AbortController()
+    load(ctrl.signal)
+      .then(setItems)
+      .catch((e: unknown) => {
+        if ((e as Error).name !== "AbortError") setFailed(true)
+      })
+    return () => ctrl.abort()
+    // `load` is a stable module-level function.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const visible = items?.slice(0, shown) ?? []
+
+  return (
+    <section className="min-w-0 rounded-2xl border border-white/20 p-3 sm:p-4">
+      <h2 className="mb-3 flex items-center gap-2 px-1 pt-1 text-base font-semibold tracking-wide text-white uppercase sm:text-lg">
+        <ChevronRight className="size-5" />
+        {title}
+      </h2>
+
+      {failed ? (
+        <p className="p-4 text-sm text-white/60">Couldn&apos;t load this list. Try again later.</p>
+      ) : (
+        <ul className="space-y-2">
+          {!items &&
+            Array.from({ length: PANEL_STEP }, (_, i) => (
+              <li key={i}>
+                <Skeleton className="h-24 rounded-xl bg-white/5 sm:h-28" />
+              </li>
+            ))}
+          {visible.map((a) => {
+            const eps = a.nextAiringEpisode ? a.nextAiringEpisode.episode - 1 : a.episodes
+            const pill =
+              "inline-flex items-center gap-1 rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5"
+            return (
+              <li key={a.id}>
+                <Link
+                  href={watchHref(a)}
+                  className="group relative flex items-center gap-3 overflow-hidden rounded-xl bg-white/[0.05] pr-3 transition-colors hover:bg-white/[0.09]"
+                >
+                  {/* Faint artwork on the right half, like the reference. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={a.bannerImage ?? a.coverImage.extraLarge ?? ""}
+                    alt=""
+                    loading="lazy"
+                    className="pointer-events-none absolute inset-y-0 right-0 h-full w-3/4 object-cover opacity-20 grayscale [mask-image:linear-gradient(to_left,black,transparent)]"
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={a.coverImage.large ?? a.coverImage.extraLarge ?? ""}
+                    alt=""
+                    loading="lazy"
+                    className="relative h-24 w-16 shrink-0 rounded-lg bg-white/10 object-cover sm:h-28 sm:w-[4.75rem]"
+                  />
+                  <div className="relative min-w-0 flex-1 py-2">
+                    <div className="flex items-start gap-2">
+                      <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", dot)} />
+                      <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-white sm:text-base">
+                        {animeTitle(a)}
+                      </h3>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1 pl-4 text-[0.65rem] leading-none text-white/70 sm:gap-1.5 sm:text-xs">
+                      {a.format && <span className={pill}>{a.format.replace("_", " ")}</span>}
+                      {a.seasonYear && (
+                        <span className={pill}>
+                          <CalendarDays className="size-3 sm:size-3.5" />
+                          {a.seasonYear}
+                        </span>
+                      )}
+                      {eps ? (
+                        <span className={pill}>
+                          <Subtitles className="size-3 sm:size-3.5" />
+                          {eps}
+                        </span>
+                      ) : null}
+                      {a.averageScore ? (
+                        <span className={pill}>
+                          <Star className="size-3 sm:size-3.5" />
+                          {a.averageScore}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {items && items.length > PANEL_STEP && (
+        <button
+          type="button"
+          aria-label={shown >= items.length ? "Show less" : "Show more"}
+          onClick={() => setShown((n) => (n >= items.length ? PANEL_STEP : items.length))}
+          className="mt-2 grid h-10 w-full place-items-center rounded-xl bg-white/[0.05] text-white/80 transition-colors hover:bg-white/10"
+        >
+          <ChevronDown className={cn("size-5 transition-transform", shown >= items.length && "rotate-180")} />
+        </button>
+      )}
+    </section>
+  )
+}
+
+function RankedLists() {
+  return (
+    <div className="mx-auto grid w-full max-w-7xl gap-4 px-4 pb-10 sm:px-8 lg:grid-cols-2 lg:gap-6">
+      <RankedPanel title="Top Airing" dot="bg-green-500" load={getTopAiring} />
+      <RankedPanel title="Upcoming" dot="bg-orange-400" load={getUpcoming} />
+    </div>
+  )
+}
+
 /* ----------------------------------- page ----------------------------------- */
 
 export function HomeApp() {
@@ -530,6 +667,7 @@ export function HomeApp() {
       <main>
         <Hero items={trending} index={heroIndex} setIndex={setHeroIndex} />
         <LatestEpisodes />
+        <RankedLists />
       </main>
 
       <footer className="border-t border-white/10">

@@ -13,6 +13,8 @@ export type Anime = {
   episodes: number | null
   seasonYear: number | null
   genres?: string[]
+  averageScore?: number | null
+  nextAiringEpisode?: { episode: number } | null
 }
 
 export type LatestEpisode = { id: number; airingAt: number; episode: number; media: Anime }
@@ -84,6 +86,25 @@ export async function getTrending(signal?: AbortSignal) {
   )
   return data.Page.media.filter((m) => m.bannerImage || m.coverImage.extraLarge)
 }
+
+async function getRanked(status: "RELEASING" | "NOT_YET_RELEASED", signal?: AbortSignal) {
+  const data = await query<{ Page: { media: Anime[] } }>(
+    `query ($status: MediaStatus) {
+      Page(page: 1, perPage: 10) {
+        media(type: ANIME, status: $status, sort: POPULARITY_DESC, isAdult: false) {
+          ${MEDIA_FIELDS}
+          bannerImage averageScore nextAiringEpisode { episode }
+        }
+      }
+    }`,
+    { status },
+    signal
+  )
+  return data.Page.media
+}
+
+export const getTopAiring = (signal?: AbortSignal) => getRanked("RELEASING", signal)
+export const getUpcoming = (signal?: AbortSignal) => getRanked("NOT_YET_RELEASED", signal)
 
 export async function searchAnime(search: string, signal?: AbortSignal) {
   const data = await query<{ Page: { media: Anime[] } }>(

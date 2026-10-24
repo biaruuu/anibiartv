@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.0
+
+### Added
+- Top Airing and Upcoming panels on the home screen, styled like Miruro: bordered panels with poster rows, a green or orange status dot, format, year, episode and score badges, and a faint grayscale artwork behind each row. Show more with the chevron. Data from AniList. Side by side on large screens, stacked on phones.
+
 ## 1.8.1
 
 ### Fixed
