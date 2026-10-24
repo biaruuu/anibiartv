@@ -53,7 +53,7 @@ export async function getTitleLogo(
   return null
 }
 
-export type Artwork = { kind: "Backdrops" | "Posters" | "Logos"; url: string }
+export type Artwork = { kind: "Backgrounds" | "Banners" | "Posters" | "Logos"; url: string }
 
 /** Artwork for the info page gallery (TMDB). Empty when there is no key or no match. */
 export async function getArtwork(name: string, isMovie: boolean, signal?: AbortSignal): Promise<Artwork[]> {
@@ -72,7 +72,7 @@ export async function getArtwork(name: string, isMovie: boolean, signal?: AbortS
       if (!res.ok) continue
       const j = (await res.json()) as { backdrops: { file_path: string }[]; posters: { file_path: string }[]; logos: { file_path: string }[] }
       const out: Artwork[] = [
-        ...j.backdrops.map((i) => ({ kind: "Backdrops" as const, url: `https://image.tmdb.org/t/p/w780${i.file_path}` })),
+        ...j.backdrops.map((i) => ({ kind: "Backgrounds" as const, url: `https://image.tmdb.org/t/p/w780${i.file_path}` })),
         ...j.posters.map((i) => ({ kind: "Posters" as const, url: `https://image.tmdb.org/t/p/w500${i.file_path}` })),
         ...j.logos.map((i) => ({ kind: "Logos" as const, url: `https://image.tmdb.org/t/p/w500${i.file_path}` })),
       ]

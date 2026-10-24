@@ -23,8 +23,13 @@ import {
   animeTitle,
   formatName,
   getAnimeDetail,
+  getCharacters,
+  getFranchise,
   infoHref,
+  VOICE_LANGUAGES,
+  type CharacterEdge,
   type Detail,
+  type FranchiseEntry,
   type Mini,
 } from "@/lib/anilist"
 import { getArtwork, type Artwork } from "@/lib/logos"
@@ -68,7 +73,7 @@ const RELATION_LABEL: Record<string, string> = {
   OTHER: "Related",
 }
 
-const PILL = "inline-flex items-center gap-1 rounded bg-white/[0.07] px-2 py-1.5 text-xs text-white/70 sm:text-sm"
+const PILL = "inline-flex items-center gap-1 rounded bg-white/[0.07] px-1.5 py-1 text-[0.65rem] leading-none text-white/70 sm:px-2 sm:py-1.5 sm:text-xs"
 
 /* --------------------------------- pieces --------------------------------- */
 
@@ -84,15 +89,18 @@ function SectionTitle({
   return (
     <div className="mb-4 flex items-end justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">{title}</h2>
-        {sub && <p className="mt-0.5 text-sm text-white/60">{sub}</p>}
+        <h2 className="text-lg font-semibold tracking-tight text-white sm:text-2xl">{title}</h2>
+        {sub && <p className="mt-0.5 text-xs text-white/60 sm:text-sm">{sub}</p>}
       </div>
       {right}
     </div>
   )
 }
 
-function Select({
+type Option = { value: string; count?: number }
+
+/** Dropdown with a glass panel, check mark on the selected row and optional counts. */
+function Dropdown({
   value,
   onChange,
   options,
@@ -100,25 +108,70 @@ function Select({
 }: {
   value: string
   onChange: (v: string) => void
-  options: string[]
+  options: Option[]
   label: string
 }) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false)
+    document.addEventListener("pointerdown", onDown)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("pointerdown", onDown)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [open])
+
   return (
-    <label className="relative shrink-0">
-      <span className="sr-only">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-10 min-w-36 appearance-none rounded-lg border border-white/25 bg-transparent py-0 pr-9 pl-4 text-sm text-white/80 outline-none focus-visible:border-white/60 sm:min-w-44"
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-9 min-w-32 items-center justify-between gap-2 rounded-lg border border-white/25 bg-transparent px-3 text-xs text-white/80 transition-colors hover:bg-white/5 sm:h-10 sm:min-w-44 sm:px-4 sm:text-sm"
       >
-        {options.map((o) => (
-          <option key={o} value={o} className="bg-[#17181b] text-white">
-            {o}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-white/70" />
-    </label>
+        <span className="truncate">{value}</span>
+        <ChevronDown className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          aria-label={label}
+          className="absolute top-full right-0 z-30 mt-2 max-h-72 w-max min-w-full overflow-y-auto rounded-xl border border-white/20 bg-[#1b1c20]/90 py-1.5 shadow-2xl backdrop-blur-xl"
+        >
+          {options.map((o) => (
+            <li key={o.value} role="option" aria-selected={o.value === value}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(o.value)
+                  setOpen(false)
+                }}
+                className="flex w-full items-center justify-between gap-6 px-4 py-2 text-left text-[0.8rem] text-white hover:bg-white/10 sm:py-2.5 sm:text-sm"
+              >
+                <span>{o.value}</span>
+                <span className="flex items-center gap-3">
+                  {o.count !== undefined && (
+                    <span className="rounded-full bg-black/40 px-2 py-0.5 text-[0.65rem] text-white/80 tabular-nums sm:text-xs">
+                      {o.count}
+                    </span>
+                  )}
+                  <Check className={cn("size-4 text-white/70", o.value !== value && "invisible")} />
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -129,7 +182,7 @@ function PosterCard({
   labelClass,
   current,
 }: {
-  anime: Mini
+  anime: Mini & { type?: string }
   badge?: string
   label?: string
   labelClass?: string
@@ -146,40 +199,48 @@ function PosterCard({
           className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         {badge && (
-          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white">
-            {current && <Check className="size-3.5" />}
+          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-[0.65rem] leading-none font-semibold text-white sm:text-xs">
+            {current && <Check className="size-3" />}
             {badge}
           </span>
         )}
       </div>
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
+      <div className="mt-2 flex flex-wrap gap-1">
         {anime.episodes ? (
           <span className={PILL}>
-            <Subtitles className="size-3.5" />
+            <Subtitles className="size-3" />
             {anime.episodes}
           </span>
         ) : null}
-        {anime.format && <span className={PILL}>{formatName(anime.format).toUpperCase()}</span>}
+        {anime.format && <span className={PILL}>{anime.format.replace("_", " ")}</span>}
         {anime.seasonYear && <span className={PILL}>{anime.seasonYear}</span>}
       </div>
-      {label && <p className={cn("mt-2 text-sm font-semibold", labelClass)}>{label}</p>}
-      <h3 className="mt-1 line-clamp-2 text-sm leading-snug font-medium text-white sm:text-base">
+      {label && <p className={cn("mt-1.5 text-xs font-semibold sm:text-sm", labelClass)}>{label}</p>}
+      <h3 className="mt-0.5 line-clamp-2 text-xs leading-snug font-medium text-white sm:text-sm">
         {animeTitle(anime as never)}
       </h3>
     </>
   )
   // Manga and novels are not on this site; only anime link to an info page.
-  return current || (anime as Mini & { type?: string }).type === "MANGA" ||
-    (anime as Mini & { type?: string }).type === "NOVEL" ? (
-    <div className="min-w-0">{body}</div>
-  ) : (
-    <Link href={infoHref(anime)} className="group block min-w-0">
+  const linkable = !current && anime.type !== "MANGA" && anime.type !== "NOVEL"
+  const cls = "block w-[42%] shrink-0 snap-start sm:w-40 md:w-44 lg:w-48"
+  return linkable ? (
+    <Link href={infoHref(anime)} className={cn("group", cls)}>
       {body}
     </Link>
+  ) : (
+    <div className={cls}>{body}</div>
   )
 }
 
-const GRID = "grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+/** Horizontal scrolling row of poster cards (a peek of the next card shows there is more). */
+function Carousel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="-mx-4 flex snap-x gap-3 overflow-x-auto scroll-pl-4 px-4 pb-1 [scrollbar-width:none] sm:-mx-8 sm:scroll-pl-8 sm:gap-4 sm:px-8 [&::-webkit-scrollbar]:hidden">
+      {children}
+    </div>
+  )
+}
 
 /* ---------------------------------- page ---------------------------------- */
 
@@ -278,29 +339,29 @@ function Content({ a }: { a: Detail }) {
               className="h-40 w-[6.5rem] shrink-0 rounded-xl border border-white/20 bg-white/10 object-cover shadow-lg sm:h-72 sm:w-48"
             />
             <div className="min-w-0 flex-1 self-center sm:self-end">
-              <h1 className="text-2xl leading-tight font-bold text-balance text-white sm:text-4xl">{title}</h1>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/75">
+              <h1 className="text-xl leading-tight font-bold text-balance text-white sm:text-4xl">{title}</h1>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-white/75 sm:mt-3 sm:gap-x-4 sm:gap-y-2 sm:text-sm">
                 {season && (
                   <span className="inline-flex items-center gap-1.5">
-                    <CalendarDays className="size-4" />
+                    <CalendarDays className="size-3.5 sm:size-4" />
                     {season}
                   </span>
                 )}
                 {score && (
                   <span className="inline-flex items-center gap-1.5">
-                    <Star className="size-4" />
+                    <Star className="size-3.5 sm:size-4" />
                     {score}
                   </span>
                 )}
                 {a.format && (
                   <span className="inline-flex items-center gap-1.5">
-                    <Tv className="size-4" />
+                    <Tv className="size-3.5 sm:size-4" />
                     {formatName(a.format)}
                   </span>
                 )}
                 {a.duration && (
                   <span className="inline-flex items-center gap-1.5">
-                    <Clock className="size-4" />
+                    <Clock className="size-3.5 sm:size-4" />
                     {a.duration} min
                   </span>
                 )}
@@ -310,20 +371,20 @@ function Content({ a }: { a: Detail }) {
               </div>
             </div>
           </div>
-          <div className="mt-5 flex gap-3 sm:hidden">
+          <div className="mt-4 flex gap-2.5 sm:hidden">
             <ActionButtons a={a} title={title} />
           </div>
 
           {desc && (
             <div className="mt-5 max-w-3xl">
-              <p className={cn("text-sm leading-relaxed text-white/70 sm:text-base", !more && "line-clamp-4")}>
+              <p className={cn("text-[0.8rem] leading-relaxed text-white/70 sm:text-base", !more && "line-clamp-4")}>
                 {desc}
               </p>
               {desc.length > 200 && (
                 <button
                   type="button"
                   onClick={() => setMore((m) => !m)}
-                  className="mt-1.5 text-sm font-semibold text-white"
+                  className="mt-1 text-xs font-semibold text-white sm:text-sm"
                 >
                   {more ? "Show less" : "Read more"}
                 </button>
@@ -333,11 +394,11 @@ function Content({ a }: { a: Detail }) {
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-7xl space-y-12 px-4 pb-14 sm:px-8">
+      <div className="mx-auto w-full max-w-7xl space-y-9 px-4 pb-14 sm:space-y-12 sm:px-8">
         {/* About */}
         <section className="max-w-3xl">
-          <h2 className="mb-4 text-xl font-semibold tracking-tight sm:text-2xl">About this anime</h2>
-          <dl className="divide-y divide-transparent text-sm sm:text-base">
+          <h2 className="mb-2 text-lg font-semibold tracking-tight sm:text-2xl">About this anime</h2>
+          <dl className="text-[0.8rem] sm:text-base">
             <Row k="Status">
               <span className={cn("font-semibold", status?.color)}>{status?.label ?? "Unknown"}</span>
             </Row>
@@ -351,10 +412,10 @@ function Content({ a }: { a: Detail }) {
 
           {a.genres && a.genres.length > 0 && (
             <div className="mt-4">
-              <p className="mb-2 text-sm text-white/60 sm:text-base">Genres</p>
+              <p className="mb-1.5 text-[0.8rem] text-white/60 sm:text-base">Genres</p>
               <div className="flex flex-wrap gap-2">
                 {a.genres.map((g) => (
-                  <span key={g} className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium">
+                  <span key={g} className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium sm:px-4 sm:py-1.5 sm:text-sm">
                     {g}
                   </span>
                 ))}
@@ -364,13 +425,13 @@ function Content({ a }: { a: Detail }) {
 
           {studios.length > 0 && (
             <div className="mt-4">
-              <p className="mb-2 text-sm text-white/60 sm:text-base">Studios</p>
+              <p className="mb-1.5 text-[0.8rem] text-white/60 sm:text-base">Studios</p>
               <div className="flex flex-wrap gap-2">
                 {shownStudios.map((s, i) => (
                   <span
                     key={s}
                     className={cn(
-                      "rounded-full px-4 py-1.5 text-sm font-medium",
+                      "rounded-full px-3 py-1 text-xs font-medium sm:px-4 sm:py-1.5 sm:text-sm",
                       i === 0 ? "bg-white/10" : "border border-white/25 text-white/80"
                     )}
                   >
@@ -381,7 +442,7 @@ function Content({ a }: { a: Detail }) {
                   <button
                     type="button"
                     onClick={() => setAllStudios(true)}
-                    className="rounded-full border border-white/25 px-4 py-1.5 text-sm text-white/80"
+                    className="rounded-full border border-white/25 px-3 py-1 text-xs text-white/80 sm:px-4 sm:py-1.5 sm:text-sm"
                   >
                     +{studios.length - 2} more
                   </button>
@@ -390,13 +451,13 @@ function Content({ a }: { a: Detail }) {
             </div>
           )}
 
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             <a
               href={a.siteUrl}
               target="_blank"
               rel="noreferrer"
               aria-label="AniList"
-              className="grid size-11 place-items-center rounded-lg border border-white/25 text-sm font-bold hover:bg-white/10"
+              className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 text-sm font-bold hover:bg-white/10"
             >
               AL
             </a>
@@ -406,7 +467,7 @@ function Content({ a }: { a: Detail }) {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="MyAnimeList"
-                className="grid size-11 place-items-center rounded-lg border border-white/25 text-xs font-bold text-blue-300 hover:bg-white/10"
+                className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 text-xs font-bold text-blue-300 hover:bg-white/10"
               >
                 MAL
               </a>
@@ -422,11 +483,11 @@ function Content({ a }: { a: Detail }) {
                   rel="noreferrer"
                   aria-label={l.site}
                   title={l.site}
-                  className="grid size-11 place-items-center rounded-lg border border-white/25 hover:bg-white/10"
+                  className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 hover:bg-white/10"
                   style={l.color ? { color: l.color } : undefined}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={l.icon ?? ""} alt="" className="size-5 rounded-sm object-contain" />
+                  <img src={l.icon ?? ""} alt="" className="size-4 rounded-sm object-contain sm:size-5" />
                 </a>
               ))}
           </div>
@@ -447,7 +508,7 @@ function ActionButtons({ a, title }: { a: Detail; title: string }) {
     <>
       <Button
         asChild
-        className="h-11 flex-[1.4] rounded-lg bg-white text-sm font-semibold text-black hover:bg-white/90 sm:text-base"
+        className="h-10 flex-[1.4] rounded-lg bg-white text-sm font-semibold text-black hover:bg-white/90 sm:h-11 sm:text-base"
       >
         <Link href={`/watch?title=${encodeURIComponent(title)}&ep=1`} aria-label={`Watch ${a.id}`}>
           <Play className="fill-current" />
@@ -457,7 +518,7 @@ function ActionButtons({ a, title }: { a: Detail; title: string }) {
       <Button
         type="button"
         variant="outline"
-        className="h-11 flex-1 rounded-lg border-white/25 bg-white/[0.06] text-sm font-semibold text-white hover:bg-white/10 hover:text-white sm:text-base"
+        className="h-10 flex-1 rounded-lg border-white/25 bg-white/[0.06] text-sm font-semibold text-white hover:bg-white/10 hover:text-white sm:h-11 sm:text-base"
       >
         <Plus />
         Add to List
@@ -468,7 +529,7 @@ function ActionButtons({ a, title }: { a: Detail; title: string }) {
 
 function Row({ k, children }: { k: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-6 py-2.5">
+    <div className="flex items-baseline justify-between gap-6 py-1.5 sm:py-2.5">
       <dt className="shrink-0 text-white/60">{k}</dt>
       <dd className="min-w-0 text-right font-medium text-white">{children}</dd>
     </div>
@@ -488,7 +549,7 @@ function Trailer({ a, title }: { a: Detail; title: string }) {
   const thumb = t.thumbnail ?? a.bannerImage ?? a.coverImage.extraLarge ?? ""
   return (
     <section className="max-w-3xl">
-      <h2 className="mb-4 text-xl font-semibold tracking-tight sm:text-2xl">Trailer</h2>
+      <h2 className="mb-3 text-lg font-semibold tracking-tight sm:text-2xl">Trailer</h2>
       <div className="relative aspect-video overflow-hidden rounded-xl bg-black">
         {playing ? (
           <iframe
@@ -519,76 +580,137 @@ function Trailer({ a, title }: { a: Detail; title: string }) {
 
 /* --------------------------- franchise and related -------------------------- */
 
-const FRANCHISE = new Set(["PREQUEL", "SEQUEL", "PARENT"])
+const SUB_LABEL: Record<string, string> = { SIDE_STORY: "Side story", SPIN_OFF: "Spin-off", SUMMARY: "Summary" }
+
+type ShowEntry = { node: Mini & { type?: string }; badge: string; label: string; labelClass: string; current: boolean; year: number; rank: number }
 
 function Franchise({ a }: { a: Detail }) {
   const [order, setOrder] = React.useState("Release order")
+  const [chain, setChain] = React.useState<FranchiseEntry[] | null>(null)
+  const [failed, setFailed] = React.useState(false)
 
-  const { show, related } = React.useMemo(() => {
+  React.useEffect(() => {
+    const ctrl = new AbortController()
+    setChain(null)
+    setFailed(false)
+    getFranchise(a.id, ctrl.signal)
+      .then(setChain)
+      .catch((e: unknown) => {
+        if ((e as Error).name !== "AbortError") setFailed(true)
+      })
+    return () => ctrl.abort()
+  }, [a.id])
+
+  const show = React.useMemo<ShowEntry[]>(() => {
+    const year = (n: { seasonYear: number | null; startDate?: { year: number | null } }) =>
+      n.seasonYear ?? n.startDate?.year ?? 9999
+    const all = [
+      { node: a as Mini & { type?: string }, rel: "CURRENT" },
+      ...(chain ?? []).map((c) => ({ node: c.node as Mini & { type?: string }, rel: c.rel })),
+    ]
+    const rank = (f: string | null) => (f === "TV" || f === "ONA" || f === "TV_SHORT" ? 0 : f === "MOVIE" ? 1 : 2)
+    const dated = all
+      .map((e) => ({ ...e, year: year(e.node as never) }))
+      .sort((x, y) => x.year - y.year)
+    const curYear = year(a)
+    let season = 0
+    return dated.map((e) => {
+      const f = e.node.format
+      const current = e.rel === "CURRENT"
+      let label: string
+      let labelClass = "text-orange-400"
+      if (f === "TV" || f === "ONA" || f === "TV_SHORT") {
+        season += 1
+        label = `Season ${season}`
+        labelClass = current ? "text-sky-400" : "text-orange-400"
+      } else if (f === "MOVIE") {
+        label = "Movie"
+        labelClass = "text-pink-300"
+      } else {
+        label = "Specials"
+        labelClass = "text-sky-300"
+      }
+      const badge = current
+        ? "Current"
+        : (SUB_LABEL[e.rel] ?? (e.year < curYear ? "Prequel" : "Sequel"))
+      return { node: e.node, badge, label, labelClass, current, year: e.year, rank: rank(f) }
+    })
+  }, [a, chain])
+
+  const shown = React.useMemo(() => {
+    if (order === "Story order") {
+      return [...show].sort((x, y) => x.rank - y.rank || x.year - y.year)
+    }
+    return show
+  }, [show, order])
+
+  const related = React.useMemo(() => {
+    const inShow = new Set(show.map((s) => s.node.id))
     const seen = new Set<number>()
-    const edges = a.relations.edges.filter((e) => {
-      if (seen.has(e.node.id)) return false
+    return a.relations.edges.filter((e) => {
+      if (inShow.has(e.node.id) || seen.has(e.node.id)) return false
       seen.add(e.node.id)
       return true
     })
-    type Entry = { node: Mini & { type?: string; startDate?: { year: number | null } }; rel: string; current: boolean }
-    const show: Entry[] = [
-      { node: a, rel: "CURRENT", current: true },
-      ...edges.filter((e) => e.node.type === "ANIME" && FRANCHISE.has(e.relationType)).map((e) => ({ node: e.node, rel: e.relationType, current: false })),
-    ]
-    const year = (e: Entry) => e.node.seasonYear ?? e.node.startDate?.year ?? 9999
-    show.sort((x, y) => year(x) - year(y))
-    const related = edges.filter((e) => !(e.node.type === "ANIME" && FRANCHISE.has(e.relationType)))
-    return { show, related }
-  }, [a])
-
-  const shown = order === "Newest first" ? [...show].reverse() : show
+  }, [a, show])
 
   return (
     <>
-      {show.length > 1 && (
+      {(chain === null && !failed) || show.length > 1 ? (
         <section>
           <SectionTitle
             title="Show"
-            sub={`${show.length} entries`}
-            right={<Select label="Sort" value={order} onChange={setOrder} options={["Release order", "Newest first"]} />}
+            sub={chain === null && !failed ? "Loading entries" : `${show.length} entries`}
+            right={
+              <Dropdown
+                label="Sort order"
+                value={order}
+                onChange={setOrder}
+                options={[{ value: "Story order" }, { value: "Release order" }]}
+              />
+            }
           />
-          <div className={GRID}>
-            {shown.map((e) => {
-              const n = show.indexOf(e) + 1
-              return (
+          {chain === null && !failed ? (
+            <Carousel>
+              {Array.from({ length: 3 }, (_, i) => (
+                <Skeleton key={i} className="aspect-[2/3] w-[42%] shrink-0 rounded-xl bg-white/5 sm:w-40 md:w-44 lg:w-48" />
+              ))}
+            </Carousel>
+          ) : (
+            <Carousel>
+              {shown.map((e) => (
                 <PosterCard
                   key={e.node.id}
-                  anime={e.node as Mini}
+                  anime={e.node}
                   current={e.current}
-                  badge={e.current ? "Current" : RELATION_LABEL[e.rel]}
-                  label={`Season ${n}`}
-                  labelClass={e.current ? "text-yellow-300" : "text-orange-400"}
+                  badge={e.badge}
+                  label={e.label}
+                  labelClass={e.labelClass}
                 />
-              )
-            })}
-          </div>
+              ))}
+            </Carousel>
+          )}
         </section>
-      )}
+      ) : null}
 
       {related.length > 0 && (
         <section>
           <SectionTitle
             title="Related"
             sub="Side stories and franchise connections"
-            right={<span className="shrink-0 text-sm text-white/60">{related.length} entries</span>}
+            right={<span className="shrink-0 text-xs text-white/60 sm:text-sm">{related.length} entries</span>}
           />
-          <div className={GRID}>
+          <Carousel>
             {related.map((e) => (
               <PosterCard
                 key={e.node.id}
-                anime={e.node as Mini}
+                anime={e.node}
                 badge={RELATION_LABEL[e.relationType] ?? "Related"}
                 label={RELATION_LABEL[e.relationType] ?? "Related"}
                 labelClass={e.relationType === "ALTERNATIVE" ? "text-orange-300" : "text-amber-200"}
               />
             ))}
-          </div>
+          </Carousel>
         </section>
       )}
     </>
@@ -597,66 +719,131 @@ function Franchise({ a }: { a: Detail }) {
 
 /* -------------------------------- characters -------------------------------- */
 
+const SHOWN_FIRST = 6
+
 function Characters({ a }: { a: Detail }) {
-  const edges = a.characters.edges
-  const languages = React.useMemo(() => {
-    const set = new Set<string>()
-    edges.forEach((e) => e.voiceActors.forEach((v) => v.languageV2 && set.add(v.languageV2)))
-    const list = [...set]
-    list.sort((x, y) => (x === "Japanese" ? -1 : y === "Japanese" ? 1 : x.localeCompare(y)))
-    return list.length ? list : ["Japanese"]
-  }, [edges])
-  const [lang, setLang] = React.useState(languages[0])
+  const [lang, setLang] = React.useState("Japanese")
+  const [edges, setEdges] = React.useState<CharacterEdge[] | null>(null)
+  const [total, setTotal] = React.useState(0)
+  const [hasNext, setHasNext] = React.useState(false)
+  const [page, setPage] = React.useState(1)
   const [all, setAll] = React.useState(false)
-  if (edges.length === 0) return null
-  const shown = all ? edges : edges.slice(0, 6)
+  const [error, setError] = React.useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = React.useState(false)
+  const [retry, setRetry] = React.useState(0)
+
+  // First page, again whenever the voice language changes.
+  React.useEffect(() => {
+    const ctrl = new AbortController()
+    setEdges(null)
+    setError(null)
+    setPage(1)
+    getCharacters(a.id, lang, 1, ctrl.signal)
+      .then((r) => {
+        setEdges(r.edges)
+        setTotal(r.total)
+        setHasNext(r.hasNext)
+      })
+      .catch((e: unknown) => {
+        if ((e as Error).name !== "AbortError") setError((e as Error).message)
+      })
+    return () => ctrl.abort()
+  }, [a.id, lang, retry])
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      const r = await getCharacters(a.id, lang, page + 1)
+      setEdges((prev) => [...(prev ?? []), ...r.edges])
+      setHasNext(r.hasNext)
+      setPage(page + 1)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  if (edges && edges.length === 0 && !error) return null
+  const shown = edges ? (all ? edges : edges.slice(0, SHOWN_FIRST)) : []
 
   return (
     <section>
       <SectionTitle
         title="Characters"
         right={
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="text-sm text-white/60">{a.characters.pageInfo.total}</span>
-            <Select label="Voice actor language" value={lang} onChange={setLang} options={languages} />
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {total > 0 && <span className="text-xs text-white/60 sm:text-sm">{total}</span>}
+            <Dropdown
+              label="Voice actor language"
+              value={lang}
+              onChange={setLang}
+              options={VOICE_LANGUAGES.map((l) => ({ value: l }))}
+            />
           </div>
         }
       />
-      <ul className="grid gap-3 md:grid-cols-2">
-        {shown.map((e) => {
-          const va = e.voiceActors.find((v) => v.languageV2 === lang)
-          return (
-            <li
-              key={e.node.id}
-              className="flex h-[4.5rem] items-stretch overflow-hidden rounded-xl border border-white/20 bg-[#141517] sm:h-24"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={e.node.image.large ?? ""} alt="" loading="lazy" className="w-12 shrink-0 object-cover sm:w-16" />
-              <div className="flex min-w-0 flex-1 flex-col justify-center px-3 sm:px-4">
-                <p className="truncate text-sm font-semibold sm:text-base">{e.node.name.full}</p>
-                <p className="text-xs text-white/60 capitalize sm:text-sm">{e.role.toLowerCase()}</p>
-              </div>
-              {va && (
-                <>
-                  <div className="flex min-w-0 max-w-[45%] flex-col items-end justify-center px-2 text-right sm:px-3">
-                    <p className="max-w-full truncate text-xs font-medium sm:text-sm">{va.name.full}</p>
-                    <p className="text-[0.7rem] text-white/60 sm:text-xs">{va.languageV2}</p>
-                  </div>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={va.image.large ?? ""} alt="" loading="lazy" className="w-12 shrink-0 object-cover sm:w-16" />
-                </>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      {edges.length > 6 && (
+      {error && !edges ? (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-white/15 p-4 text-sm text-white/70">
+          <span>Couldn&apos;t load characters.</span>
+          <Button variant="secondary" size="sm" onClick={() => setRetry((r) => r + 1)}>
+            Try again
+          </Button>
+        </div>
+      ) : (
+        <ul className="grid gap-2.5 md:grid-cols-2 sm:gap-3">
+          {!edges &&
+            Array.from({ length: SHOWN_FIRST }, (_, i) => (
+              <li key={i}>
+                <Skeleton className="h-[4.5rem] rounded-xl bg-white/5 sm:h-24" />
+              </li>
+            ))}
+          {shown.map((e, i) => {
+            const va = e.voiceActors[0]
+            return (
+              <li
+                key={`${e.node.id}-${i}`}
+                className="flex h-[4.5rem] items-stretch overflow-hidden rounded-xl border border-white/20 bg-[#141517] sm:h-24"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={e.node.image.large ?? ""} alt="" loading="lazy" className="w-12 shrink-0 object-cover sm:w-16" />
+                <div className="flex min-w-0 flex-1 flex-col justify-center px-3 sm:px-4">
+                  <p className="truncate text-[0.8rem] font-semibold sm:text-base">{e.node.name.full}</p>
+                  <p className="text-[0.7rem] text-white/60 capitalize sm:text-sm">{e.role.toLowerCase()}</p>
+                </div>
+                {va && (
+                  <>
+                    <div className="flex max-w-[45%] min-w-0 flex-col items-end justify-center px-2 text-right sm:px-3">
+                      <p className="max-w-full truncate text-[0.7rem] font-medium sm:text-sm">{va.name.full}</p>
+                      <p className="text-[0.65rem] text-white/60 sm:text-xs">{va.languageV2 ?? lang}</p>
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={va.image.large ?? ""} alt="" loading="lazy" className="w-12 shrink-0 object-cover sm:w-16" />
+                  </>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {edges && edges.length > SHOWN_FIRST && !all && (
+        <button type="button" onClick={() => setAll(true)} className="mt-3 w-full py-2 text-center text-sm text-white/60 hover:text-white">
+          Show all {total || edges.length}
+        </button>
+      )}
+      {all && hasNext && (
         <button
           type="button"
-          onClick={() => setAll((v) => !v)}
-          className="mt-4 w-full py-2 text-center text-white/60 hover:text-white"
+          disabled={loadingMore}
+          onClick={() => void loadMore()}
+          className="mt-3 w-full py-2 text-center text-sm text-white/60 hover:text-white disabled:opacity-50"
         >
-          {all ? "Show less" : `Show all ${a.characters.pageInfo.total}`}
+          {loadingMore ? "Loading" : "Load more characters"}
+        </button>
+      )}
+      {all && !hasNext && edges && edges.length > SHOWN_FIRST && (
+        <button type="button" onClick={() => setAll(false)} className="mt-3 w-full py-2 text-center text-sm text-white/60 hover:text-white">
+          Show less
         </button>
       )}
     </section>
@@ -677,27 +864,34 @@ function Gallery({ a, title }: { a: Detail; title: string }) {
   }, [a, title])
 
   const base: Artwork[] = [
-    ...(a.bannerImage ? [{ kind: "Backdrops" as const, url: a.bannerImage }] : []),
+    ...(a.bannerImage ? [{ kind: "Banners" as const, url: a.bannerImage }] : []),
     ...(a.coverImage.extraLarge ? [{ kind: "Posters" as const, url: a.coverImage.extraLarge }] : []),
   ]
   const images = [...base, ...extra]
   if (images.length === 0) return null
-  const kinds = ["All", ...Array.from(new Set(images.map((i) => i.kind)))]
-  const list = (filter === "All" ? images : images.filter((i) => i.kind === filter)).slice(0, 80)
+  const order = ["Backgrounds", "Banners", "Posters", "Logos"] as const
+  const kinds: Option[] = [
+    { value: "All", count: images.length },
+    ...order
+      .map((k) => ({ value: k as string, count: images.filter((i) => i.kind === k).length }))
+      .filter((o) => o.count > 0),
+  ]
+  const all = filter === "All" ? images : images.filter((i) => i.kind === filter)
+  const list = all.slice(0, 80)
 
   return (
     <section>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white/10">
-            <ImageIcon className="size-5" />
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 sm:size-12">
+            <ImageIcon className="size-4 sm:size-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Artwork &amp; Posters</h2>
-            <p className="text-sm text-white/60">{list.length} images</p>
+            <h2 className="truncate text-lg font-semibold tracking-tight sm:text-2xl">Artwork &amp; Posters</h2>
+            <p className="text-xs text-white/60 sm:text-sm">{all.length} images</p>
           </div>
         </div>
-        <Select label="Artwork type" value={filter} onChange={setFilter} options={kinds} />
+        <Dropdown label="Artwork type" value={filter} onChange={setFilter} options={kinds} />
       </div>
 
       {open ? (
@@ -723,7 +917,7 @@ function Gallery({ a, title }: { a: Detail; title: string }) {
           onClick={() => setOpen((o) => !o)}
           className="mx-auto mt-3 flex items-center gap-2 py-2 text-white/60 hover:text-white"
         >
-          {open ? "Show less" : `View all ${list.length} images`}
+          {open ? "Show less" : `View all ${all.length} images`}
           <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
         </button>
       )}
@@ -741,11 +935,11 @@ function More({ a }: { a: Detail }) {
   return (
     <section>
       <SectionTitle title="More like this" />
-      <div className={GRID}>
+      <Carousel>
         {items.map((m) => (
           <PosterCard key={m.id} anime={m} />
         ))}
-      </div>
+      </Carousel>
     </section>
   )
 }

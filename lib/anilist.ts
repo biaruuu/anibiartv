@@ -150,14 +150,6 @@ export type Detail = Anime & {
   relations: {
     edges: { relationType: string; node: Mini & { type: string; startDate: { year: number | null } } }[]
   }
-  characters: {
-    pageInfo: { total: number }
-    edges: {
-      role: string
-      node: { id: number; name: { full: string }; image: { large: string | null } }
-      voiceActors: { id: number; name: { full: string }; image: { large: string | null }; languageV2: string | null }[]
-    }[]
-  }
   recommendations: { nodes: { mediaRecommendation: (Mini & { isAdult: boolean }) | null }[] }
 }
 
@@ -175,10 +167,6 @@ export async function getAnimeDetail(id: number, signal?: AbortSignal) {
         externalLinks { site url icon color type }
         trailer { id site thumbnail }
         relations { edges { relationType(version: 2) node { ${mini} type startDate { year } } } }
-        characters(sort: [ROLE, RELEVANCE], perPage: 25) {
-          pageInfo { total }
-          edges { role node { id name { full } image { large } } voiceActors { id name { full } image { large } languageV2 } }
-        }
         recommendations(sort: RATING_DESC, perPage: 12) {
           nodes { mediaRecommendation { ${mini} isAdult } }
         }
@@ -205,3 +193,91 @@ const FORMATS: Record<string, string> = {
   ONE_SHOT: "One Shot",
 }
 export const formatName = (f: string | null) => (f ? (FORMATS[f] ?? f.replace("_", " ")) : "")
+
+/* ------------------- characters (own query, one voice language) ------------------- */
+
+export type CharacterEdge = {
+  role: string
+  node: { id: number; name: { full: string }; image: { large: string | null } }
+  voiceActors: { id: number; name: { full: string }; image: { large: string | null }; languageV2: string | null }[]
+}
+
+export const VOICE_LANGUAGES = [
+  "Japanese",
+  "English",
+  "Korean",
+  "Italian",
+  "Spanish",
+  "Portuguese",
+  "French",
+  "German",
+  "Hebrew",
+  "Hungarian",
+] as const
+
+export async function getCharacters(id: number, language: string, page: number, signal?: AbortSignal) {
+  const data = await query<{
+    Media: { characters: { pageInfo: { total: number; hasNextPage: boolean }; edges: CharacterEdge[] } } | null
+  }>(
+    `query ($id: Int, $page: Int, $lang: StaffLanguage) {
+      Media(id: $id, type: ANIME) {
+        characters(sort: [ROLE, RELEVANCE], page: $page, perPage: 25) {
+          pageInfo { total hasNextPage }
+          edges {
+            role
+            node { id name { full } image { large } }
+            voiceActors(language: $lang) { id name { full } image { large } languageV2 }
+          }
+        }
+      }
+    }`,
+    { id, page, lang: language.toUpperCase() },
+    signal
+  )
+  const c = data.Media?.characters
+  return { total: c?.pageInfo.total ?? 0, hasNext: c?.pageInfo.hasNextPage ?? false, edges: c?.edges ?? [] }
+}
+
+/* --------------- whole franchise: walk prequels/sequels and side stories --------------- */
+
+export type FranchiseEntry = { node: Mini & { type: string; startDate: { year: number | null } }; rel: string }
+
+const CHAIN = new Set(["PREQUEL", "SEQUEL", "PARENT"])
+const EXTRA = new Set(["SIDE_STORY", "SPIN_OFF", "SUMMARY"])
+
+export async function getFranchise(id: number, signal?: AbortSignal): Promise<FranchiseEntry[]> {
+  const mini = `id title { romaji english } coverImage { extraLarge large color } format episodes seasonYear`
+  const known = new Map<number, FranchiseEntry>()
+  const visited = new Set<number>([id])
+  let frontier = [id]
+  for (let depth = 0; depth < 6 && frontier.length > 0 && known.size < 40; depth++) {
+    const data = await query<{
+      Page: {
+        media: { id: number; relations: { edges: { relationType: string; node: FranchiseEntry["node"] }[] } }[]
+      }
+    }>(
+      `query ($ids: [Int]) {
+        Page(page: 1, perPage: 50) {
+          media(id_in: $ids, type: ANIME) {
+            id
+            relations { edges { relationType(version: 2) node { ${mini} type startDate { year } } } }
+          }
+        }
+      }`,
+      { ids: frontier },
+      signal
+    )
+    const next: number[] = []
+    for (const m of data.Page.media) {
+      for (const e of m.relations.edges) {
+        if (e.node.type !== "ANIME" || visited.has(e.node.id)) continue
+        if (!CHAIN.has(e.relationType) && !EXTRA.has(e.relationType)) continue
+        visited.add(e.node.id)
+        known.set(e.node.id, { node: e.node, rel: e.relationType })
+        if (CHAIN.has(e.relationType)) next.push(e.node.id)
+      }
+    }
+    frontier = next
+  }
+  return [...known.values()]
+}

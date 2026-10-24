@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.10.1
+
+### Fixed
+- Characters failed with a server error (500) because one AniList request asked for every voice language of every character. Characters now have their own small request per voice language, with a retry button, and more load on demand.
+- The Show section only listed the current entry and its direct sequel. It now walks the whole franchise (all seasons, movies, OVAs and specials), labelled Season 1, 2, 3, Movie and Specials.
+- Text, chips, buttons and rows on the info page were too large on phones. Everything is smaller and scales up from tablet width.
+
+### Changed
+- Dropdowns (sort order, voice language, artwork type) are now custom menus like Miruro's: a glass panel under the button, a check mark on the selected row and counts for artwork types, instead of the browser's radio-style list.
+- Show, Related and More like this are horizontal rows with a peek of the next poster.
+- Show sort: Story order (seasons, then movies, then specials) or Release order.
+
 ## 1.10.0
 
 ### Added
