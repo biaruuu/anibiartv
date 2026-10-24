@@ -29,6 +29,7 @@ import {
   type Anime,
   type LatestEpisode,
 } from "@/lib/anilist"
+import { getTitleLogo, logosEnabled } from "@/lib/logos"
 import { cn } from "@/lib/utils"
 
 const MAX_PAGES = 5
@@ -148,22 +149,34 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
 
 /* ---------------------------------- hero ---------------------------------- */
 
-function Hero({ items }: { items: Anime[] | null }) {
-  const [index, setIndex] = React.useState(0)
+// The artwork is a fixed layer behind the whole page (see HomeApp), so it stays
+// visible, dimmed, as the episode list scrolls over it. This is just the text.
+function Hero({
+  items,
+  index,
+  setIndex,
+}: {
+  items: Anime[] | null
+  index: number
+  setIndex: (i: number) => void
+}) {
+  const [logos, setLogos] = React.useState<Record<number, string | null>>({})
+  const a = items?.[index]
 
   React.useEffect(() => {
-    if (!items || items.length < 2) return
-    const t = setInterval(() => setIndex((i) => (i + 1) % items.length), 8000)
-    return () => clearInterval(t)
-  }, [items])
+    if (!a || !logosEnabled || a.id in logos) return
+    const ctrl = new AbortController()
+    getTitleLogo(a.title.english ?? a.title.romaji ?? "", a.format === "MOVIE", ctrl.signal).then(
+      (url) => setLogos((l) => ({ ...l, [a.id]: url }))
+    )
+    return () => ctrl.abort()
+  }, [a, logos])
 
-  if (!items) {
-    return <Skeleton className="h-[78svh] w-full rounded-none bg-white/5 md:h-[70svh]" />
-  }
-  if (items.length === 0) return <div className="h-24" />
+  if (!items) return <div className="h-[78svh] min-h-[28rem] md:h-[70svh]" />
+  if (!a) return <div className="h-24" />
 
-  const a = items[index]
   const desc = stripHtml(a.description ?? "")
+  const logo = logos[a.id]
   const chips = [
     a.episodes ? `${a.episodes} Episodes` : null,
     a.seasonYear ? String(a.seasonYear) : null,
@@ -171,36 +184,21 @@ function Hero({ items }: { items: Anime[] | null }) {
   ].filter(Boolean) as string[]
 
   return (
-    <section className="relative h-[78svh] min-h-[28rem] w-full overflow-hidden bg-[#111214] md:h-[70svh]">
-      {items.map((m, i) => (
-        <div
-          key={m.id}
-          className={cn(
-            "absolute inset-0 transition-opacity duration-700",
-            i === index ? "opacity-100" : "opacity-0"
-          )}
-          aria-hidden={i !== index}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+    <section className="relative flex h-[78svh] min-h-[28rem] w-full items-end md:h-[70svh]">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pb-10 sm:gap-4 sm:px-8 md:pb-14">
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={m.coverImage.extraLarge ?? ""}
-            alt=""
-            className="size-full object-cover md:hidden"
+            key={logo}
+            src={logo}
+            alt={animeTitle(a)}
+            className="max-h-24 w-auto max-w-[85%] object-contain object-left drop-shadow-[0_2px_10px_rgb(0_0_0/0.6)] sm:max-h-32 sm:max-w-md"
           />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={m.bannerImage ?? m.coverImage.extraLarge ?? ""}
-            alt=""
-            className="hidden size-full object-cover object-top md:block"
-          />
-        </div>
-      ))}
-      <div className="absolute inset-0 bg-black/45" />
-
-      <div className="absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pb-10 sm:gap-4 sm:px-8 md:pb-14">
-        <h1 className="max-w-3xl text-2xl leading-tight font-bold tracking-tight text-balance text-white drop-shadow-[0_2px_8px_rgb(0_0_0/0.6)] sm:text-4xl lg:text-5xl">
-          {animeTitle(a)}
-        </h1>
+        ) : (
+          <h1 className="max-w-3xl text-2xl leading-tight font-bold tracking-tight text-balance text-white drop-shadow-[0_2px_8px_rgb(0_0_0/0.6)] sm:text-4xl lg:text-5xl">
+            {animeTitle(a)}
+          </h1>
+        )}
         <div className="flex flex-wrap gap-2">
           {chips.map((c) => (
             <span key={c} className={cn("rounded-full px-3 py-1 text-xs text-white/90 sm:px-4 sm:py-1.5 sm:text-sm", GLASS)}>
@@ -436,6 +434,14 @@ export function HomeApp() {
   const [searching, setSearching] = React.useState(false)
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const [heroIndex, setHeroIndex] = React.useState(0)
+  const [dim, setDim] = React.useState(0.45)
+
+  React.useEffect(() => {
+    if (!trending || trending.length < 2) return
+    const t = setInterval(() => setHeroIndex((i) => (i + 1) % trending.length), 8000)
+    return () => clearInterval(t)
+  }, [trending, heroIndex])
 
   React.useEffect(() => {
     const ctrl = new AbortController()
@@ -446,19 +452,24 @@ export function HomeApp() {
   }, [])
 
   React.useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24)
+    const onScroll = () => {
+      setScrolled(window.scrollY > 24)
+      // Darken the fixed artwork as the page scrolls over it.
+      const t = Math.min(1, window.scrollY / (window.innerHeight * 0.7))
+      setDim(0.45 + t * 0.4)
+    }
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
   return (
-    <div className="min-h-svh overflow-x-clip bg-[#111214] font-poppins text-white">
+    <div className="relative min-h-svh overflow-x-clip bg-[#111214] font-poppins text-white">
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200",
           scrolled || menuOpen
-            ? "border-white/15 bg-[#111214]"
+            ? "border-white/15 bg-[#111214]/90"
             : "border-transparent bg-transparent"
         )}
       >
@@ -496,12 +507,32 @@ export function HomeApp() {
         )}
       </header>
 
-      <main>
-        <Hero items={trending} />
+      {/* Fixed artwork behind everything: it stays put while the page scrolls over it. */}
+      <div className="fixed inset-0 z-0" aria-hidden="true">
+        {trending?.map((m, i) => (
+          <div
+            key={m.id}
+            className={cn("absolute inset-0 transition-opacity duration-700", i === heroIndex ? "opacity-100" : "opacity-0")}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={m.coverImage.extraLarge ?? ""} alt="" className="size-full object-cover md:hidden" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={m.bannerImage ?? m.coverImage.extraLarge ?? ""}
+              alt=""
+              className="hidden size-full object-cover object-top md:block"
+            />
+          </div>
+        ))}
+        <div className="absolute inset-0 bg-[#111214]" style={{ opacity: dim }} />
+      </div>
+
+      <main className="relative z-10">
+        <Hero items={trending} index={heroIndex} setIndex={setHeroIndex} />
         <LatestEpisodes />
       </main>
 
-      <footer className="border-t border-white/10">
+      <footer className="relative z-10 border-t border-white/10 bg-[#111214]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 py-6 text-sm text-white/50 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p className="font-medium text-white/80">AniBiar TV</p>
           <p>Anime data from AniList. Streaming servers coming soon.</p>

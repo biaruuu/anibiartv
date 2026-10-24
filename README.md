@@ -7,6 +7,10 @@ A modern, responsive video player web app built with **Next.js**, **shadcn/ui** 
 - `/` anime home screen (AniList GraphQL: trending hero, latest episodes, search).
 - `/watch` the video player. Streaming servers are not connected yet, so it plays demo videos.
 
+## Title logos (optional)
+
+AniList has no title artwork. To show the stylised logos in the hero, create a free TMDB API key and add it as `NEXT_PUBLIC_TMDB_KEY` in Vercel (Project Settings, Environment Variables), then redeploy.
+
 ## Deploy to Vercel
 
 1. Go to [vercel.com/new](https://vercel.com/new) and import this GitHub repository.

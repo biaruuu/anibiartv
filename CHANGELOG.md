@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.0
+
+### Changed
+- Home hero now works like Miruro: the featured artwork is a fixed layer behind the page. It stays visible, dimmed more and more, while the Latest Episodes list scrolls over it. The header is slightly see-through.
+
+### Added
+- Anime title logos in the hero instead of plain text. They come from TMDB, so set `NEXT_PUBLIC_TMDB_KEY` (see `.env.example`) in Vercel and redeploy. Without a key the plain text title is used.
+
 ## 1.7.1
 
 ### Fixed
