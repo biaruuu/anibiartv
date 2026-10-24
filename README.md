@@ -1,6 +1,6 @@
 # AniBiar
 
-A modern, responsive video player web app built with **Next.js**, **shadcn/ui** and **Tailwind CSS v4**. Flat design, no gradients. Captions render in **Poppins**. The video player uses **Vidstack** icons; the rest of the website uses **Lucide** icons.
+A modern, responsive video player web app built with **Next.js**, **shadcn/ui** and **Tailwind CSS v4**. Flat design, no gradients. Captions and the video player render in **Poppins**; the rest of the site uses **Kumbh Sans**. The video player uses **Vidstack** icons; the rest of the website uses **Lucide** icons.
 
 ## Pages
 

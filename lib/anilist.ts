@@ -20,6 +20,10 @@ export type Anime = {
 
 export type LatestEpisode = { id: number; airingAt: number; episode: number; media: Anime }
 
+/** Episodes you can watch now: aired so far for a running show, otherwise the total. */
+export const airedEpisodes = (a: Anime) =>
+  a.status === "RELEASING" && a.nextAiringEpisode ? Math.max(0, a.nextAiringEpisode.episode - 1) : (a.episodes ?? 0)
+
 export const animeTitle = (a: Anime) => a.title.english ?? a.title.romaji ?? "Untitled"
 
 /* ------------------------------ request layer ------------------------------ */
@@ -209,6 +213,7 @@ export async function getTrending(signal?: AbortSignal) {
         media(type: ANIME, sort: TRENDING_DESC, isAdult: false, status_in: [RELEASING, FINISHED]) {
           ${MEDIA_FIELDS}
           bannerImage description(asHtml: false) genres
+          status averageScore nextAiringEpisode { episode }
         }
       }
     }`,
@@ -244,7 +249,7 @@ export async function searchAnimePage(search: string, page: number, perPage: num
         pageInfo { hasNextPage }
         media(type: ANIME, search: $search, isAdult: false, sort: SEARCH_MATCH) {
           ${MEDIA_FIELDS}
-          status averageScore
+          status averageScore nextAiringEpisode { episode }
         }
       }
     }`,
@@ -301,7 +306,7 @@ export async function searchSmart(raw: string, limit: number, signal?: AbortSign
           media(type: ANIME, search: $search, isAdult: false, sort: SEARCH_MATCH) {
             ${MEDIA_FIELDS}
             title { romaji english native }
-            synonyms popularity status averageScore
+            synonyms popularity status averageScore nextAiringEpisode { episode }
           }
         }
       }`,

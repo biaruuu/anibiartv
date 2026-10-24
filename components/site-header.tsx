@@ -3,11 +3,11 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, History, Menu, Search, Star, Subtitles, TrendingUp, X } from "lucide-react"
+import { ArrowLeft, Captions, History, Menu, Search, Star, TrendingUp, X } from "lucide-react"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
-import { animeTitle, getTrending, infoHref, searchSmart, type Anime } from "@/lib/anilist"
+import { airedEpisodes, animeTitle, getTrending, infoHref, searchSmart, type Anime } from "@/lib/anilist"
 import { cn } from "@/lib/utils"
 
 function Logo({ className }: { className?: string }) {
@@ -75,6 +75,28 @@ function ResultRow({
   active: boolean
   onPick: () => void
 }) {
+  const aired = airedEpisodes(a)
+  const parts: React.ReactNode[] = []
+  if (a.format) parts.push(<span key="f">{a.format}</span>)
+  if (a.seasonYear) parts.push(<span key="y">{a.seasonYear}</span>)
+  if (a.episodes) parts.push(<span key="e">{a.episodes} ep</span>)
+  if (aired > 0) {
+    parts.push(
+      <span key="c" className="inline-flex items-center gap-1 rounded bg-white/[0.08] px-1.5 py-1">
+        <Captions className="size-3.5" />
+        {aired}
+      </span>
+    )
+  }
+  if (a.averageScore) {
+    parts.push(
+      <span key="s" className="inline-flex items-center gap-1">
+        <Star className="size-3.5 fill-current" />
+        {(a.averageScore / 10).toFixed(1)}
+      </span>
+    )
+  }
+  if (a.status) parts.push(<span key="st">{STATUS_LABEL[a.status] ?? a.status}</span>)
   return (
     <li>
       <Link
@@ -89,46 +111,19 @@ function ResultRow({
         <img
           src={a.coverImage.large ?? ""}
           alt=""
-          className="h-14 w-10 shrink-0 rounded-md bg-white/10 object-cover sm:h-20 sm:w-14"
+          className="h-14 w-10 shrink-0 rounded-md bg-white/10 object-cover sm:h-[4.5rem] sm:w-[3.25rem]"
         />
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-white/90 sm:text-base">
+          <p className="truncate text-sm font-medium text-white/95 sm:text-[0.95rem]">
             <Highlight text={animeTitle(a)} term={term} />
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.7rem] text-white/60 sm:text-xs">
-            {a.format && <span>{a.format}</span>}
-            {a.seasonYear && (
-              <>
-                <Dot />
-                <span>{a.seasonYear}</span>
-              </>
-            )}
-            {a.episodes ? (
-              <>
-                <Dot />
-                <span>{a.episodes} ep</span>
-                <Dot />
-                <span className="inline-flex items-center gap-1 rounded bg-white/[0.08] px-1.5 py-0.5">
-                  <Subtitles className="size-3" />
-                  {a.episodes}
-                </span>
-              </>
-            ) : null}
-            {a.averageScore ? (
-              <>
-                <Dot />
-                <span className="inline-flex items-center gap-1">
-                  <Star className="size-3 fill-current" />
-                  {(a.averageScore / 10).toFixed(1)}
-                </span>
-              </>
-            ) : null}
-            {a.status && (
-              <>
-                <Dot />
-                <span>{STATUS_LABEL[a.status] ?? a.status}</span>
-              </>
-            )}
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] leading-none text-white/60 sm:text-xs">
+            {parts.map((part, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <Dot />}
+                {part}
+              </React.Fragment>
+            ))}
           </div>
         </div>
       </Link>
@@ -260,18 +255,18 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
       <div className="pointer-events-none fixed inset-0 z-[55] bg-black/40" aria-hidden="true" />
       <div
         ref={panel}
-        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 bg-[#111214]/70 backdrop-blur-xl backdrop-saturate-150"
+        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 bg-[#111214]/75 backdrop-blur-md"
       >
-        <form onSubmit={submit} className="mx-auto flex h-16 w-full max-w-3xl items-center gap-2 px-3 sm:h-[4.5rem] sm:px-4">
+        <form onSubmit={submit} className="mx-auto flex h-14 w-full max-w-3xl items-center gap-2 px-3 sm:h-16 sm:px-4">
           <button
             type="button"
             aria-label="Close search"
             onClick={onClose}
-            className="grid size-10 shrink-0 place-items-center rounded-full text-white/90 hover:bg-white/10"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-white/90 hover:bg-white/10"
           >
             <ArrowLeft className="size-6" />
           </button>
-          <div className="flex h-11 min-w-0 flex-1 items-center overflow-hidden rounded-lg border border-white/30 bg-black/20 sm:h-12">
+          <div className="flex h-9 min-w-0 flex-1 items-center overflow-hidden rounded-lg border border-white/35 sm:h-11">
             <input
               autoFocus
               type="search"
@@ -285,29 +280,29 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
               onKeyDown={onKeyDown}
               placeholder="Search anime..."
               aria-label="Search anime"
-              className="h-full min-w-0 flex-1 bg-transparent px-4 text-sm text-white outline-none placeholder:text-white/50 sm:text-base [&::-webkit-search-cancel-button]:hidden"
+              className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm text-white outline-none placeholder:text-white/50 sm:px-4 sm:text-base [&::-webkit-search-cancel-button]:hidden"
             />
             {q && (
               <button
                 type="button"
                 aria-label="Clear"
                 onClick={() => setQ("")}
-                className="grid size-10 shrink-0 place-items-center text-white/80 hover:text-white"
+                className="grid size-8 shrink-0 place-items-center text-white/80 hover:text-white"
               >
-                <X className="size-5" />
+                <X className="size-4" />
               </button>
             )}
             <button
               type="submit"
               aria-label="Search"
-              className="grid h-full w-12 shrink-0 place-items-center border-l border-white/30 text-white/80 hover:bg-white/10 hover:text-white"
+              className="grid h-full w-10 shrink-0 place-items-center border-l border-white/35 text-white/80 hover:bg-white/10 hover:text-white sm:w-12"
             >
-              {loading ? <Spinner /> : <Search className="size-5" />}
+              {loading ? <Spinner /> : <Search className="size-4 sm:size-5" />}
             </button>
           </div>
         </form>
 
-        <div className="mx-auto max-h-[calc(100svh-5rem)] w-full max-w-3xl overflow-y-auto pb-3">
+        <div className="mx-auto max-h-[calc(100svh-4rem)] w-full max-w-3xl overflow-y-auto pb-2">
           {showResults ? (
             <>
               {error && !results.length && <p className="px-5 py-4 text-sm text-red-300">{error}</p>}
@@ -339,7 +334,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
                 <button
                   type="button"
                   onClick={() => goSearch(term)}
-                  className="mx-auto mt-1 flex items-center gap-2 px-4 py-3 text-sm text-white/70 hover:text-white"
+                  className="mx-auto flex items-center gap-2 px-4 py-3 text-xs text-white/70 hover:text-white sm:text-sm"
                 >
                   <Search className="size-4" />
                   See all results for &ldquo;{term}&rdquo;

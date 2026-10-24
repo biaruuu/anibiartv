@@ -12,7 +12,7 @@ import {
   Play,
   Plus,
   Star,
-  Subtitles,
+  Captions,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -223,7 +223,7 @@ function EpisodeCard({ item }: { item: LatestEpisode }) {
       </div>
       <div className="mt-2 flex flex-wrap gap-1 text-[0.65rem] leading-none text-white/70 sm:gap-1.5 sm:text-xs">
         <span className="inline-flex items-center gap-1 rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5 group-hover:bg-lime-300/10">
-          <Subtitles className="size-3 sm:size-3.5" />
+          <Captions className="size-3 sm:size-3.5" />
           {item.episode}
         </span>
         <span className="rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5 group-hover:bg-lime-300/10">{meta}</span>
@@ -452,7 +452,7 @@ function RankedPanel({
                       )}
                       {eps ? (
                         <span className={pill}>
-                          <Subtitles className="size-3 sm:size-3.5" />
+                          <Captions className="size-3 sm:size-3.5" />
                           {eps}
                         </span>
                       ) : null}
@@ -518,7 +518,7 @@ export function HomeApp() {
   }, [heroRetry])
 
   return (
-    <div className="relative min-h-svh overflow-x-clip bg-[#111214] font-poppins text-white">
+    <div className="relative min-h-svh overflow-x-clip bg-[#111214] text-white">
       <SiteHeader />
 
       <main>

@@ -812,7 +812,7 @@ export function VideoPlayer({
           }
         }}
         className={cn(
-          "@container group relative aspect-video w-full touch-manipulation overflow-hidden rounded-xl border bg-black shadow-sm outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&:fullscreen]:aspect-auto [&:fullscreen]:rounded-none [&:fullscreen]:border-0",
+          "@container group relative font-poppins aspect-video w-full touch-manipulation overflow-hidden rounded-xl border bg-black shadow-sm outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&:fullscreen]:aspect-auto [&:fullscreen]:rounded-none [&:fullscreen]:border-0",
           controlsHidden && "cursor-none",
           className
         )}

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.0
+
+### Changed
+- Site font is now Kumbh Sans (the look of Miruro). The video player keeps Poppins for its captions, menus and labels.
+- Search rows follow Miruro: smaller bar and input, format, year, total episodes, a captions badge with the episodes you can watch now (aired so far for a running show), score and status (Finished, Airing, Upcoming). The CC icon is the captions icon used across the site.
+
+### Fixed
+- Trending (shown when the search box is empty) was missing score and status.
+- A running show showed its total episode count in the captions badge instead of the episodes aired so far.
+
 ## 1.11.2
 
 ### Fixed

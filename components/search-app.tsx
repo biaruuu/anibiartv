@@ -3,12 +3,12 @@
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
-import { CircleAlert, Search, Star, Subtitles } from "lucide-react"
+import { CircleAlert, Search, Captions, Star } from "lucide-react"
 
 import { SiteFooter, SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { animeTitle, infoHref, searchAnimePage, type Anime } from "@/lib/anilist"
+import { airedEpisodes, animeTitle, infoHref, searchAnimePage, type Anime } from "@/lib/anilist"
 
 const PER_PAGE = 24
 const PILL =
@@ -58,7 +58,7 @@ export function SearchApp() {
   }
 
   return (
-    <div className="min-h-svh overflow-x-clip bg-[#111214] font-poppins text-white">
+    <div className="min-h-svh overflow-x-clip bg-[#111214] text-white">
       <SiteHeader />
       <main className="mx-auto w-full max-w-7xl px-4 pt-20 pb-14 sm:px-8 sm:pt-24">
         <h1 className="mb-5 text-lg font-semibold tracking-tight sm:text-2xl">
@@ -90,10 +90,10 @@ export function SearchApp() {
                       />
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {a.episodes ? (
+                      {airedEpisodes(a) > 0 ? (
                         <span className={PILL}>
-                          <Subtitles className="size-3" />
-                          {a.episodes}
+                          <Captions className="size-3" />
+                          {airedEpisodes(a)}
                         </span>
                       ) : null}
                       {a.format && <span className={PILL}>{a.format.replace("_", " ")}</span>}

@@ -12,7 +12,7 @@ import {
   Play,
   Plus,
   Star,
-  Subtitles,
+  Captions,
   Tv,
 } from "lucide-react"
 
@@ -208,7 +208,7 @@ function PosterCard({
       <div className="mt-2 flex flex-wrap gap-1">
         {anime.episodes ? (
           <span className={PILL}>
-            <Subtitles className="size-3" />
+            <Captions className="size-3" />
             {anime.episodes}
           </span>
         ) : null}
@@ -265,7 +265,7 @@ export function InfoApp({ id }: { id: number }) {
   }, [id, retry])
 
   return (
-    <div className="min-h-svh overflow-x-clip bg-[#111214] font-poppins text-white">
+    <div className="min-h-svh overflow-x-clip bg-[#111214] text-white">
       <SiteHeader />
       {error || a === null ? (
         <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 pt-40 pb-24 text-center">
