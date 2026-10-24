@@ -149,8 +149,8 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
 
 /* ---------------------------------- hero ---------------------------------- */
 
-// The artwork is a fixed layer behind the whole page (see HomeApp), so it stays
-// visible, dimmed, as the episode list scrolls over it. This is just the text.
+// The artwork fills the hero only and fades into the page background at the
+// bottom, so the episode list below sits on the plain dark page.
 function Hero({
   items,
   index,
@@ -185,7 +185,31 @@ function Hero({
 
   return (
     <section className="relative flex h-[78svh] min-h-[28rem] w-full items-end md:h-[70svh]">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pb-10 sm:gap-4 sm:px-8 md:pb-14">
+      <div
+        className="absolute inset-0 overflow-hidden [mask-image:linear-gradient(to_bottom,black_72%,transparent)]"
+        aria-hidden="true"
+      >
+        {items.map((m, i) => (
+          <div
+            key={m.id}
+            className={cn(
+              "absolute inset-0 transition-opacity duration-700",
+              i === index ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={m.coverImage.extraLarge ?? ""} alt="" className="size-full object-cover md:hidden" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={m.bannerImage ?? m.coverImage.extraLarge ?? ""}
+              alt=""
+              className="hidden size-full object-cover object-top md:block"
+            />
+          </div>
+        ))}
+        <div className="absolute inset-0 bg-black/40" />
+      </div>
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pb-10 sm:gap-4 sm:px-8 md:pb-14">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -435,7 +459,6 @@ export function HomeApp() {
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [heroIndex, setHeroIndex] = React.useState(0)
-  const [dim, setDim] = React.useState(0.45)
 
   React.useEffect(() => {
     if (!trending || trending.length < 2) return
@@ -454,9 +477,6 @@ export function HomeApp() {
   React.useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 24)
-      // Darken the fixed artwork as the page scrolls over it.
-      const t = Math.min(1, window.scrollY / (window.innerHeight * 0.7))
-      setDim(0.45 + t * 0.4)
     }
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
@@ -507,32 +527,12 @@ export function HomeApp() {
         )}
       </header>
 
-      {/* Fixed artwork behind everything: it stays put while the page scrolls over it. */}
-      <div className="fixed inset-0 z-0" aria-hidden="true">
-        {trending?.map((m, i) => (
-          <div
-            key={m.id}
-            className={cn("absolute inset-0 transition-opacity duration-700", i === heroIndex ? "opacity-100" : "opacity-0")}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={m.coverImage.extraLarge ?? ""} alt="" className="size-full object-cover md:hidden" />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={m.bannerImage ?? m.coverImage.extraLarge ?? ""}
-              alt=""
-              className="hidden size-full object-cover object-top md:block"
-            />
-          </div>
-        ))}
-        <div className="absolute inset-0 bg-[#111214]" style={{ opacity: dim }} />
-      </div>
-
-      <main className="relative z-10">
+      <main>
         <Hero items={trending} index={heroIndex} setIndex={setHeroIndex} />
         <LatestEpisodes />
       </main>
 
-      <footer className="relative z-10 border-t border-white/10 bg-[#111214]">
+      <footer className="border-t border-white/10">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 py-6 text-sm text-white/50 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p className="font-medium text-white/80">AniBiar TV</p>
           <p>Anime data from AniList. Streaming servers coming soon.</p>

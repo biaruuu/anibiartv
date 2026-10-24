@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.1
+
+### Fixed
+- The hero artwork no longer covers the whole page. It fills the hero only and fades into the plain dark page background, so Latest Episodes sits on the normal dark background like Miruro.
+
 ## 1.8.0
 
 ### Changed
