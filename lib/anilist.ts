@@ -128,3 +128,80 @@ export function timeAgo(unix: number) {
 
 export const watchHref = (a: Anime, episode?: number) =>
   `/watch?title=${encodeURIComponent(animeTitle(a))}${episode ? `&ep=${episode}` : ""}`
+
+/* ------------------------------ info page data ------------------------------ */
+
+export type Mini = Pick<Anime, "id" | "title" | "coverImage" | "format" | "episodes" | "seasonYear">
+
+export type Detail = Anime & {
+  idMal: number | null
+  title: { romaji: string | null; english: string | null; native: string | null }
+  status: string | null
+  duration: number | null
+  season: string | null
+  startDate: { year: number | null; month: number | null; day: number | null }
+  endDate: { year: number | null; month: number | null; day: number | null }
+  meanScore: number | null
+  popularity: number | null
+  siteUrl: string
+  studios: { edges: { isMain: boolean; node: { name: string } }[] }
+  externalLinks: { site: string; url: string; icon: string | null; color: string | null; type: string }[]
+  trailer: { id: string; site: string; thumbnail: string | null } | null
+  relations: {
+    edges: { relationType: string; node: Mini & { type: string; startDate: { year: number | null } } }[]
+  }
+  characters: {
+    pageInfo: { total: number }
+    edges: {
+      role: string
+      node: { id: number; name: { full: string }; image: { large: string | null } }
+      voiceActors: { id: number; name: { full: string }; image: { large: string | null }; languageV2: string | null }[]
+    }[]
+  }
+  recommendations: { nodes: { mediaRecommendation: (Mini & { isAdult: boolean }) | null }[] }
+}
+
+export async function getAnimeDetail(id: number, signal?: AbortSignal) {
+  const mini = `id title { romaji english } coverImage { extraLarge large color } format episodes seasonYear`
+  const data = await query<{ Media: Detail | null }>(
+    `query ($id: Int) {
+      Media(id: $id, type: ANIME) {
+        ${mini}
+        idMal bannerImage description(asHtml: false) genres status duration season siteUrl
+        title { romaji english native }
+        startDate { year month day } endDate { year month day }
+        averageScore meanScore popularity
+        studios { edges { isMain node { name } } }
+        externalLinks { site url icon color type }
+        trailer { id site thumbnail }
+        relations { edges { relationType(version: 2) node { ${mini} type startDate { year } } } }
+        characters(sort: [ROLE, RELEVANCE], perPage: 25) {
+          pageInfo { total }
+          edges { role node { id name { full } image { large } } voiceActors { id name { full } image { large } languageV2 } }
+        }
+        recommendations(sort: RATING_DESC, perPage: 12) {
+          nodes { mediaRecommendation { ${mini} isAdult } }
+        }
+      }
+    }`,
+    { id },
+    signal
+  )
+  return data.Media
+}
+
+export const infoHref = (a: { id: number }) => `/anime/${a.id}`
+
+const FORMATS: Record<string, string> = {
+  TV: "TV Series",
+  TV_SHORT: "TV Short",
+  MOVIE: "Movie",
+  SPECIAL: "Special",
+  OVA: "OVA",
+  ONA: "ONA",
+  MUSIC: "Music",
+  MANGA: "Manga",
+  NOVEL: "Novel",
+  ONE_SHOT: "One Shot",
+}
+export const formatName = (f: string | null) => (f ? (FORMATS[f] ?? f.replace("_", " ")) : "")

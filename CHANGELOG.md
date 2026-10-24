@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.10.0
+
+### Added
+- Anime info page (`/anime/[id]`) styled after Miruro's: blurred artwork hero with poster, title, season, score, format and runtime, Watch Now and Add to List, expandable description; About this anime (status, episodes, scores, aired, popularity, native title, genres, studios, external links); Trailer; Show (franchise) with sort; Related; Characters with voice actor language picker; Artwork & Posters; More like this. Data from AniList (artwork from TMDB when a key is set).
+- Cards on the home screen, search results and the Top Airing / Upcoming lists now open the info page. Watch Now opens the player.
+
+### Changed
+- Header, search and footer are shared components used by every page.
+
 ## 1.9.0
 
 ### Added
