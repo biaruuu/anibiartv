@@ -265,7 +265,7 @@ export function InfoApp({ id }: { id: number }) {
   }, [id, retry])
 
   return (
-    <div className="min-h-svh overflow-x-clip bg-[#111214] text-white">
+    <div className="min-h-svh overflow-x-clip bg-[#121113] text-[#eeeef0]">
       <SiteHeader />
       {error || a === null ? (
         <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 pt-40 pb-24 text-center">
@@ -347,7 +347,7 @@ function Content({ a }: { a: Detail }) {
               className="h-40 w-[6.5rem] shrink-0 rounded-xl border border-white/20 bg-white/10 object-cover shadow-lg sm:h-72 sm:w-48"
             />
             <div className="min-w-0 flex-1 self-center sm:self-end">
-              <h1 className="text-xl leading-tight font-bold text-balance text-white sm:text-4xl">{title}</h1>
+              <h1 className="text-xl leading-tight font-extrabold text-balance text-white sm:text-4xl">{title}</h1>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-white/75 sm:mt-3 sm:gap-x-4 sm:gap-y-2 sm:text-sm">
                 {season && (
                   <span className="inline-flex items-center gap-1.5">

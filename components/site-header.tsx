@@ -256,7 +256,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
       <div className="pointer-events-none fixed inset-0 z-[55] bg-black/40" aria-hidden="true" />
       <div
         ref={panel}
-        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 bg-[#111214]/75 backdrop-blur-md"
+        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 bg-[#121113]/75 backdrop-blur-md"
       >
         <form onSubmit={submit} className="mx-auto flex h-14 w-full max-w-3xl items-center gap-2 px-3 sm:h-16 sm:px-4">
           <button
@@ -424,7 +424,7 @@ export function SiteHeader() {
         className={cn(
           "fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200",
           scrolled || menuOpen
-            ? "border-white/15 bg-[#111214]/60 backdrop-blur-lg backdrop-saturate-150"
+            ? "border-white/15 bg-[#121113]/60 backdrop-blur-lg backdrop-saturate-150"
             : "border-transparent bg-transparent"
         )}
       >

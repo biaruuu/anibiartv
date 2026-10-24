@@ -26,7 +26,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: "Kumbh Sans", var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Karla Variable", var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-poppins: "Poppins", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -53,24 +53,25 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Miruro's palette: background #121113, text #eeeef0, secondary text #b5b2bc. */
+  --background: #121113;
+  --foreground: #eeeef0;
+  --card: #18171a;
+  --card-foreground: #eeeef0;
+  --popover: #18171a;
+  --popover-foreground: #eeeef0;
+  --primary: #eeeef0;
+  --primary-foreground: #121113;
+  --secondary: #232226;
+  --secondary-foreground: #eeeef0;
+  --muted: #232226;
+  --muted-foreground: #b5b2bc;
+  --accent: #232226;
+  --accent-foreground: #eeeef0;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: #2f2d33;
+  --input: #3a383f;
+  --ring: #77747e;
 }
 
 /* Captions without a box: heavy dark outline so white text reads on any frame. */

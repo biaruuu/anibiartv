@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.13.0
+
+### Changed
+- Site font is now Karla (variable), the font Miruro uses, replacing Kumbh Sans. The video player still uses Poppins.
+- Colours follow Miruro's styleguide: background #121113, text #eeeef0, secondary text #b5b2bc, softer borders. The accent colour is not used. Page titles use weight 800 like their h1.
+
 ## 1.12.1
 
 ### Fixed

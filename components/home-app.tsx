@@ -123,7 +123,7 @@ function Hero({
             className="max-h-24 w-auto max-w-[85%] object-contain object-left drop-shadow-[0_2px_10px_rgb(0_0_0/0.6)] sm:max-h-32 sm:max-w-md"
           />
         ) : (
-          <h1 className="max-w-3xl text-2xl leading-tight font-bold tracking-tight text-balance text-white drop-shadow-[0_2px_8px_rgb(0_0_0/0.6)] sm:text-4xl lg:text-5xl">
+          <h1 className="max-w-3xl text-2xl leading-tight font-extrabold tracking-tight text-balance text-white drop-shadow-[0_2px_8px_rgb(0_0_0/0.6)] sm:text-4xl lg:text-5xl">
             {animeTitle(a)}
           </h1>
         )}
@@ -518,7 +518,7 @@ export function HomeApp() {
   }, [heroRetry])
 
   return (
-    <div className="relative min-h-svh overflow-x-clip bg-[#111214] text-white">
+    <div className="relative min-h-svh overflow-x-clip bg-[#121113] text-[#eeeef0]">
       <SiteHeader />
 
       <main>
