@@ -551,7 +551,7 @@ export function WatchApp({ id }: { id: number }) {
     if (!currentEp) return
     const c = new AbortController()
     setWatchError(null)
-    fetch(`/api/anime/${id}/watch?audio=${audio}&ep=${currentEp.number}`, { signal: c.signal })
+    fetch(`/api/anime/${id}/watch?audio=${audio}&ep=${currentEp.number}&p=${currentEp.providers.join(",")}`, { signal: c.signal })
       .then(async (r) => {
         const data = await r.json().catch(() => null)
         if (!r.ok) throw new Error(data?.error ?? `HTTP ${r.status}`)
@@ -633,7 +633,13 @@ export function WatchApp({ id }: { id: number }) {
               {stream ? (
                 <VideoPlayer
                   src={stream.src}
-                  type="hls"
+                  type={stream.format}
+                  onFail={() => {
+                    // Try the next server automatically when this one can't play.
+                    const all = watch?.streams ?? []
+                    const at = all.findIndex((x) => x.id === stream.id)
+                    if (at >= 0 && at < all.length - 1) setStreamId(all[at + 1].id)
+                  }}
                   poster={poster}
                   title={currentEp ? `${name} · Episode ${currentEp.number}` : name}
                   tracks={tracks}
@@ -754,7 +760,7 @@ export function WatchApp({ id }: { id: number }) {
                     <>
                       <span className="flex min-w-0 items-center gap-2.5">
                         <Zap className="size-5 shrink-0" />
-                        <span className="truncate font-medium">ani.pm</span>
+                        <span className="truncate font-medium">{stream?.server ?? "Server"}</span>
                       </span>
                       <ChevronDown className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} />
                     </>
@@ -777,8 +783,8 @@ export function WatchApp({ id }: { id: number }) {
                             className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-white/10"
                           >
                             <Zap className="size-5" />
-                            <span className="flex-1 pr-6 text-base">ani.pm</span>
-                            <Badge tone={s.kind}>{s.kind === "soft" ? "s-sub" : "h-sub"}</Badge>
+                            <span className="flex-1 pr-6 text-base">{s.server}</span>
+                            {audio === "sub" && <Badge tone={s.kind}>{s.kind === "soft" ? "s-sub" : "h-sub"}</Badge>}
                             <span className="grid w-5 place-items-center">{stream?.id === s.id && <Check className="size-5" />}</span>
                           </button>
                         ))

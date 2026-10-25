@@ -5,21 +5,26 @@ A modern, responsive video player web app built with **Next.js**, **shadcn/ui** 
 ## Pages
 
 - `/` anime home screen (AniList GraphQL: trending hero, latest episodes, search).
-- `/watch/:anilistId?ep=1&audio=sub` the watch page (Miruro layout): your video player, episode list, Sub/Dub and server menus, seasons. Streams come from the `anipm` provider of the Anivexa API.
+- `/watch/:anilistId?ep=1&audio=sub` the watch page (Miruro layout): your video player, episode list, Sub/Dub and server menus, seasons. Streams come from the Anivexa API (see Streaming).
 - `/watch` the stand-alone player with demo videos and local file upload.
 
-## Streaming (Anivexa API, ani.pm provider)
+## Streaming (Anivexa API)
 
-The watch page uses **only** the `anipm` provider of [Anivexa-API](https://github.com/walterwhite-69/Anivexa-API). That API must run as its own server: the provider needs a Node process with browser TLS impersonation (`wreq-js`), and its README warns that Vercel's shared IPs are widely blocked. Host it on a VPS, Railway or Render (`npm install && node server.js`), then set in this project's Vercel environment variables:
+The watch page streams through [Anivexa-API](https://github.com/walterwhite-69/Anivexa-API), which you run as your own server. Several providers are used at once: their episode lists are merged by episode number, and every provider that has the episode appears in the **Server** menu (HD-1, Vidstream-1, Vidplay, Animegg, ...). If a server cannot play, the next one is tried automatically. Only direct HLS and MP4 streams are used; embed pages are skipped.
+
+Providers checked against a real deployment (Attack on Titan, AniList 16498): `anikoto` (HLS, soft subtitles in many languages), `aniwaves` (HLS) and `animegg` (MP4). These are the defaults. `anipm`, `anizone` and `animeonsen` answered with errors there because those sites block the Vercel host, so they are off by default.
+
+Set these in Vercel (Project Settings, Environment Variables), then redeploy:
 
 | Variable | Meaning |
 |---|---|
-| `ANIVEXA_API_URL` | Required. Base address of your Anivexa API, e.g. `https://anivexa.example.com` (no trailing slash). |
+| `ANIVEXA_API_URL` | Required. Base address of your Anivexa API, e.g. `https://anibiartv-api.vercel.app` (no trailing slash). |
+| `ANIVEXA_PROVIDERS` | Optional. Comma separated, in priority order. Default `anikoto,aniwaves,animegg`. Allowed: anikoto, aniwaves, animegg, anipm, anizone, animeonsen, senshi, animedunya. |
 | `STREAM_PROXY_SECRET` | Optional. Any long random string used to sign stream links. |
 
-**"Ani.pm could not confidently map AniList …"** means the Anivexa server could not get answers from ani.pm. Every anime fails the same way, because ani.pm blocks many datacenter IPs and Vercel is one of them. Check by opening `YOUR_API/episodes/anipm/16498?map=false`: if it shows that error for popular shows too, move the Anivexa API off Vercel (or run it on your own PC with `node server.js` to confirm it works from a home connection).
+Test a provider yourself by opening `YOUR_API/episodes/PROVIDER/16498?map=false`. If it shows an error such as "could not confidently map" for popular shows, that provider cannot reach its site from your host. Moving the Anivexa API off Vercel (VPS, Railway, Render, or your own PC) fixes most of these.
 
-How it works: the browser asks this site's `/api/anime/:id/episodes` and `/api/anime/:id/watch`, which call `GET /episodes/anipm/:id` and `GET /watch/anipm/:id/sub|dub/anipm-:ep` on your Anivexa API. Stream and subtitle links go through the signed `/api/proxy` route, which adds the Referer the provider requires, rewrites HLS playlists and allows CORS (needed for volume boost). The player plays HLS with hls.js (native on Safari).
+How it works: the browser asks this site's `/api/anime/:id/episodes` and `/api/anime/:id/watch`, which call `GET /episodes/:providers/:id` and `GET /watch/:provider/:id/sub|dub/:provider-:ep` on your Anivexa API. Stream and subtitle links go through the signed `/api/proxy` route, which adds the Referer the provider requires, rewrites HLS playlists and allows CORS (needed for volume boost). The player plays HLS with hls.js (native on Safari).
 
 ## Title logos (optional)
 

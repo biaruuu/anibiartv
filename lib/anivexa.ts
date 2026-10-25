@@ -1,6 +1,9 @@
 /**
- * Server only. Talks to a running Anivexa API (https://github.com/walterwhite-69/Anivexa-API)
- * and uses only its `anipm` provider.
+ * Server only. Talks to a running Anivexa API (https://github.com/walterwhite-69/Anivexa-API).
+ *
+ * Several providers are used at once; their episode lists are merged by episode number and
+ * every provider that has the episode becomes a server in the Server menu. Only streams a
+ * browser can play directly (HLS and MP4) are kept; embed pages and iframes are skipped.
  */
 import { proxied } from "@/lib/stream-proxy"
 
@@ -14,23 +17,29 @@ export type WatchEpisode = {
   airDate: string | null
   duration: number | null
   filler: boolean
+  /** Providers that have this episode (in priority order). */
+  providers: string[]
 }
 
 export type EpisodesPayload = {
-  source: "anipm"
   title: string | null
   sub: WatchEpisode[]
   dub: WatchEpisode[]
+  /** Providers that answered with episodes. */
+  sources: string[]
 }
 
 export type StreamSubtitle = { label: string; srclang: string; src: string; default: boolean }
 export type StreamSource = {
   id: string
+  provider: string
+  /** Server name from the provider, e.g. HD-1. */
+  server: string
   /** "soft" = separate subtitle tracks, "hard" = subtitles burned into the video. */
   kind: "soft" | "hard"
+  format: "hls" | "file"
   src: string
   subtitles: StreamSubtitle[]
-  audioLang: string | null
 }
 export type WatchPayload = {
   audio: Audio
@@ -49,6 +58,16 @@ export class AnivexaError extends Error {
   }
 }
 
+/** Providers that were checked to return playable HLS/MP4 links. Order = priority. */
+const KNOWN = ["anikoto", "aniwaves", "animegg", "anipm", "anizone", "animeonsen", "senshi", "animedunya"]
+const DEFAULT_PROVIDERS = ["anikoto", "aniwaves", "animegg"]
+
+export function configuredProviders() {
+  const raw = process.env.ANIVEXA_PROVIDERS?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+  const list = (raw?.length ? raw : DEFAULT_PROVIDERS).filter((p) => KNOWN.includes(p))
+  return list.length ? list : DEFAULT_PROVIDERS
+}
+
 function base() {
   const raw = process.env.ANIVEXA_API_URL?.trim()
   if (!raw) {
@@ -60,13 +79,13 @@ function base() {
   return raw.replace(/\/+$/, "")
 }
 
-async function call<T>(path: string, revalidate: number): Promise<T> {
+async function call<T>(path: string, timeoutMs: number): Promise<T> {
   let res: Response
   try {
     res = await fetch(`${base()}${path}`, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(55_000),
-      next: { revalidate },
+      signal: AbortSignal.timeout(timeoutMs),
+      cache: "no-store",
     })
   } catch (e) {
     if (e instanceof AnivexaError) throw e
@@ -86,95 +105,156 @@ async function call<T>(path: string, revalidate: number): Promise<T> {
 
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null)
 
-function episode(raw: Record<string, unknown>): WatchEpisode | null {
-  const number = Number(raw.number)
-  if (!Number.isFinite(number)) return null
-  return {
-    number,
-    title: str(raw.title) ?? `Episode ${number}`,
-    description: str(raw.description),
-    image: str(raw.image),
-    airDate: str(raw.airDate),
-    duration: typeof raw.duration === "number" ? raw.duration : null,
-    filler: raw.filler === true,
-  }
+type RawEpisode = Record<string, unknown>
+type RawProvider = {
+  error?: string
+  meta?: { title?: string }
+  episodes?: { sub?: RawEpisode[]; dub?: RawEpisode[] }
 }
 
-/**
- * "could not confidently map" is what the provider says when its searches on ani.pm
- * return nothing, which in practice means ani.pm refused the Anivexa server
- * (datacenter hosts such as Vercel are commonly blocked), not that the anime is missing.
- */
-function explain(error?: string) {
-  if (!error) return "Ani.pm has no episodes for this anime."
-  if (/could not confidently map|bootstrap|HTTP 4\d\d|HTTP 5\d\d|wreq/i.test(error)) {
-    return `Ani.pm did not answer your Anivexa server (${error}). This usually means ani.pm is blocking the host it runs on, for example Vercel. Host the Anivexa API on a VPS, Railway or Render instead.`
+/** Merges each provider's list; the first provider to give a field wins. */
+function merge(order: string[], data: Record<string, RawProvider | undefined>, audio: Audio): WatchEpisode[] {
+  const byNumber = new Map<number, WatchEpisode>()
+  for (const provider of order) {
+    for (const raw of data[provider]?.episodes?.[audio] ?? []) {
+      const number = Number(raw.number)
+      if (!Number.isInteger(number) || number < 0) continue
+      const have = byNumber.get(number)
+      if (!have) {
+        byNumber.set(number, {
+          number,
+          title: str(raw.title) ?? `Episode ${number}`,
+          description: str(raw.description),
+          image: str(raw.image),
+          airDate: str(raw.airDate),
+          duration: typeof raw.duration === "number" ? raw.duration : null,
+          filler: raw.filler === true,
+          providers: [provider],
+        })
+      } else {
+        have.providers.push(provider)
+        if (/^Episode \d+$/.test(have.title) && str(raw.title)) have.title = str(raw.title)!
+        have.description ??= str(raw.description)
+        have.image ??= str(raw.image)
+        have.airDate ??= str(raw.airDate)
+        have.duration ??= typeof raw.duration === "number" ? raw.duration : null
+      }
+    }
   }
-  return error
+  return [...byNumber.values()].sort((a, b) => a.number - b.number)
 }
 
 export async function getEpisodes(anilistId: number): Promise<EpisodesPayload> {
-  const data = await call<{
-    anipm?: {
-      error?: string
-      meta?: { title?: string }
-      episodes?: { sub?: Record<string, unknown>[]; dub?: Record<string, unknown>[] }
-    }
-  }>(`/episodes/anipm/${anilistId}?map=false`, 300)
-  const p = data.anipm
-  if (!p || p.error) {
-    throw new AnivexaError(explain(p?.error), 404)
+  const order = configuredProviders()
+  const data = await call<Record<string, RawProvider | undefined>>(
+    `/episodes/${order.join("/")}/${anilistId}?map=false`,
+    58_000
+  )
+  const sub = merge(order, data, "sub")
+  const dub = merge(order, data, "dub")
+  if (!sub.length && !dub.length) {
+    const why = order
+      .map((p) => `${p}: ${str(data[p]?.error) ?? "no episodes"}`)
+      .join("; ")
+    throw new AnivexaError(`No provider has this anime yet. (${why})`, 404)
   }
-  const list = (items?: Record<string, unknown>[]) =>
-    (items ?? [])
-      .map(episode)
-      .filter((e): e is WatchEpisode => !!e)
-      .sort((a, b) => a.number - b.number)
-  return {
-    source: "anipm",
-    title: str(p.meta?.title),
-    sub: list(p.episodes?.sub),
-    dub: list(p.episodes?.dub),
-  }
+  const sources = order.filter((p) => (data[p]?.episodes?.sub?.length ?? 0) + (data[p]?.episodes?.dub?.length ?? 0) > 0)
+  const title = order.map((p) => str(data[p]?.meta?.title)).find(Boolean) ?? null
+  return { title, sub, dub, sources }
 }
 
+type RawSubtitle = { url?: string; src?: string; file?: string; label?: string; lang?: string; language?: string; srclang?: string; default?: boolean; headers?: { Referer?: string } }
 type RawStream = {
   url?: string
+  type?: string
+  server?: string
   referer?: string
   subtitleType?: string
-  audioLang?: string | null
-  subtitles?: { url?: string; label?: string; srclang?: string; default?: boolean; headers?: { Referer?: string } }[]
+  priority?: number
+  isActive?: boolean
+  subtitles?: RawSubtitle[]
+  headers?: { Referer?: string }
+  intro?: { start?: number; end?: number } | null
+  outro?: { start?: number; end?: number } | null
 }
-type RawRange = { start?: number; end?: number } | null | undefined
-const range = (r: RawRange) =>
-  r && typeof r.start === "number" && typeof r.end === "number" && r.end > r.start
-    ? { start: r.start, end: r.end }
-    : null
+type RawWatch = {
+  streams?: RawStream[]
+  subtitles?: RawSubtitle[]
+  headers?: { Referer?: string }
+  intro?: RawStream["intro"]
+  outro?: RawStream["outro"]
+}
 
-export async function getWatch(anilistId: number, audio: Audio, ep: number): Promise<WatchPayload> {
-  const data = await call<{ streams?: RawStream[]; intro?: RawRange; outro?: RawRange }>(
-    `/watch/anipm/${anilistId}/${audio}/anipm-${ep}`,
-    30
-  )
-  const streams: StreamSource[] = (data.streams ?? [])
-    .filter((s) => s.url && /^https?:\/\//i.test(s.url))
-    .map((s, i) => {
-      const kind = s.subtitleType === "hardsub" ? "hard" : "soft"
-      return {
-        id: `${kind}-${i}`,
-        kind,
-        src: proxied(s.url!, s.referer ?? ""),
-        audioLang: s.audioLang ?? null,
-        subtitles: (s.subtitles ?? [])
-          .filter((t) => t.url && /^https?:\/\//i.test(t.url))
-          .map((t) => ({
-            label: t.label || "Subtitle",
-            srclang: t.srclang || "und",
-            default: !!t.default,
-            src: proxied(t.url!, t.headers?.Referer ?? ""),
-          })),
-      }
+const range = (r: RawStream["intro"]) =>
+  r && typeof r.start === "number" && typeof r.end === "number" && r.end > r.start ? { start: r.start, end: r.end } : null
+
+const isThumbnails = (t: RawSubtitle) => /thumbnail|storyboard|sprite|preview/i.test(`${t.url ?? t.src ?? t.file ?? ""} ${t.label ?? ""}`)
+
+function parseWatch(provider: string, audio: Audio, data: RawWatch) {
+  const streams: StreamSource[] = []
+  const seen = new Set<string>()
+  const ordered = [...(data.streams ?? [])].sort((a, b) => Number(!!b.isActive) - Number(!!a.isActive) || (b.priority ?? 0) - (a.priority ?? 0))
+  for (const s of ordered) {
+    const type = (s.type ?? "").toLowerCase()
+    const format = type === "hls" || type === "m3u8" ? "hls" : type === "mp4" ? "file" : null
+    if (!format || !s.url || !/^https?:\/\//i.test(s.url) || seen.has(s.url)) continue
+    seen.add(s.url)
+    const referer = s.referer ?? s.headers?.Referer ?? data.headers?.Referer ?? ""
+    const rawSubs = (s.subtitles?.length ? s.subtitles : (data.subtitles ?? [])).filter((t) => !isThumbnails(t))
+    const subtitles: StreamSubtitle[] = rawSubs
+      .map((t) => {
+        const url = t.url ?? t.src ?? t.file
+        if (!url || !/^https?:\/\//i.test(url)) return null
+        return {
+          label: t.label ?? t.lang ?? t.language ?? "Subtitle",
+          srclang: t.srclang ?? t.lang ?? t.language ?? "und",
+          default: !!t.default,
+          src: proxied(url, t.headers?.Referer ?? referer),
+        }
+      })
+      .filter((t): t is StreamSubtitle => !!t)
+    // When a provider doesn't say, a sub stream without caption tracks has its subtitles in the picture.
+    const kind: "soft" | "hard" =
+      s.subtitleType === "hardsub" ? "hard" : s.subtitleType === "softsub" || subtitles.length ? "soft" : audio === "sub" ? "hard" : "soft"
+    streams.push({
+      id: `${provider}-${streams.length}`,
+      provider,
+      server: s.server?.trim() || provider,
+      kind,
+      format,
+      src: proxied(s.url, referer),
+      subtitles,
     })
-  if (!streams.length) throw new AnivexaError("No stream was returned for this episode.", 404)
-  return { audio, episode: ep, streams, intro: range(data.intro), outro: range(data.outro) }
+  }
+  return { streams, intro: range(data.intro ?? ordered[0]?.intro), outro: range(data.outro ?? ordered[0]?.outro) }
+}
+
+export async function getWatch(anilistId: number, audio: Audio, ep: number, wanted?: string[]): Promise<WatchPayload> {
+  const order = configuredProviders().filter((p) => !wanted?.length || wanted.includes(p))
+  if (!order.length) throw new AnivexaError("No provider has this episode.", 404)
+
+  const results = await Promise.allSettled(
+    order.map(async (provider) => {
+      const raw = await call<RawWatch>(`/watch/${provider}/${anilistId}/${audio}/${provider}-${ep}`, 40_000)
+      return parseWatch(provider, audio, raw)
+    })
+  )
+
+  const streams: StreamSource[] = []
+  let intro: WatchPayload["intro"] = null
+  let outro: WatchPayload["outro"] = null
+  const failures: string[] = []
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") {
+      streams.push(...r.value.streams)
+      intro ??= r.value.intro
+      outro ??= r.value.outro
+    } else {
+      failures.push(`${order[i]}: ${r.reason instanceof Error ? r.reason.message : "failed"}`)
+    }
+  })
+  if (!streams.length) {
+    throw new AnivexaError(`No playable stream was found for this episode. (${failures.join("; ") || "no direct streams"})`, 404)
+  }
+  return { audio, episode: ep, streams, intro, outro }
 }

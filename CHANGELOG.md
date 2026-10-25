@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.15.0
+
+### Changed
+- Streaming now uses several Anivexa providers at once instead of only `anipm` (ani.pm blocks Vercel-hosted servers, so every title failed). Defaults are `anikoto` (HLS, soft subtitles), `aniwaves` (HLS) and `animegg` (MP4), the ones that returned real streams on your API. Set `ANIVEXA_PROVIDERS` to change them.
+- Episode lists from all providers are merged by episode number. The Server menu lists every working server for the episode (HD-1, Vidstream-1, Vidplay, Animegg...) with s-sub / h-sub badges.
+- If a server fails to play, the next one is tried automatically.
+- Subtitle thumbnail tracks (seek-bar previews) are no longer offered as captions.
+- Watch and episode data are no longer cached on the server, so a temporary provider error can't stick.
+
 ## 1.14.1
 
 ### Changed

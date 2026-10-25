@@ -61,6 +61,8 @@ export type VideoPlayerProps = {
   onEnded?: () => void
   /** "hls" plays .m3u8 streams (hls.js, or native HLS on Safari). Detected from the URL when omitted. */
   type?: "hls" | "file"
+  /** Called when the source can't be played, so the page can try another server. */
+  onFail?: () => void
 }
 
 type WebkitVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
@@ -266,7 +268,12 @@ export function VideoPlayer({
   className,
   onEnded,
   type,
+  onFail,
 }: VideoPlayerProps) {
+  const onFailRef = React.useRef(onFail)
+  React.useEffect(() => {
+    onFailRef.current = onFail
+  })
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const hideTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -446,6 +453,7 @@ export function VideoPlayer({
       if (!Hls.isSupported()) {
         setLoading(false)
         setError(true)
+        onFailRef.current?.()
         return
       }
       let retries = 0
@@ -463,6 +471,7 @@ export function VideoPlayer({
         } else {
           setLoading(false)
           setError(true)
+          onFailRef.current?.()
         }
       })
       hls.loadSource(src)
@@ -654,7 +663,10 @@ export function VideoPlayer({
   React.useEffect(() => {
     const v = videoRef.current
     if (!v) return
-    if (v.error) setError(true)
+    if (v.error) {
+      setError(true)
+      onFailRef.current?.()
+    }
     if (v.readyState >= 1) {
       setDuration(v.duration)
       updateBuffered(v)
@@ -907,6 +919,7 @@ export function VideoPlayer({
             }
             setLoading(false)
             setError(true)
+            onFailRef.current?.()
           }}
           onEnded={() => {
             setPlaying(false)
