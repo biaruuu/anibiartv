@@ -1,4 +1,4 @@
-import { isPublicHttpUrl, proxied, verify } from "@/lib/stream-proxy"
+import { isPublicHttpUrl, open, proxied } from "@/lib/stream-proxy"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -49,14 +49,10 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: Request) {
-  const q = new URL(req.url).searchParams
-  const target = q.get("u") ?? ""
-  const referer = q.get("r") ?? ""
-  const sig = q.get("s") ?? ""
-
-  if (!target || !sig || !verify(target, referer, sig) || !isPublicHttpUrl(target)) {
-    return new Response("Forbidden", { status: 403 })
-  }
+  const sealed = open(new URL(req.url).searchParams.get("t") ?? "")
+  if (!sealed || !isPublicHttpUrl(sealed.url)) return new Response("Forbidden", { status: 403 })
+  const target = sealed.url
+  const referer = sealed.referer
 
   const headers: Record<string, string> = { "User-Agent": UA, Accept: "*/*" }
   if (referer) {

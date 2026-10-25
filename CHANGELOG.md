@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.17.2
+
+### Changed
+- Stream and subtitle links are now sealed into one opaque encrypted token instead of carrying the real video host name in the address, so no provider or video site name shows in the browser's network list. Tampered or foreign tokens are refused.
+
 ## 1.17.1
 
 ### Added
