@@ -16,7 +16,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   }
   try {
     // Stream links expire quickly, so they are only shared for a minute and a half.
-    const key = `w:v2:${id}:${audio}:${ep}:${(wanted ?? []).sort().join(",")}:${configuredProviders().join(",")}`
+    const key = `w:v3:${id}:${audio}:${ep}:${(wanted ?? []).sort().join(",")}:${configuredProviders().join(",")}`
     const data = await cached(key, 90, () => getWatch(id, audio, ep, wanted))
     return NextResponse.json(data, { headers: { "Cache-Control": "private, no-store" } })
   } catch (e) {

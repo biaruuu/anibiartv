@@ -39,6 +39,9 @@ export type StreamSource = {
   format: "hls" | "file"
   src: string
   subtitles: StreamSubtitle[]
+  /** Seconds, from this server's own copy of the episode (null when it has none). */
+  intro: { start: number; end: number } | null
+  outro: { start: number; end: number } | null
 }
 export type WatchPayload = {
   audio: Audio
@@ -242,6 +245,8 @@ function parseWatch(provider: string, audio: Audio, data: RawWatch, taken: Set<s
       format,
       src: proxied(s.url, referer),
       subtitles,
+      intro: range(s.intro ?? data.intro),
+      outro: range(s.outro ?? data.outro),
     })
   }
   return { streams, intro: range(data.intro ?? ordered[0]?.intro), outro: range(data.outro ?? ordered[0]?.outro) }

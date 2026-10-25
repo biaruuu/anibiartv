@@ -64,6 +64,11 @@ export type VideoPlayerProps = {
   autoplayOption?: { value: boolean; onChange: (value: boolean) => void }
   /** Adds an "Auto next episode" switch to the settings menu. */
   autoNextOption?: { value: boolean; onChange: (value: boolean) => void }
+  /** Intro / outro times in seconds. Shows Skip buttons while playing through them. */
+  intro?: { start: number; end: number } | null
+  outro?: { start: number; end: number } | null
+  /** Adds an "Auto skip intro/outro" switch to the settings menu and skips by itself when on. */
+  autoSkipOption?: { value: boolean; onChange: (value: boolean) => void }
 }
 
 type WebkitVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
@@ -275,6 +280,9 @@ export function VideoPlayer({
   onFail,
   autoplayOption,
   autoNextOption,
+  intro,
+  outro,
+  autoSkipOption,
 }: VideoPlayerProps) {
   const onFailRef = React.useRef(onFail)
   React.useEffect(() => {
@@ -295,6 +303,71 @@ export function VideoPlayer({
     setPlaying(false)
     onEnded?.()
   }
+  // ---- intro / outro skipping ----
+  type SkipKind = "intro" | "outro"
+  const skipRef = React.useRef({ intro, outro, auto: Boolean(autoSkipOption?.value) })
+  React.useEffect(() => {
+    skipRef.current = { intro, outro, auto: Boolean(autoSkipOption?.value) }
+  })
+  const skippedRef = React.useRef<Record<SkipKind, boolean>>({ intro: false, outro: false })
+  const lastTimeRef = React.useRef(0)
+  const skipToastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [skipTarget, setSkipTarget] = React.useState<SkipKind | null>(null)
+  const [skipToast, setSkipToast] = React.useState<{ kind: SkipKind; from: number } | null>(null)
+
+  const skipTo = (kind: SkipKind, automatic: boolean) => {
+    const v = videoRef.current
+    const range = kind === "intro" ? skipRef.current.intro : skipRef.current.outro
+    if (!v || !range) return
+    const from = v.currentTime
+    skippedRef.current[kind] = true
+    setSkipTarget(null)
+    // An outro that runs to the end jumps to the very end, so the next episode can start.
+    const end = Number.isFinite(v.duration) && range.end >= v.duration - 2 ? Math.max(0, v.duration - 0.05) : range.end
+    v.currentTime = end
+    if (v.paused && !automatic) void v.play().catch(() => {})
+    if (automatic) {
+      setSkipToast({ kind, from })
+      if (skipToastTimer.current) clearTimeout(skipToastTimer.current)
+      skipToastTimer.current = setTimeout(() => setSkipToast(null), 5000)
+    }
+  }
+  const undoSkip = () => {
+    const v = videoRef.current
+    if (v && skipToast) v.currentTime = skipToast.from
+    setSkipToast(null)
+  }
+  const insideRef = React.useRef<Record<SkipKind, boolean>>({ intro: false, outro: false })
+  const checkSkip = (v: HTMLVideoElement) => {
+    const t = v.currentTime
+    const { intro: i, outro: o, auto } = skipRef.current
+    const inside = (r: { start: number; end: number } | null | undefined) =>
+      Boolean(r) && t >= r!.start - 0.3 && t < r!.end - 0.6
+    const now: Record<SkipKind, boolean> = { intro: inside(i), outro: inside(o) }
+    const natural = Math.abs(t - lastTimeRef.current) < 3
+    lastTimeRef.current = t
+    for (const kind of ["intro", "outro"] as const) {
+      // Playback jumped straight into the range (the viewer scrubbed, or pressed Undo):
+      // never auto-skip it, but keep the Skip button.
+      if (now[kind] && !insideRef.current[kind] && !natural) skippedRef.current[kind] = true
+    }
+    insideRef.current = now
+    const kind: SkipKind | null = now.intro ? "intro" : now.outro ? "outro" : null
+    if (kind && auto && !skippedRef.current[kind] && !v.paused) {
+      skipTo(kind, true)
+      return
+    }
+    setSkipTarget((cur) => (cur === kind ? cur : kind))
+  }
+  React.useEffect(() => {
+    // New video: forget what was skipped.
+    skippedRef.current = { intro: false, outro: false }
+    insideRef.current = { intro: false, outro: false }
+    lastTimeRef.current = 0
+    setSkipTarget(null)
+    setSkipToast(null)
+  }, [src])
+
   const reportFail = () => {
     if (!startedRef.current) onFailRef.current?.()
   }
@@ -1067,6 +1140,7 @@ export function VideoPlayer({
             const v = e.currentTarget
             if (!scrubbing) setCurrentTime(v.currentTime)
             updateBuffered(v)
+            checkSkip(v)
             // Some streams never fire "ended"; treat the last quarter second as the end.
             if (Number.isFinite(v.duration) && v.duration > 1 && v.currentTime >= v.duration - 0.25) fireEnded()
           }}
@@ -1081,6 +1155,37 @@ export function VideoPlayer({
         />
 
         {/* Captions: Trebuchet MS like Miruro, sized from the player width, with a readable style */}
+        {/* Skip intro / outro: shown while playback is inside the range, and a note when it skipped by itself */}
+        {(skipTarget || skipToast) && (
+          <div className="absolute right-[clamp(0.5rem,2.2cqw,1.25rem)] bottom-[clamp(4.6rem,11.5cqw,7.5rem)] z-20 flex flex-col items-end gap-[0.5em] font-poppins text-[length:clamp(0.75rem,1.9cqw,1.05rem)]">
+            {skipToast && (
+              <div
+                role="status"
+                className="flex animate-in items-center gap-[0.7em] rounded-full border border-white/15 bg-black/70 py-[0.45em] pr-[0.5em] pl-[1em] text-white shadow-[0_6px_20px_rgb(0_0_0/0.4)] backdrop-blur-xl duration-200 fade-in-0 slide-in-from-bottom-2"
+              >
+                <span className="font-medium">{skipToast.kind === "intro" ? "Intro skipped" : "Outro skipped"}</span>
+                <button
+                  type="button"
+                  onClick={undoSkip}
+                  className="rounded-full bg-white/15 px-[0.9em] py-[0.25em] font-semibold hover:bg-white/25 active:scale-95"
+                >
+                  Undo
+                </button>
+              </div>
+            )}
+            {skipTarget && !skipToast && (
+              <button
+                type="button"
+                onClick={() => skipTo(skipTarget, false)}
+                className="flex animate-in items-center gap-[0.5em] rounded-full bg-white px-[1.1em] py-[0.6em] font-semibold text-black shadow-[0_6px_20px_rgb(0_0_0/0.4)] duration-200 fade-in-0 slide-in-from-bottom-2 hover:bg-white/90 active:scale-95"
+              >
+                {skipTarget === "intro" ? "Skip Intro" : "Skip Outro"}
+                <SeekForward10Icon className="size-[1.5em]" />
+              </button>
+            )}
+          </div>
+        )}
+
         {cueText && (
           // The position never changes when the controls appear or hide, so captions don't jump
           // under your finger. They sit just above the seek bar, centred, so the time (left) and
@@ -1274,13 +1379,13 @@ export function VideoPlayer({
             aria-label="Back 10 seconds"
             onClick={() => seekBy(-SEEK_STEP)}
             className={cn(
-              "absolute top-1/2 left-[25%] size-[clamp(2.6rem,7cqw,4.5rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:text-white active:scale-95",
+              "absolute top-1/2 left-[25%] size-[clamp(2.2rem,5.7cqw,3.8rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:text-white active:scale-95",
               GLASS,
               GLASS_HOVER,
               interactive
             )}
           >
-            <SeekBackward10Icon className={cn("size-[78%]", SHADOW)} />
+            <SeekBackward10Icon className={cn("size-[74%]", SHADOW)} />
           </Button>
 
           <button
@@ -1288,7 +1393,7 @@ export function VideoPlayer({
             aria-label={playing ? "Pause video" : "Play video"}
             onClick={togglePlay}
             className={cn(
-              "absolute top-1/2 left-1/2 grid size-[clamp(3.1rem,7.5cqw,5rem)] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-white transition-colors duration-200 outline-none focus-visible:ring-4 focus-visible:ring-white/40 active:scale-95",
+              "absolute top-1/2 left-1/2 grid size-[clamp(2.6rem,6.3cqw,4.2rem)] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-white transition-colors duration-200 outline-none focus-visible:ring-4 focus-visible:ring-white/40 active:scale-95",
               GLASS,
               GLASS_HOVER,
               interactive
@@ -1297,9 +1402,9 @@ export function VideoPlayer({
             {buffering ? (
               <Spinner className="size-1/2" />
             ) : playing ? (
-              <PauseIcon className="size-[80%]" />
+              <PauseIcon className="size-[74%]" />
             ) : (
-              <PlayIcon className="size-[80%]" />
+              <PlayIcon className="size-[74%]" />
             )}
           </button>
 
@@ -1310,13 +1415,13 @@ export function VideoPlayer({
             aria-label="Forward 10 seconds"
             onClick={() => seekBy(SEEK_STEP)}
             className={cn(
-              "absolute top-1/2 left-[75%] size-[clamp(2.6rem,7cqw,4.5rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:text-white active:scale-95",
+              "absolute top-1/2 left-[75%] size-[clamp(2.2rem,5.7cqw,3.8rem)] -translate-x-1/2 -translate-y-1/2 rounded-full text-white hover:text-white active:scale-95",
               GLASS,
               GLASS_HOVER,
               interactive
             )}
           >
-            <SeekForward10Icon className={cn("size-[78%]", SHADOW)} />
+            <SeekForward10Icon className={cn("size-[74%]", SHADOW)} />
           </Button>
         </div>
 
@@ -1450,6 +1555,15 @@ export function VideoPlayer({
                       value={autoplayOption.value ? "On" : "Off"}
                       chevron={false}
                       onClick={() => autoplayOption.onChange(!autoplayOption.value)}
+                    />
+                  )}
+                  {autoSkipOption && (
+                    <MenuRow
+                      icon={<SeekForward10Icon />}
+                      label="Auto skip intro/outro"
+                      value={autoSkipOption.value ? "On" : "Off"}
+                      chevron={false}
+                      onClick={() => autoSkipOption.onChange(!autoSkipOption.value)}
                     />
                   )}
                   {autoNextOption && (

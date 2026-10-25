@@ -445,7 +445,7 @@ function EpisodePanel({
 
 /* ------------------------------ page ------------------------------ */
 
-type Prefs = { autoplay: boolean; autoNext: boolean }
+type Prefs = { autoplay: boolean; autoNext: boolean; autoSkip: boolean }
 
 export function WatchApp({ id }: { id: number }) {
   const params = useSearchParams()
@@ -465,7 +465,7 @@ export function WatchApp({ id }: { id: number }) {
   // The server the viewer picked, by name, so it stays selected from episode to episode.
   const [streamName, setStreamName] = React.useState<string | null>(null)
 
-  const [prefs, setPrefs] = React.useState<Prefs>({ autoplay: true, autoNext: true })
+  const [prefs, setPrefs] = React.useState<Prefs>({ autoplay: true, autoNext: true, autoSkip: true })
   const [episodesOpen, setEpisodesOpen] = React.useState(false)
   const [synopsis, setSynopsis] = React.useState<"anime" | "episode">("anime")
   const [expanded, setExpanded] = React.useState(false)
@@ -473,7 +473,7 @@ export function WatchApp({ id }: { id: number }) {
   const panelRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
-    setPrefs(readJson<Prefs>(PREFS_KEY, { autoplay: true, autoNext: true }))
+    setPrefs(readJson<Prefs>(PREFS_KEY, { autoplay: true, autoNext: true, autoSkip: true }))
     setSaved(readJson<{ ids: number[] }>(LIST_KEY, { ids: [] }).ids.includes(id))
   }, [id])
 
@@ -645,6 +645,9 @@ export function WatchApp({ id }: { id: number }) {
                   autoPlay={prefs.autoplay}
                   autoplayOption={{ value: prefs.autoplay, onChange: (v) => updatePrefs({ autoplay: v }) }}
                   autoNextOption={{ value: prefs.autoNext, onChange: (v) => updatePrefs({ autoNext: v }) }}
+                  autoSkipOption={{ value: prefs.autoSkip, onChange: (v) => updatePrefs({ autoSkip: v }) }}
+                  intro={stream.intro}
+                  outro={stream.outro}
                   className="rounded-none border-x-0 sm:rounded-2xl sm:border-x"
                   onEnded={() => {
                     if (prefs.autoNext && next) select(next.number)

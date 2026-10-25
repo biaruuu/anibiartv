@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.19.0
+
+### Added
+- Skip intro / outro. While playback is inside an intro or outro, a white "Skip Intro" / "Skip Outro" button appears bottom right. With "Auto skip intro/outro" on (a row in the player settings, on by default) the player skips by itself and shows "Intro skipped" / "Outro skipped" with an Undo button for 5 seconds. An outro that runs to the end of the video jumps to the end, so Auto next episode starts the next one. Scrubbing into a range, or pressing Undo, never triggers another auto skip.
+- The times come from each server's own copy of the episode (the Nova/Lyra-type servers that provide them); a server without times simply shows no Skip button.
+
+### Changed
+- The centre play / pause and ±10 second buttons are about 15% smaller, with slightly smaller icons.
+
 ## 1.18.0
 
 ### Fixed
