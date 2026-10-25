@@ -566,8 +566,28 @@ export function WatchApp({ id }: { id: number }) {
     return () => c.abort()
   }, [id, audio, currentEp?.number, watchTry]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ready = !!watch && watch.episode === currentEp?.number && watch.audio === audio
   const stream = watch?.streams.find((s) => s.name === streamName) ?? watch?.streams[0] ?? null
+
+  // Intro / outro times: the server's own when it has them, otherwise the backup list (AniSkip).
+  const [backup, setBackup] = React.useState<{ intro: { start: number; end: number } | null; outro: { start: number; end: number } | null; length: number | null } | null>(null)
+  const malId = anime?.idMal ?? null
+  const epNumber = currentEp?.number ?? null
+  React.useEffect(() => {
+    setBackup(null)
+    if (!malId || !epNumber) return
+    const c = new AbortController()
+    fetch(`/api/skip?mal=${malId}&ep=${epNumber}`, { signal: c.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setBackup)
+      .catch(() => {})
+    return () => c.abort()
+  }, [malId, epNumber])
+  const own = Boolean(stream?.intro || stream?.outro)
+  const skip = own
+    ? { intro: stream?.intro ?? null, outro: stream?.outro ?? null, length: null }
+    : { intro: backup?.intro ?? null, outro: backup?.outro ?? null, length: backup?.length ?? null }
+
+  const ready = !!watch && watch.episode === currentEp?.number && watch.audio === audio
 
   const tracks = React.useMemo<VideoTrack[]>(() => {
     if (!stream || stream.kind === "hard") return []
@@ -646,8 +666,9 @@ export function WatchApp({ id }: { id: number }) {
                   autoplayOption={{ value: prefs.autoplay, onChange: (v) => updatePrefs({ autoplay: v }) }}
                   autoNextOption={{ value: prefs.autoNext, onChange: (v) => updatePrefs({ autoNext: v }) }}
                   autoSkipOption={{ value: prefs.autoSkip, onChange: (v) => updatePrefs({ autoSkip: v }) }}
-                  intro={stream.intro}
-                  outro={stream.outro}
+                  intro={skip.intro}
+                  outro={skip.outro}
+                  skipLength={skip.length}
                   className="rounded-none border-x-0 sm:rounded-2xl sm:border-x"
                   onEnded={() => {
                     if (prefs.autoNext && next) select(next.number)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.19.1
+
+- Skip intro / outro now shows on every server: when a server has no timings, a backup list (AniSkip) is used, cached in Redis. Times are ignored if the video length differs a lot.
+- The "Auto skip intro/outro" setting shows "No data" when an episode has no timings.
+- Smaller subtitles (default size reduced).
+
 ## 1.19.0
 
 ### Added

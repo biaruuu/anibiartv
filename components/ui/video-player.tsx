@@ -69,6 +69,8 @@ export type VideoPlayerProps = {
   outro?: { start: number; end: number } | null
   /** Adds an "Auto skip intro/outro" switch to the settings menu and skips by itself when on. */
   autoSkipOption?: { value: boolean; onChange: (value: boolean) => void }
+  /** Length the intro/outro times were made for. If the video is much longer or shorter, they are ignored. */
+  skipLength?: number | null
 }
 
 type WebkitVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
@@ -90,7 +92,7 @@ const SEEK_STEP = 10
 const AUTO_HIDE_MS = 3000
 
 const CAPTION_SIZES = {
-  sm: { label: "Small", scale: 0.9 },
+  sm: { label: "Small", scale: 0.88 },
   md: { label: "Medium", scale: 1.1 },
   lg: { label: "Large", scale: 1.4 },
 } as const
@@ -283,6 +285,7 @@ export function VideoPlayer({
   intro,
   outro,
   autoSkipOption,
+  skipLength,
 }: VideoPlayerProps) {
   const onFailRef = React.useRef(onFail)
   React.useEffect(() => {
@@ -305,9 +308,9 @@ export function VideoPlayer({
   }
   // ---- intro / outro skipping ----
   type SkipKind = "intro" | "outro"
-  const skipRef = React.useRef({ intro, outro, auto: Boolean(autoSkipOption?.value) })
+  const skipRef = React.useRef({ intro, outro, auto: Boolean(autoSkipOption?.value), length: skipLength })
   React.useEffect(() => {
-    skipRef.current = { intro, outro, auto: Boolean(autoSkipOption?.value) }
+    skipRef.current = { intro, outro, auto: Boolean(autoSkipOption?.value), length: skipLength }
   })
   const skippedRef = React.useRef<Record<SkipKind, boolean>>({ intro: false, outro: false })
   const lastTimeRef = React.useRef(0)
@@ -340,9 +343,11 @@ export function VideoPlayer({
   const insideRef = React.useRef<Record<SkipKind, boolean>>({ intro: false, outro: false })
   const checkSkip = (v: HTMLVideoElement) => {
     const t = v.currentTime
-    const { intro: i, outro: o, auto } = skipRef.current
+    const { intro: i, outro: o, auto, length } = skipRef.current
+    // Times made for a differently cut video would skip the wrong part: ignore them.
+    const mismatch = Boolean(length) && Number.isFinite(v.duration) && v.duration > 0 && Math.abs(v.duration - length!) > 20
     const inside = (r: { start: number; end: number } | null | undefined) =>
-      Boolean(r) && t >= r!.start - 0.3 && t < r!.end - 0.6
+      !mismatch && Boolean(r) && t >= r!.start - 0.3 && t < r!.end - 0.6
     const now: Record<SkipKind, boolean> = { intro: inside(i), outro: inside(o) }
     const natural = Math.abs(t - lastTimeRef.current) < 3
     lastTimeRef.current = t
@@ -1193,7 +1198,7 @@ export function VideoPlayer({
           <div className="pointer-events-none absolute inset-x-0 bottom-[clamp(2.1rem,6.5cqw,5rem)] z-[5] flex justify-center px-[5cqw]">
             <p
               style={{
-                fontSize: `calc(clamp(1rem, 3cqw, 3rem) * ${CAPTION_SIZES[captionSize].scale})`,
+                fontSize: `calc(clamp(0.85rem, 2.6cqw, 2.5rem) * ${CAPTION_SIZES[captionSize].scale})`,
                 fontFamily: CAPTION_FONT,
               }}
               className="max-w-[min(100%,52em)] text-center leading-[1.35] font-bold tracking-[0.005em] text-balance whitespace-pre-line text-white"
@@ -1561,7 +1566,7 @@ export function VideoPlayer({
                     <MenuRow
                       icon={<SeekForward10Icon />}
                       label="Auto skip intro/outro"
-                      value={autoSkipOption.value ? "On" : "Off"}
+                      value={!intro && !outro ? "No data" : autoSkipOption.value ? "On" : "Off"}
                       chevron={false}
                       onClick={() => autoSkipOption.onChange(!autoSkipOption.value)}
                     />
