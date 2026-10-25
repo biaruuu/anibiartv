@@ -1,6 +1,6 @@
 {
   "name": "videoplayer",
-  "version": "1.17.2",
+  "version": "1.18.0",
   "private": true,
   "engines": {
     "node": ">=20.9.0"
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fontsource-variable/karla": "^5.2.0",
+    "@fontsource/open-sans": "^5.0.0",
     "@fontsource/poppins": "^5.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.18.0
+
+### Fixed
+- Captions no longer move when the controls appear or hide. They used to jump up into the middle of the video and sit under the play and seek buttons, especially in small players. They now stay in one place just above the seek bar, centred.
+
+### Changed
+- Easier to read captions: a bit larger (Small is now 0.9, Medium 1.1, Large 1.4 of the base size), bold with a thicker round outline and a soft shadow, balanced line breaks so two lines are about equal, and a narrower maximum width. The Dark box style has a slightly softer shadow.
+- Open Sans is bundled as the fallback after Trebuchet MS, so phones and Linux, which have no Trebuchet, get a similar look instead of the system default.
+
 ## 1.17.2
 
 ### Changed

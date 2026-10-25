@@ -77,16 +77,17 @@ type MenuView = "main" | "captions" | "style" | "speed" | "boost" | "quality"
 type Notice = { text: string; tone: "default" | "error" }
 
 // Subtitle font, the same family Miruro uses for its captions.
-const CAPTION_FONT = '"Trebuchet MS", "Lucida Grande", "Lucida Sans Unicode", "Segoe UI", Tahoma, sans-serif'
+// Open Sans is bundled so phones and Linux, which have no Trebuchet MS, still get a similar humanist look.
+const CAPTION_FONT = '"Trebuchet MS", "Open Sans", "Segoe UI", Tahoma, sans-serif'
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
 const SEEK_STEP = 10
 const AUTO_HIDE_MS = 3000
 
 const CAPTION_SIZES = {
-  sm: { label: "Small", scale: 0.85 },
-  md: { label: "Medium", scale: 1 },
-  lg: { label: "Large", scale: 1.3 },
+  sm: { label: "Small", scale: 0.9 },
+  md: { label: "Medium", scale: 1.1 },
+  lg: { label: "Large", scale: 1.4 },
 } as const
 const CAPTION_STYLES = {
   box: "Dark box",
@@ -1081,25 +1082,21 @@ export function VideoPlayer({
 
         {/* Captions: Trebuchet MS like Miruro, sized from the player width, with a readable style */}
         {cueText && (
-          <div
-            className={cn(
-              "pointer-events-none absolute inset-x-0 z-[5] flex justify-center px-[4cqw] transition-all duration-300 ease-out",
-              controlsHidden
-                ? "bottom-[clamp(0.75rem,3.5cqw,2.5rem)]"
-                : "bottom-[clamp(5.5rem,14cqw,8.5rem)]"
-            )}
-          >
+          // The position never changes when the controls appear or hide, so captions don't jump
+          // under your finger. They sit just above the seek bar, centred, so the time (left) and
+          // fullscreen button (right) stay clear of them.
+          <div className="pointer-events-none absolute inset-x-0 bottom-[clamp(2.1rem,6.5cqw,5rem)] z-[5] flex justify-center px-[5cqw]">
             <p
               style={{
-                fontSize: `calc(clamp(0.9rem, 2.8cqw, 2.75rem) * ${CAPTION_SIZES[captionSize].scale})`,
+                fontSize: `calc(clamp(1rem, 3cqw, 3rem) * ${CAPTION_SIZES[captionSize].scale})`,
                 fontFamily: CAPTION_FONT,
               }}
-              className="max-w-full text-center leading-[1.45] font-bold whitespace-pre-line text-white"
+              className="max-w-[min(100%,52em)] text-center leading-[1.35] font-bold tracking-[0.005em] text-balance whitespace-pre-line text-white"
             >
               <span
                 className={
                   captionStyle === "box"
-                    ? "rounded-[0.3em] bg-black/80 px-[0.55em] py-[0.1em] box-decoration-clone"
+                    ? "rounded-[0.35em] bg-black/75 px-[0.6em] py-[0.12em] box-decoration-clone shadow-[0_0.1em_0.4em_rgb(0_0_0/0.4)]"
                     : "caption-outline"
                 }
               >
