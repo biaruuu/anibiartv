@@ -1,41 +1,41 @@
 // Title logos (the stylised artwork you see on Miruro) are not part of AniList.
-// They come from TMDB: add a free API key as NEXT_PUBLIC_TMDB_KEY in Vercel
-// (Project Settings -> Environment Variables) and redeploy. Without a key the
-// hero falls back to the plain text title.
+// They come from TMDB through our own cached route (/api/tmdb, stored in Redis for a week).
+// Add a free TMDB key as TMDB_KEY (or NEXT_PUBLIC_TMDB_KEY) in Vercel and redeploy.
+// Without a key the hero falls back to the plain text title.
 
-const KEY = process.env.NEXT_PUBLIC_TMDB_KEY
 const cache = new Map<string, string | null>()
+let disabled = false
 
 type TmdbSearch = { results: { id: number }[] }
 type TmdbImages = { logos: { file_path: string; iso_639_1: string | null; vote_average: number; width: number }[] }
 
-export const logosEnabled = Boolean(KEY)
+export const logosEnabled = true
+
+async function tmdb<T>(path: string, params: Record<string, string>, signal?: AbortSignal): Promise<T | null> {
+  if (disabled) return null
+  const res = await fetch(`/api/tmdb?${new URLSearchParams({ path, ...params })}`, { signal })
+  if (res.status === 503) {
+    disabled = true // no key on the server: stop asking
+    return null
+  }
+  return res.ok ? ((await res.json()) as T) : null
+}
 
 export async function getTitleLogo(
   name: string,
   isMovie: boolean,
   signal?: AbortSignal
 ): Promise<string | null> {
-  if (!KEY) return null
   const cacheKey = `${isMovie ? "m" : "t"}:${name}`
   if (cache.has(cacheKey)) return cache.get(cacheKey) ?? null
 
   const kinds = isMovie ? (["movie", "tv"] as const) : (["tv", "movie"] as const)
   try {
     for (const kind of kinds) {
-      const search = await fetch(
-        `https://api.themoviedb.org/3/search/${kind}?api_key=${KEY}&query=${encodeURIComponent(name)}`,
-        { signal }
-      )
-      if (!search.ok) continue
-      const id = ((await search.json()) as TmdbSearch).results[0]?.id
+      const id = (await tmdb<TmdbSearch>(`search/${kind}`, { query: name }, signal))?.results[0]?.id
       if (!id) continue
-      const images = await fetch(
-        `https://api.themoviedb.org/3/${kind}/${id}/images?api_key=${KEY}&include_image_language=en,ja,null`,
-        { signal }
-      )
-      if (!images.ok) continue
-      const logos = ((await images.json()) as TmdbImages).logos
+      const logos = (await tmdb<TmdbImages>(`${kind}/${id}/images`, { include_image_language: "en,ja,null" }, signal))?.logos
+      if (!logos) continue
       const best =
         logos
           .filter((l) => l.iso_639_1 === "en")
@@ -49,7 +49,7 @@ export async function getTitleLogo(
   } catch (e) {
     if ((e as Error).name === "AbortError") return null
   }
-  cache.set(cacheKey, null)
+  if (!disabled) cache.set(cacheKey, null)
   return null
 }
 
@@ -57,20 +57,17 @@ export type Artwork = { kind: "Backgrounds" | "Banners" | "Posters" | "Logos"; u
 
 /** Artwork for the info page gallery (TMDB). Empty when there is no key or no match. */
 export async function getArtwork(name: string, isMovie: boolean, signal?: AbortSignal): Promise<Artwork[]> {
-  if (!KEY) return []
   const kinds = isMovie ? (["movie", "tv"] as const) : (["tv", "movie"] as const)
   try {
     for (const kind of kinds) {
-      const search = await fetch(
-        `https://api.themoviedb.org/3/search/${kind}?api_key=${KEY}&query=${encodeURIComponent(name)}`,
-        { signal }
-      )
-      if (!search.ok) continue
-      const id = ((await search.json()) as TmdbSearch).results[0]?.id
+      const id = (await tmdb<TmdbSearch>(`search/${kind}`, { query: name }, signal))?.results[0]?.id
       if (!id) continue
-      const res = await fetch(`https://api.themoviedb.org/3/${kind}/${id}/images?api_key=${KEY}`, { signal })
-      if (!res.ok) continue
-      const j = (await res.json()) as { backdrops: { file_path: string }[]; posters: { file_path: string }[]; logos: { file_path: string }[] }
+      const j = await tmdb<{ backdrops: { file_path: string }[]; posters: { file_path: string }[]; logos: { file_path: string }[] }>(
+        `${kind}/${id}/images`,
+        {},
+        signal
+      )
+      if (!j) continue
       const out: Artwork[] = [
         ...j.backdrops.map((i) => ({ kind: "Backgrounds" as const, url: `https://image.tmdb.org/t/p/w780${i.file_path}` })),
         ...j.posters.map((i) => ({ kind: "Posters" as const, url: `https://image.tmdb.org/t/p/w500${i.file_path}` })),

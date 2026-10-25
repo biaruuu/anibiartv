@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.17.0
+
+### Added
+- Redis cache (Upstash, no extra package): episode lists, stream sources, AniList answers and TMDB artwork are shared between all visitors and served from Redis, with an older copy used when the source fails. AniList now goes through `/api/anilist` first and the browser only asks AniList directly if that can't answer. TMDB goes through `/api/tmdb`, which also keeps the TMDB key off the browser (use `TMDB_KEY`). Works without Redis too, with a short memory cache.
+- Quality in the player settings: Auto or a fixed height (1080p, 720p...), remembered between videos. It shows when the stream offers more than one quality.
+
+### Changed
+- Player settings: Loop, Subtitle delay and Picture in picture are removed. Subtitles never have a delay.
+- English is always the default caption (the first English track, otherwise the first track).
+- HLS plays with hls.js whenever the browser supports it (native HLS only as a fallback), which also gives quality control.
+
+### Fixed
+- The site switched to another server while the current one was working. It now only moves to the next server if the current one fails before playback has started. A hiccup during playback is retried on the same server (network errors up to 4 times, decode errors up to 3), and the server you choose stays selected from episode to episode.
+- Captions could show the previous episode's lines, because caption files were cached under an id that repeated for every episode.
+
 ## 1.16.0
 
 ### Changed

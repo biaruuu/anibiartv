@@ -462,7 +462,8 @@ export function WatchApp({ id }: { id: number }) {
   const [watch, setWatch] = React.useState<WatchPayload | null>(null)
   const [watchError, setWatchError] = React.useState<string | null>(null)
   const [watchTry, setWatchTry] = React.useState(0)
-  const [streamId, setStreamId] = React.useState<string | null>(null)
+  // The server the viewer picked, by name, so it stays selected from episode to episode.
+  const [streamName, setStreamName] = React.useState<string | null>(null)
 
   const [prefs, setPrefs] = React.useState<Prefs>({ autoplay: true, autoNext: true })
   const [episodesOpen, setEpisodesOpen] = React.useState(false)
@@ -558,7 +559,6 @@ export function WatchApp({ id }: { id: number }) {
       })
       .then((w) => {
         setWatch(w)
-        setStreamId((cur) => (cur && w.streams.some((s) => s.id === cur) ? cur : (w.streams[0]?.id ?? null)))
       })
       .catch((e: Error) => {
         if (e.name !== "AbortError") setWatchError(e.message)
@@ -567,7 +567,7 @@ export function WatchApp({ id }: { id: number }) {
   }, [id, audio, currentEp?.number, watchTry]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const ready = !!watch && watch.episode === currentEp?.number && watch.audio === audio
-  const stream = watch?.streams.find((s) => s.id === streamId) ?? watch?.streams[0] ?? null
+  const stream = watch?.streams.find((s) => s.name === streamName) ?? watch?.streams[0] ?? null
 
   const tracks = React.useMemo<VideoTrack[]>(() => {
     if (!stream || stream.kind === "hard") return []
@@ -575,7 +575,7 @@ export function WatchApp({ id }: { id: number }) {
       /^en/i.test(t.srclang) || /english/i.test(t.label) ? 0 : t.default ? 1 : 2
     return [...stream.subtitles]
       .sort((a, b) => rank(a) - rank(b))
-      .map((t, i) => ({ id: `${stream.id}-${i}`, srclang: t.srclang, label: t.label, src: t.src }))
+      .map((t) => ({ id: t.src, srclang: t.srclang, label: t.label, src: t.src }))
   }, [stream])
 
   /* page text */
@@ -637,7 +637,7 @@ export function WatchApp({ id }: { id: number }) {
                     // Try the next server automatically when this one can't play.
                     const all = watch?.streams ?? []
                     const at = all.findIndex((x) => x.id === stream.id)
-                    if (at >= 0 && at < all.length - 1) setStreamId(all[at + 1].id)
+                    if (at >= 0 && at < all.length - 1) setStreamName(all[at + 1].name)
                   }}
                   poster={poster}
                   title={currentEp ? `${name} · Episode ${currentEp.number}` : name}
@@ -778,7 +778,7 @@ export function WatchApp({ id }: { id: number }) {
                             role="menuitemradio"
                             aria-checked={stream?.id === s.id}
                             onClick={() => {
-                              setStreamId(s.id)
+                              setStreamName(s.name)
                               close()
                             }}
                             className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-white/10"

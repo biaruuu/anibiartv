@@ -28,7 +28,24 @@ How it works: the browser asks this site's `/api/anime/:id/episodes` and `/api/a
 
 ## Title logos (optional)
 
-AniList has no title artwork. To show the stylised logos in the hero, create a free TMDB API key and add it as `NEXT_PUBLIC_TMDB_KEY` in Vercel (Project Settings, Environment Variables), then redeploy.
+AniList has no title artwork. To show the stylised logos in the hero, create a free TMDB API key and add it as `TMDB_KEY` (or `NEXT_PUBLIC_TMDB_KEY`) in Vercel (Project Settings, Environment Variables), then redeploy.
+
+## Redis cache (recommended)
+
+The site caches with [Upstash Redis](https://upstash.com) so pages and the watch page load faster for everyone:
+
+| What | Fresh for | Also used if the source is down |
+|---|---|---|
+| Episode lists | 10 min | up to 6 h |
+| Stream sources | 90 s | no (links expire) |
+| AniList answers (home, search, info, characters, seasons) | 2 min to 6 h | up to 24 h |
+| TMDB logos and artwork | 7 days | up to 30 days |
+
+Set it up: in Vercel open your project, **Storage**, add **Upstash Redis** (Marketplace), and connect it to the project. That adds `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (the older `KV_REST_API_URL` / `KV_REST_API_TOKEN` names also work). Redeploy. Without these variables the site still works and only keeps a short memory cache.
+
+Images themselves are served by AniList's and TMDB's CDNs and cached by the browser; Redis stores the data that points to them.
+
+For the Anivexa API project, set `CACHE_ENABLED=true` plus the same two Upstash variables so it caches its own episode and stream lookups.
 
 ## Deploy to Vercel
 

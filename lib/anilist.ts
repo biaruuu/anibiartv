@@ -76,7 +76,36 @@ function writeStore(key: string, entry: { at: number; data: unknown }) {
   }
 }
 
+// First choice: our own cached door (/api/anilist, backed by Redis). It answers repeated
+// questions instantly for everyone and keeps AniList's rate limit out of the picture.
+// null means "couldn't answer": then the browser asks AniList itself, as before.
+async function viaCache(body: string): Promise<{ data: unknown } | null> {
+  await acquire()
+  try {
+    const res = await fetch("/api/anilist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      signal: AbortSignal.timeout(15_000),
+    })
+    const json = (await res.json().catch(() => null)) as { data?: unknown; errors?: { message: string }[] } | null
+    if (res.ok && json?.data) return { data: json.data }
+    // A real answer such as "not found" (4xx other than 429): show it, don't retry elsewhere.
+    if (json?.errors?.length && res.status >= 400 && res.status < 500 && res.status !== 429) {
+      throw new Error(json.errors[0].message)
+    }
+    return null
+  } catch (e) {
+    if (e instanceof TypeError || (e instanceof DOMException && (e.name === "TimeoutError" || e.name === "AbortError"))) return null
+    throw e
+  } finally {
+    release()
+  }
+}
+
 async function request(body: string): Promise<unknown> {
+  const cachedAnswer = await viaCache(body)
+  if (cachedAnswer) return cachedAnswer.data
   let lastError: Error = new Error("Couldn't reach AniList.")
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     await acquire()

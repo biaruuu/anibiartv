@@ -16,15 +16,11 @@ import {
   InfoIcon,
   MuteIcon,
   PauseIcon,
-  PictureInPictureIcon,
   PlaybackSpeedCircleIcon,
   PlayIcon,
-  RepeatIcon,
-  RepeatOnIcon,
   SeekBackward10Icon,
   SeekForward10Icon,
   SettingsIcon,
-  TimerIcon,
   VolumeHighIcon,
   VolumeLowIcon,
 } from "@/components/icons/vidstack"
@@ -76,7 +72,7 @@ type CastVideo = HTMLVideoElement & {
 type LockableOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape" | "portrait") => Promise<void>
 }
-type MenuView = "main" | "captions" | "style" | "speed" | "sync" | "boost"
+type MenuView = "main" | "captions" | "style" | "speed" | "boost" | "quality"
 type Notice = { text: string; tone: "default" | "error" }
 
 // Subtitle font, the same family Miruro uses for its captions.
@@ -104,9 +100,11 @@ const MENU_TITLES: Record<MenuView, string> = {
   captions: "Captions",
   style: "Caption style",
   speed: "Speed",
-  sync: "Subtitle delay",
+  quality: "Quality",
   boost: "Volume boost",
 }
+
+const QUALITY_KEY = "videoplayer:quality"
 
 const BOOSTS = [1, 2, 3, 4] as const
 // Shown as the extra volume on top of 100%: 0%, 100%, 200%, 300%.
@@ -280,6 +278,17 @@ export function VideoPlayer({
   React.useEffect(() => {
     onFailRef.current = onFail
   })
+  // True once this source has really started playing. Before that a failure may mean the
+  // server is bad (so the page can try another); after it, a hiccup must never swap servers.
+  const startedRef = React.useRef(false)
+  const reportFail = () => {
+    if (!startedRef.current) onFailRef.current?.()
+  }
+  type HlsInstance = import("hls.js").default
+  const hlsRef = React.useRef<HlsInstance | null>(null)
+  const [levels, setLevels] = React.useState<{ index: number; height: number; bitrate: number }[]>([])
+  const [quality, setQuality] = React.useState(-1) // -1 = Auto
+  const [liveLevel, setLiveLevel] = React.useState(-1)
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const hideTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const flashTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -310,12 +319,10 @@ export function VideoPlayer({
     gain: GainNode
   } | null>(null)
   const [speed, setSpeed] = React.useState(1)
-  const [loop, setLoop] = React.useState(false)
   const [fullscreen, setFullscreen] = React.useState(false)
   const [showControls, setShowControls] = React.useState(true)
   const [settingsOpen, setSettingsOpen] = React.useState(false)
   const [menuView, setMenuView] = React.useState<MenuView>("main")
-  const [pipSupported, setPipSupported] = React.useState(false)
   const [castSupported, setCastSupported] = React.useState(false)
   const [scrubbing, setScrubbing] = React.useState(false)
   const [cueText, setCueText] = React.useState("")
@@ -330,7 +337,10 @@ export function VideoPlayer({
   } | null>(null)
 
   const trackKey = tracks.map(trackId).join("|")
-  const firstId = tracks[0] ? trackId(tracks[0]) : null
+  // English is always the default caption; otherwise the first track.
+  const defaultTrack =
+    tracks.find((t) => /^en(\b|-|_)/i.test(t.srclang) || /^english\b/i.test(t.label)) ?? tracks[0]
+  const firstId = defaultTrack ? trackId(defaultTrack) : null
   const [captionId, setCaptionId] = React.useState<string | null>(firstId)
   const activeTrack = tracks.find((t) => trackId(t) === captionId)
 
@@ -443,44 +453,76 @@ export function VideoPlayer({
     setCors(true)
   }, [src])
 
-  // HLS (.m3u8) streams: native on Safari, hls.js everywhere else.
+  // HLS (.m3u8) streams: hls.js wherever it can run (it gives us quality levels and
+  // error recovery); the browser's own HLS only when hls.js is not supported.
   const isHls = type === "hls" || (type === undefined && /\.m3u8(\?|$)/i.test(src))
+  React.useEffect(() => {
+    startedRef.current = false
+  }, [src])
   React.useEffect(() => {
     const video = videoRef.current
     if (!video || !isHls) return
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = src
-      return () => {
-        video.removeAttribute("src")
-        video.load()
-      }
-    }
     let cancelled = false
-    const live: { hls: import("hls.js").default | null } = { hls: null }
+    let native = false
+    setLevels([])
+    setQuality(-1)
+    setLiveLevel(-1)
     void import("hls.js").then(({ default: Hls }) => {
       if (cancelled) return
       if (!Hls.isSupported()) {
+        if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          native = true
+          video.src = src
+          return
+        }
         setLoading(false)
         setError(true)
-        onFailRef.current?.()
+        reportFail()
         return
       }
-      let retries = 0
-      let recovered = false
+      let netRetries = 0
+      let mediaRetries = 0
       const hls = new Hls({ enableWorker: true, maxBufferLength: 40, backBufferLength: 30 })
-      live.hls = hls
+      hlsRef.current = hls
+      hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
+        // One entry per picture height (the best bitrate of each), tallest first.
+        const best = new Map<number, { index: number; height: number; bitrate: number }>()
+        data.levels.forEach((l, index) => {
+          const key = l.height || Math.round(l.bitrate / 1000)
+          const have = best.get(key)
+          if (!have || l.bitrate > have.bitrate) best.set(key, { index, height: l.height || 0, bitrate: l.bitrate })
+        })
+        const list = [...best.values()].sort((x, y) => y.height - x.height || y.bitrate - x.bitrate)
+        setLevels(list)
+        try {
+          const saved = Number(localStorage.getItem(QUALITY_KEY))
+          const match = saved ? list.find((l) => l.height === saved) : undefined
+          if (match) {
+            hls.currentLevel = match.index
+            setQuality(match.index)
+          }
+        } catch {
+          /* private mode: start on Auto */
+        }
+      })
+      hls.on(Hls.Events.LEVEL_SWITCHED, (_e, d) => setLiveLevel(d.level))
+      hls.on(Hls.Events.FRAG_LOADED, () => {
+        netRetries = 0
+        mediaRetries = 0
+      })
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!data.fatal) return
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && retries < 2) {
-          retries += 1
-          hls.startLoad()
-        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) {
-          recovered = true
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && netRetries < 4) {
+          netRetries += 1
+          window.setTimeout(() => hlsRef.current === hls && hls.startLoad(), 500 * netRetries)
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRetries < 3) {
+          mediaRetries += 1
+          if (mediaRetries === 2) hls.swapAudioCodec()
           hls.recoverMediaError()
         } else {
           setLoading(false)
           setError(true)
-          onFailRef.current?.()
+          reportFail()
         }
       })
       hls.loadSource(src)
@@ -488,9 +530,39 @@ export function VideoPlayer({
     })
     return () => {
       cancelled = true
-      live.hls?.destroy()
+      const hls = hlsRef.current
+      hlsRef.current = null
+      hls?.destroy()
+      if (native) {
+        video.removeAttribute("src")
+        video.load()
+      }
     }
-  }, [src, isHls])
+  }, [src, isHls]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const changeQuality = (index: number) => {
+    const hls = hlsRef.current
+    if (!hls) return
+    hls.currentLevel = index
+    setQuality(index)
+    try {
+      const height = levels.find((l) => l.index === index)?.height
+      if (index === -1 || !height) localStorage.removeItem(QUALITY_KEY)
+      else localStorage.setItem(QUALITY_KEY, String(height))
+    } catch {
+      /* ignore */
+    }
+  }
+  const levelLabel = (l: { height: number; bitrate: number }) =>
+    l.height ? `${l.height}p` : `${Math.round(l.bitrate / 1000)} kbps`
+  const qualityValue = () => {
+    if (quality !== -1) {
+      const l = levels.find((x) => x.index === quality)
+      return l ? levelLabel(l) : "Auto"
+    }
+    const playing = hlsRef.current?.levels[liveLevel]
+    return playing?.height ? `Auto (${playing.height}p)` : "Auto"
+  }
 
   const changeSpeed = (value: number) => {
     if (videoRef.current) videoRef.current.playbackRate = value
@@ -544,17 +616,6 @@ export function VideoPlayer({
       // Fullscreen can be refused by the browser; nothing to do.
     }
   }, [container])
-
-  const togglePip = React.useCallback(async () => {
-    const v = videoRef.current
-    if (!v || !document.pictureInPictureEnabled) return
-    try {
-      if (document.pictureInPictureElement) await document.exitPictureInPicture()
-      else await v.requestPictureInPicture()
-    } catch {
-      // Picture-in-picture can be refused by the browser.
-    }
-  }, [])
 
   const castVideo = async () => {
     try {
@@ -674,7 +735,7 @@ export function VideoPlayer({
     if (!v) return
     if (v.error) {
       setError(true)
-      onFailRef.current?.()
+      reportFail()
     }
     if (v.readyState >= 1) {
       setDuration(v.duration)
@@ -702,7 +763,6 @@ export function VideoPlayer({
   )
 
   React.useEffect(() => {
-    setPipSupported(Boolean(document.pictureInPictureEnabled))
     setCastSupported(Boolean((videoRef.current as CastVideo | null)?.remote))
     const onChange = () => {
       const active = Boolean(document.fullscreenElement)
@@ -896,7 +956,6 @@ export function VideoPlayer({
           src={isHls ? undefined : src}
           poster={poster}
           autoPlay={autoPlay}
-          loop={loop}
           preload="metadata"
           playsInline
           crossOrigin={cors ? "anonymous" : undefined}
@@ -913,13 +972,18 @@ export function VideoPlayer({
           onEmptied={() => setPlaying(false)}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
-          onPlaying={() => setLoading(false)}
+          onPlaying={() => {
+            startedRef.current = true
+            setLoading(false)
+          }}
           onWaiting={() => setLoading(true)}
           onCanPlay={() => {
             setLoading(false)
             setError(false)
           }}
           onError={() => {
+            // hls.js reports and recovers from its own errors; this event would only repeat them.
+            if (hlsRef.current) return
             // A server without CORS headers rejects the request. Retry once
             // without CORS (playback works, volume boost is unavailable).
             if (cors && /^https?:/i.test(src) && !audioRef.current) {
@@ -928,7 +992,7 @@ export function VideoPlayer({
             }
             setLoading(false)
             setError(true)
-            onFailRef.current?.()
+            reportFail()
           }}
           onEnded={() => {
             setPlaying(false)
@@ -1289,6 +1353,14 @@ export function VideoPlayer({
             <div className="min-h-0 space-y-[0.4em] overflow-y-auto rounded-[1.5em] border border-white/15 bg-black/55 p-[0.55em] shadow-[inset_0_1px_0_0_rgb(255_255_255/0.15),0_12px_40px_rgb(0_0_0/0.4)] backdrop-blur-2xl backdrop-saturate-150">
               {menuView === "main" && (
                 <>
+                  {levels.length > 1 && (
+                    <MenuRow
+                      icon={<SettingsIcon />}
+                      label="Quality"
+                      value={qualityValue()}
+                      onClick={() => setMenuView("quality")}
+                    />
+                  )}
                   <MenuRow
                     icon={<VolumeHighIcon />}
                     label="Volume boost"
@@ -1301,14 +1373,6 @@ export function VideoPlayer({
                       label="Captions"
                       value={activeTrack?.label ?? "Off"}
                       onClick={() => setMenuView("captions")}
-                    />
-                  )}
-                  {captionId && (
-                    <MenuRow
-                      icon={<TimerIcon />}
-                      label="Subtitle delay"
-                      value={formatOffset(captionOffset)}
-                      onClick={() => setMenuView("sync")}
                     />
                   )}
                   {tracks.length > 0 && (
@@ -1324,12 +1388,6 @@ export function VideoPlayer({
                     label="Speed"
                     value={speed === 1 ? "Normal" : `${speed}x`}
                     onClick={() => setMenuView("speed")}
-                  />
-                  <MenuRow
-                    icon={loop ? <RepeatOnIcon /> : <RepeatIcon />}
-                    label="Loop"
-                    value={loop ? "On" : "Off"}
-                    onClick={() => setLoop((l) => !l)}
                   />
                   {autoplayOption && (
                     <MenuRow
@@ -1347,17 +1405,6 @@ export function VideoPlayer({
                       value={autoNextOption.value ? "On" : "Off"}
                       chevron={false}
                       onClick={() => autoNextOption.onChange(!autoNextOption.value)}
-                    />
-                  )}
-                  {pipSupported && (
-                    <MenuRow
-                      icon={<PictureInPictureIcon />}
-                      label="Picture in picture"
-                      chevron={false}
-                      onClick={() => {
-                        closeSettings()
-                        void togglePip()
-                      }}
                     />
                   )}
                 </>
@@ -1444,6 +1491,23 @@ export function VideoPlayer({
                 </>
               )}
 
+              {menuView === "quality" && (
+                <>
+                  <OptionRow label="Auto" selected={quality === -1} onClick={() => changeQuality(-1)} />
+                  {levels.map((l) => (
+                    <OptionRow
+                      key={l.index}
+                      label={levelLabel(l)}
+                      selected={quality === l.index}
+                      onClick={() => changeQuality(l.index)}
+                    />
+                  ))}
+                  <p className="px-[0.9em] pt-[0.3em] text-[0.8em] text-white/60">
+                    Auto picks the best quality your connection can handle.
+                  </p>
+                </>
+              )}
+
               {menuView === "speed" &&
                 SPEEDS.map((s) => (
                   <OptionRow
@@ -1454,36 +1518,6 @@ export function VideoPlayer({
                   />
                 ))}
 
-              {menuView === "sync" && (
-                <div className="space-y-[0.7em] rounded-[1em] border border-white/10 bg-white/[0.07] p-[0.8em]">
-                  <p className="text-center text-[1.6em] font-semibold tabular-nums">
-                    {formatOffset(captionOffset)}
-                  </p>
-                  <p className="text-center text-[0.8em] text-white/60">
-                    Positive delays subtitles. Negative shows them earlier.
-                  </p>
-                  <div className="grid grid-cols-4 gap-[0.4em]">
-                    {[-0.5, -0.1, 0.1, 0.5].map((step) => (
-                      <button
-                        key={step}
-                        type="button"
-                        onClick={() => adjustOffset(step)}
-                        className="rounded-[0.8em] border border-white/10 bg-white/10 py-[0.5em] text-[0.85em] font-medium tabular-nums transition-colors hover:bg-white/20"
-                      >
-                        {step > 0 ? "+" : "-"}
-                        {Math.abs(step)}s
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => adjustOffset("reset")}
-                    className="w-full rounded-[0.8em] bg-white py-[0.5em] text-[0.85em] font-semibold text-black transition-colors hover:bg-white/85"
-                  >
-                    Reset
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
