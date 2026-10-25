@@ -63,6 +63,10 @@ export type VideoPlayerProps = {
   type?: "hls" | "file"
   /** Called when the source can't be played, so the page can try another server. */
   onFail?: () => void
+  /** Adds an Autoplay switch to the settings menu. */
+  autoplayOption?: { value: boolean; onChange: (value: boolean) => void }
+  /** Adds an "Auto next episode" switch to the settings menu. */
+  autoNextOption?: { value: boolean; onChange: (value: boolean) => void }
 }
 
 type WebkitVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
@@ -104,8 +108,8 @@ const MENU_TITLES: Record<MenuView, string> = {
   boost: "Volume boost",
 }
 
-const BOOSTS = [1, 1.5, 2, 3] as const
-// Shown as the extra volume on top of 100%: 0%, 50%, 100%, 200%.
+const BOOSTS = [1, 2, 3, 4] as const
+// Shown as the extra volume on top of 100%: 0%, 100%, 200%, 300%.
 const boostLabel = (b: number) => `${Math.round((b - 1) * 100)}%`
 
 // Everything is sized from the player's own width (container queries, `cqw`),
@@ -269,6 +273,8 @@ export function VideoPlayer({
   onEnded,
   type,
   onFail,
+  autoplayOption,
+  autoNextOption,
 }: VideoPlayerProps) {
   const onFailRef = React.useRef(onFail)
   React.useEffect(() => {
@@ -406,11 +412,14 @@ export function VideoPlayer({
         const ctx = new Ctx()
         const source = ctx.createMediaElementSource(v)
         const gain = ctx.createGain()
-        // A gentle limiter keeps loud peaks from crackling when boosted.
+        // A fast limiter just under 0 dB stops boosted peaks from clipping, without
+        // squashing normal dialogue (a low threshold would cancel the boost).
         const limiter = ctx.createDynamicsCompressor()
-        limiter.threshold.value = -6
-        limiter.knee.value = 12
-        limiter.ratio.value = 12
+        limiter.threshold.value = -2
+        limiter.knee.value = 2
+        limiter.ratio.value = 20
+        limiter.attack.value = 0.002
+        limiter.release.value = 0.12
         source.connect(gain).connect(limiter).connect(ctx.destination)
         audioRef.current = { ctx, gain }
       }
@@ -1322,6 +1331,24 @@ export function VideoPlayer({
                     value={loop ? "On" : "Off"}
                     onClick={() => setLoop((l) => !l)}
                   />
+                  {autoplayOption && (
+                    <MenuRow
+                      icon={<PlayIcon />}
+                      label="Autoplay"
+                      value={autoplayOption.value ? "On" : "Off"}
+                      chevron={false}
+                      onClick={() => autoplayOption.onChange(!autoplayOption.value)}
+                    />
+                  )}
+                  {autoNextOption && (
+                    <MenuRow
+                      icon={<SeekForward10Icon />}
+                      label="Auto next episode"
+                      value={autoNextOption.value ? "On" : "Off"}
+                      chevron={false}
+                      onClick={() => autoNextOption.onChange(!autoNextOption.value)}
+                    />
+                  )}
                   {pipSupported && (
                     <MenuRow
                       icon={<PictureInPictureIcon />}

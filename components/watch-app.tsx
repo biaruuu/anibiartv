@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleAlert,
-  EllipsisVertical,
   Eye,
   EyeOff,
   LayoutGrid,
@@ -124,7 +123,7 @@ function Menu({
   }, [open])
 
   return (
-    <div ref={ref} className={cn("relative", className)}>
+    <div ref={ref} className={cn("sm:relative", className)}>
       <button
         type="button"
         aria-label={label}
@@ -139,9 +138,9 @@ function Menu({
         <div
           role="menu"
           className={cn(
-            "absolute top-full z-30 mt-2 min-w-full overflow-hidden rounded-xl border border-white/20 bg-[#1b1a1e]/95 py-1.5 shadow-2xl backdrop-blur-xl",
-            align === "right" ? "right-0" : "left-0",
-            "w-max max-w-[calc(100vw-2rem)]"
+            "absolute inset-x-0 top-full z-30 mt-2 max-h-[min(20rem,60svh)] overflow-y-auto overscroll-contain rounded-xl border border-white/20 bg-[#1b1a1e]/95 py-1.5 shadow-2xl backdrop-blur-xl",
+            "sm:inset-x-auto sm:w-max sm:max-w-[22rem] sm:min-w-full",
+            align === "right" ? "sm:right-0" : "sm:left-0"
           )}
         >
           {children(() => setOpen(false))}
@@ -230,7 +229,7 @@ function buildSeasons(a: Detail, graph: FranchiseGraph | null): SeasonCard[] {
       id: node.id,
       label: `Season ${season}`,
       part: part ? `Part ${part}` : null,
-      year: node.seasonYear,
+      year: node.seasonYear ?? (node as { startDate?: { year: number | null } }).startDate?.year ?? null,
       image: node.coverImage.extraLarge ?? node.coverImage.large ?? "",
       current: node.id === a.id,
     }
@@ -644,6 +643,8 @@ export function WatchApp({ id }: { id: number }) {
                   title={currentEp ? `${name} · Episode ${currentEp.number}` : name}
                   tracks={tracks}
                   autoPlay={prefs.autoplay}
+                  autoplayOption={{ value: prefs.autoplay, onChange: (v) => updatePrefs({ autoplay: v }) }}
+                  autoNextOption={{ value: prefs.autoNext, onChange: (v) => updatePrefs({ autoNext: v }) }}
                   className="rounded-none border-x-0 sm:rounded-2xl sm:border-x"
                   onEnded={() => {
                     if (prefs.autoNext && next) select(next.number)
@@ -712,7 +713,7 @@ export function WatchApp({ id }: { id: number }) {
               </div>
 
               {/* Audio, server, options */}
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2.5">
+              <div className="relative grid grid-cols-2 gap-2.5">
                 <Menu
                   label="Audio"
                   trigger={(open) => (
@@ -760,7 +761,7 @@ export function WatchApp({ id }: { id: number }) {
                     <>
                       <span className="flex min-w-0 items-center gap-2.5">
                         <Zap className="size-5 shrink-0" />
-                        <span className="truncate font-medium">{stream?.server ?? "Server"}</span>
+                        <span className="truncate font-medium">{stream?.name ?? "Server"}</span>
                       </span>
                       <ChevronDown className={cn("size-4 shrink-0 transition-transform", open && "rotate-180")} />
                     </>
@@ -783,7 +784,7 @@ export function WatchApp({ id }: { id: number }) {
                             className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-white/10"
                           >
                             <Zap className="size-5" />
-                            <span className="flex-1 pr-6 text-base">{s.server}</span>
+                            <span className="min-w-0 flex-1 truncate text-base">{s.name}</span>
                             {audio === "sub" && <Badge tone={s.kind}>{s.kind === "soft" ? "s-sub" : "h-sub"}</Badge>}
                             <span className="grid w-5 place-items-center">{stream?.id === s.id && <Check className="size-5" />}</span>
                           </button>
@@ -791,49 +792,6 @@ export function WatchApp({ id }: { id: number }) {
                       ) : (
                         <p className="px-4 py-2.5 text-sm text-white/60">{watchError ? "No server answered" : "Loading…"}</p>
                       )}
-                    </>
-                  )}
-                </Menu>
-
-                <Menu
-                  label="Playback options"
-                  align="right"
-                  className="w-12"
-                  trigger={() => <EllipsisVertical className="mx-auto size-5" />}
-                >
-                  {() => (
-                    <>
-                      <MenuHeading>Playback</MenuHeading>
-                      {(
-                        [
-                          ["autoplay", "Autoplay"],
-                          ["autoNext", "Auto Next Episode"],
-                        ] as const
-                      ).map(([key, text]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          role="menuitemcheckbox"
-                          aria-checked={prefs[key]}
-                          onClick={() => updatePrefs(key === "autoplay" ? { autoplay: !prefs.autoplay } : { autoNext: !prefs.autoNext })}
-                          className="flex w-full items-center justify-between gap-8 px-4 py-2.5 text-left text-base hover:bg-white/10"
-                        >
-                          {text}
-                          <span
-                            className={cn(
-                              "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-                              prefs[key] ? "bg-white" : "bg-white/20"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "absolute top-0.5 size-4 rounded-full transition-all",
-                                prefs[key] ? "left-[1.1rem] bg-[#121113]" : "left-0.5 bg-white/70"
-                              )}
-                            />
-                          </span>
-                        </button>
-                      ))}
                     </>
                   )}
                 </Menu>

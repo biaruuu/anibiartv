@@ -9,7 +9,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const url = new URL(req.url)
   const audio = url.searchParams.get("audio") === "dub" ? "dub" : "sub"
   const ep = Number(url.searchParams.get("ep"))
-  const wanted = url.searchParams.get("p")?.split(",").map((x) => x.trim().toLowerCase()).filter((x) => /^[a-z]+$/.test(x))
+  const wanted = url.searchParams.get("p")?.split(",").map((x) => x.trim().toLowerCase()).filter((x) => /^[a-z0-9]+$/.test(x))
   if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(ep) || ep < 0) {
     return NextResponse.json({ error: "Invalid anime or episode." }, { status: 400 })
   }

@@ -17,7 +17,7 @@ export type WatchEpisode = {
   airDate: string | null
   duration: number | null
   filler: boolean
-  /** Providers that have this episode (in priority order). */
+  /** Opaque ids of the servers that have this episode (in priority order). */
   providers: string[]
 }
 
@@ -25,16 +25,15 @@ export type EpisodesPayload = {
   title: string | null
   sub: WatchEpisode[]
   dub: WatchEpisode[]
-  /** Providers that answered with episodes. */
+  /** Opaque ids of the servers that answered with episodes. */
   sources: string[]
 }
 
 export type StreamSubtitle = { label: string; srclang: string; src: string; default: boolean }
 export type StreamSource = {
   id: string
-  provider: string
-  /** Server name from the provider, e.g. HD-1. */
-  server: string
+  /** Our own name for the server. Real provider and site names never leave the server. */
+  name: string
   /** "soft" = separate subtitle tracks, "hard" = subtitles burned into the video. */
   kind: "soft" | "hard"
   format: "hls" | "file"
@@ -61,6 +60,26 @@ export class AnivexaError extends Error {
 /** Providers that were checked to return playable HLS/MP4 links. Order = priority. */
 const KNOWN = ["anikoto", "aniwaves", "animegg", "anipm", "anizone", "animeonsen", "senshi", "animedunya"]
 const DEFAULT_PROVIDERS = ["anikoto", "aniwaves", "animegg"]
+
+// Real provider names stay on the server. The browser only ever sees these ids and the invented names below.
+const alias = (provider: string) => `s${KNOWN.indexOf(provider) + 1}`
+const fromAlias = (value: string) => KNOWN[Number(value.replace(/^s/, "")) - 1] ?? null
+
+const NAMES = ["Nova", "Orion", "Lyra", "Atlas", "Comet", "Zephyr", "Pulse", "Ember", "Echo", "Halo", "Vega", "Aero"]
+const hash = (text: string) => [...text].reduce((h, c) => (h * 33 + c.charCodeAt(0)) >>> 0, 5381)
+/** Stable invented name for a provider server; unique within one list. */
+function nameFor(provider: string, server: string, taken: Set<string>) {
+  let i = hash(`${provider}:${server.toLowerCase()}`) % NAMES.length
+  for (let n = 0; n < NAMES.length; n++, i = (i + 1) % NAMES.length) {
+    if (!taken.has(NAMES[i])) {
+      taken.add(NAMES[i])
+      return NAMES[i]
+    }
+  }
+  const fallback = `Server ${taken.size + 1}`
+  taken.add(fallback)
+  return fallback
+}
 
 export function configuredProviders() {
   const raw = process.env.ANIVEXA_PROVIDERS?.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
@@ -129,10 +148,10 @@ function merge(order: string[], data: Record<string, RawProvider | undefined>, a
           airDate: str(raw.airDate),
           duration: typeof raw.duration === "number" ? raw.duration : null,
           filler: raw.filler === true,
-          providers: [provider],
+          providers: [alias(provider)],
         })
       } else {
-        have.providers.push(provider)
+        have.providers.push(alias(provider))
         if (/^Episode \d+$/.test(have.title) && str(raw.title)) have.title = str(raw.title)!
         have.description ??= str(raw.description)
         have.image ??= str(raw.image)
@@ -153,12 +172,12 @@ export async function getEpisodes(anilistId: number): Promise<EpisodesPayload> {
   const sub = merge(order, data, "sub")
   const dub = merge(order, data, "dub")
   if (!sub.length && !dub.length) {
-    const why = order
-      .map((p) => `${p}: ${str(data[p]?.error) ?? "no episodes"}`)
-      .join("; ")
-    throw new AnivexaError(`No provider has this anime yet. (${why})`, 404)
+    for (const p of order) console.error(`[episodes:${p}] ${str(data[p]?.error) ?? "no episodes"}`)
+    throw new AnivexaError("No server has this anime yet. Try again later.", 404)
   }
-  const sources = order.filter((p) => (data[p]?.episodes?.sub?.length ?? 0) + (data[p]?.episodes?.dub?.length ?? 0) > 0)
+  const sources = order
+    .filter((p) => (data[p]?.episodes?.sub?.length ?? 0) + (data[p]?.episodes?.dub?.length ?? 0) > 0)
+    .map(alias)
   const title = order.map((p) => str(data[p]?.meta?.title)).find(Boolean) ?? null
   return { title, sub, dub, sources }
 }
@@ -190,7 +209,7 @@ const range = (r: RawStream["intro"]) =>
 
 const isThumbnails = (t: RawSubtitle) => /thumbnail|storyboard|sprite|preview/i.test(`${t.url ?? t.src ?? t.file ?? ""} ${t.label ?? ""}`)
 
-function parseWatch(provider: string, audio: Audio, data: RawWatch) {
+function parseWatch(provider: string, audio: Audio, data: RawWatch, taken: Set<string>) {
   const streams: StreamSource[] = []
   const seen = new Set<string>()
   const ordered = [...(data.streams ?? [])].sort((a, b) => Number(!!b.isActive) - Number(!!a.isActive) || (b.priority ?? 0) - (a.priority ?? 0))
@@ -217,9 +236,8 @@ function parseWatch(provider: string, audio: Audio, data: RawWatch) {
     const kind: "soft" | "hard" =
       s.subtitleType === "hardsub" ? "hard" : s.subtitleType === "softsub" || subtitles.length ? "soft" : audio === "sub" ? "hard" : "soft"
     streams.push({
-      id: `${provider}-${streams.length}`,
-      provider,
-      server: s.server?.trim() || provider,
+      id: `${alias(provider)}-${streams.length}`,
+      name: nameFor(provider, s.server?.trim() || provider, taken),
       kind,
       format,
       src: proxied(s.url, referer),
@@ -230,31 +248,32 @@ function parseWatch(provider: string, audio: Audio, data: RawWatch) {
 }
 
 export async function getWatch(anilistId: number, audio: Audio, ep: number, wanted?: string[]): Promise<WatchPayload> {
-  const order = configuredProviders().filter((p) => !wanted?.length || wanted.includes(p))
-  if (!order.length) throw new AnivexaError("No provider has this episode.", 404)
+  const asked = wanted?.map(fromAlias).filter((p): p is string => !!p)
+  const order = configuredProviders().filter((p) => !asked?.length || asked.includes(p))
+  if (!order.length) throw new AnivexaError("No server has this episode.", 404)
+  const taken = new Set<string>()
 
   const results = await Promise.allSettled(
     order.map(async (provider) => {
       const raw = await call<RawWatch>(`/watch/${provider}/${anilistId}/${audio}/${provider}-${ep}`, 40_000)
-      return parseWatch(provider, audio, raw)
+      return { provider, parsed: parseWatch(provider, audio, raw, taken) }
     })
   )
 
   const streams: StreamSource[] = []
   let intro: WatchPayload["intro"] = null
   let outro: WatchPayload["outro"] = null
-  const failures: string[] = []
   results.forEach((r, i) => {
     if (r.status === "fulfilled") {
-      streams.push(...r.value.streams)
-      intro ??= r.value.intro
-      outro ??= r.value.outro
+      streams.push(...r.value.parsed.streams)
+      intro ??= r.value.parsed.intro
+      outro ??= r.value.parsed.outro
     } else {
-      failures.push(`${order[i]}: ${r.reason instanceof Error ? r.reason.message : "failed"}`)
+      console.error(`[watch:${order[i]}] ${r.reason instanceof Error ? r.reason.message : "failed"}`)
     }
   })
   if (!streams.length) {
-    throw new AnivexaError(`No playable stream was found for this episode. (${failures.join("; ") || "no direct streams"})`, 404)
+    throw new AnivexaError("No playable stream was found for this episode. Try another episode or try again later.", 404)
   }
   return { audio, episode: ep, streams, intro, outro }
 }

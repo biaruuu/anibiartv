@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.16.0
+
+### Changed
+- Server names are invented (Nova, Orion, Lyra, Atlas, Comet...). Real provider and site names are no longer sent to the browser or shown anywhere: the API returns opaque ids and our own names, and error messages are generic.
+- The Audio and Server menus now fit any screen: on phones they open at the full width of the row, on larger screens they size to their content, and long lists scroll.
+- The three-dot menu is gone. Autoplay and Auto next episode are now rows in the video player's own settings menu.
+- Seasons use the start year when AniList has no season year.
+
+### Fixed
+- Volume boost: the limiter used to sit at -6 dB and cancelled most of the boost. It now sits just under 0 dB, and the steps are 0%, 100%, 200% and 300%.
+
 ## 1.15.0
 
 ### Changed
