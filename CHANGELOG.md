@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.17.1
+
+### Added
+- `/api/health` shows whether Redis is connected (it writes and reads back a test value and reports the time), and whether the streaming address and TMDB key are set. It never shows keys.
+
+### Fixed
+- Cast: the old button used the browser's Remote Playback, which cannot cast a video played through hls.js. It now uses Google's Cast sender (Chrome, Edge and other Chromium browsers) and sends the TV the stream address and your current position; Safari falls back to AirPlay.
+- Autoplay: the player now starts the video itself once it can play (the HTML autoplay attribute is unreliable with hls.js and when the source changes). If the browser blocks autoplay with sound, it starts muted and tells you to tap the volume button.
+- Auto next episode: some streams never fire the "ended" event. The player now also treats the last quarter second as the end, so the next episode starts.
+
 ## 1.17.0
 
 ### Added

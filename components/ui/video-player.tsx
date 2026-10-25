@@ -24,6 +24,7 @@ import {
   VolumeHighIcon,
   VolumeLowIcon,
 } from "@/components/icons/vidstack"
+import { castMedia, CastCancelled, loadCastSdk } from "@/lib/cast"
 import { cn } from "@/lib/utils"
 import { activeText, decodeText, parseCaptions, type Cue } from "@/lib/captions"
 import { Button } from "@/components/ui/button"
@@ -281,6 +282,18 @@ export function VideoPlayer({
   // True once this source has really started playing. Before that a failure may mean the
   // server is bad (so the page can try another); after it, a hiccup must never swap servers.
   const startedRef = React.useRef(false)
+  const autoTriedRef = React.useRef(false)
+  const endedRef = React.useRef(false)
+  const autoPlayRef = React.useRef(autoPlay)
+  React.useEffect(() => {
+    autoPlayRef.current = autoPlay
+  })
+  const fireEnded = () => {
+    if (endedRef.current) return
+    endedRef.current = true
+    setPlaying(false)
+    onEnded?.()
+  }
   const reportFail = () => {
     if (!startedRef.current) onFailRef.current?.()
   }
@@ -458,6 +471,8 @@ export function VideoPlayer({
   const isHls = type === "hls" || (type === undefined && /\.m3u8(\?|$)/i.test(src))
   React.useEffect(() => {
     startedRef.current = false
+    autoTriedRef.current = false
+    endedRef.current = false
   }, [src])
   React.useEffect(() => {
     const video = videoRef.current
@@ -618,10 +633,32 @@ export function VideoPlayer({
   }, [container])
 
   const castVideo = async () => {
+    const v = videoRef.current as CastVideo | null
+    if (!v) return
+    if (!/^(https?:|\/)/i.test(src)) {
+      showNotice("Videos from your device can't be cast", "error")
+      return
+    }
     try {
-      await (videoRef.current as CastVideo | null)?.remote?.prompt()
+      const device = await castMedia({
+        url: new URL(src, window.location.href).href,
+        contentType: isHls ? "application/x-mpegURL" : "video/mp4",
+        title: title ?? "Video",
+        poster: poster ? new URL(poster, window.location.href).href : undefined,
+        startTime: v.currentTime,
+      })
+      v.pause()
+      showNotice(`Casting to ${device}`)
+      return
+    } catch (e) {
+      if (e instanceof CastCancelled) return
+    }
+    // Browsers without the Cast SDK (Safari AirPlay and similar).
+    try {
+      if (v.remote) await v.remote.prompt()
+      else showNotice("Casting isn't available in this browser", "error")
     } catch {
-      // Cancelled or no device available.
+      showNotice("Couldn't start casting", "error")
     }
   }
 
@@ -763,7 +800,9 @@ export function VideoPlayer({
   )
 
   React.useEffect(() => {
-    setCastSupported(Boolean((videoRef.current as CastVideo | null)?.remote))
+    const chromium = "chrome" in window && !/Firefox/i.test(navigator.userAgent)
+    setCastSupported(Boolean((videoRef.current as CastVideo | null)?.remote) || chromium)
+    if (chromium) void loadCastSdk()
     const onChange = () => {
       const active = Boolean(document.fullscreenElement)
       setFullscreen(active)
@@ -963,6 +1002,7 @@ export function VideoPlayer({
           onClick={onVideoClick}
           onDoubleClick={onVideoDoubleClick}
           onLoadStart={() => {
+            endedRef.current = false
             setCurrentTime(0)
             setDuration(0)
             setBuffered(0)
@@ -977,9 +1017,26 @@ export function VideoPlayer({
             setLoading(false)
           }}
           onWaiting={() => setLoading(true)}
-          onCanPlay={() => {
+          onCanPlay={(e) => {
             setLoading(false)
             setError(false)
+            const v = e.currentTarget
+            // Start by ourselves: the autoplay attribute is unreliable with hls.js and when the
+            // source changes. A browser that blocks sound autoplay gets a muted start instead.
+            if (autoPlayRef.current && !autoTriedRef.current && !startedRef.current && v.paused) {
+              autoTriedRef.current = true
+              v.play().catch((err: unknown) => {
+                if ((err as DOMException)?.name !== "NotAllowedError") return
+                v.muted = true
+                setMuted(true)
+                v.play()
+                  .then(() => showNotice("Playing muted. Tap the volume button to unmute."))
+                  .catch(() => {
+                    v.muted = false
+                    setMuted(false)
+                  })
+              })
+            }
           }}
           onError={() => {
             // hls.js reports and recovers from its own errors; this event would only repeat them.
@@ -994,10 +1051,7 @@ export function VideoPlayer({
             setError(true)
             reportFail()
           }}
-          onEnded={() => {
-            setPlaying(false)
-            onEnded?.()
-          }}
+          onEnded={fireEnded}
           onLoadedMetadata={(e) => {
             const v = e.currentTarget
             setDuration(v.duration)
@@ -1009,8 +1063,11 @@ export function VideoPlayer({
           onProgress={(e) => updateBuffered(e.currentTarget)}
           onSeeked={syncCue}
           onTimeUpdate={(e) => {
-            if (!scrubbing) setCurrentTime(e.currentTarget.currentTime)
-            updateBuffered(e.currentTarget)
+            const v = e.currentTarget
+            if (!scrubbing) setCurrentTime(v.currentTime)
+            updateBuffered(v)
+            // Some streams never fire "ended"; treat the last quarter second as the end.
+            if (Number.isFinite(v.duration) && v.duration > 1 && v.currentTime >= v.duration - 0.25) fireEnded()
           }}
         />
 

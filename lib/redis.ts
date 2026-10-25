@@ -104,3 +104,17 @@ export async function cached<T>(key: string, ttl: number, load: () => Promise<T>
 }
 
 export const digest = (text: string) => createHash("sha1").update(text).digest("hex").slice(0, 24)
+
+/** For /api/health: a real round trip (write, read back), never throws. */
+export async function redisHealth() {
+  if (!redisEnabled) return { configured: false, ok: false, ms: null as number | null, error: "No Upstash variables found" }
+  const started = Date.now()
+  try {
+    const stamp = String(started)
+    await command(["SET", "health:ping", stamp, "EX", 60])
+    const back = await command(["GET", "health:ping"])
+    return { configured: true, ok: back === stamp, ms: Date.now() - started, error: back === stamp ? null : "Read back a different value" }
+  } catch (e) {
+    return { configured: true, ok: false, ms: Date.now() - started, error: e instanceof Error ? e.message : "failed" }
+  }
+}
