@@ -100,6 +100,19 @@ function episode(raw: Record<string, unknown>): WatchEpisode | null {
   }
 }
 
+/**
+ * "could not confidently map" is what the provider says when its searches on ani.pm
+ * return nothing, which in practice means ani.pm refused the Anivexa server
+ * (datacenter hosts such as Vercel are commonly blocked), not that the anime is missing.
+ */
+function explain(error?: string) {
+  if (!error) return "Ani.pm has no episodes for this anime."
+  if (/could not confidently map|bootstrap|HTTP 4\d\d|HTTP 5\d\d|wreq/i.test(error)) {
+    return `Ani.pm did not answer your Anivexa server (${error}). This usually means ani.pm is blocking the host it runs on, for example Vercel. Host the Anivexa API on a VPS, Railway or Render instead.`
+  }
+  return error
+}
+
 export async function getEpisodes(anilistId: number): Promise<EpisodesPayload> {
   const data = await call<{
     anipm?: {
@@ -110,7 +123,7 @@ export async function getEpisodes(anilistId: number): Promise<EpisodesPayload> {
   }>(`/episodes/anipm/${anilistId}?map=false`, 300)
   const p = data.anipm
   if (!p || p.error) {
-    throw new AnivexaError(p?.error ?? "Ani.pm has no episodes for this anime.", 404)
+    throw new AnivexaError(explain(p?.error), 404)
   }
   const list = (items?: Record<string, unknown>[]) =>
     (items ?? [])

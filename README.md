@@ -17,6 +17,8 @@ The watch page uses **only** the `anipm` provider of [Anivexa-API](https://githu
 | `ANIVEXA_API_URL` | Required. Base address of your Anivexa API, e.g. `https://anivexa.example.com` (no trailing slash). |
 | `STREAM_PROXY_SECRET` | Optional. Any long random string used to sign stream links. |
 
+**"Ani.pm could not confidently map AniList …"** means the Anivexa server could not get answers from ani.pm. Every anime fails the same way, because ani.pm blocks many datacenter IPs and Vercel is one of them. Check by opening `YOUR_API/episodes/anipm/16498?map=false`: if it shows that error for popular shows too, move the Anivexa API off Vercel (or run it on your own PC with `node server.js` to confirm it works from a home connection).
+
 How it works: the browser asks this site's `/api/anime/:id/episodes` and `/api/anime/:id/watch`, which call `GET /episodes/anipm/:id` and `GET /watch/anipm/:id/sub|dub/anipm-:ep` on your Anivexa API. Stream and subtitle links go through the signed `/api/proxy` route, which adds the Referer the provider requires, rewrites HLS playlists and allows CORS (needed for volume boost). The player plays HLS with hls.js (native on Safari).
 
 ## Title logos (optional)

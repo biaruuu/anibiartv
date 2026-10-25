@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.14.1
+
+### Changed
+- When the Anivexa API answers "could not confidently map", the watch page now explains that ani.pm is blocking the server that hosts the API (as happens on Vercel) and what to do, instead of the bare provider error.
+
 ## 1.14.0
 
 ### Added
