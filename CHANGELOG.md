@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.14.0
+
+### Added
+- New watch page at `/watch/:anilistId` in Miruro's layout: edge-to-edge player, episode number, date and title, Audio (Sub/Dub), Server and Playback menus, previous / Episodes / next bar, anime card with synopsis toggle and My List button, Seasons grid (built from AniList PREQUEL/SEQUEL links), and an episode list with thumbnails, synopses, air dates, reverse, hide synopses and grid view. On phones the list opens under the player; on desktop it is a sticky side panel.
+- Streaming through the `anipm` provider of Anivexa-API: `/api/anime/:id/episodes`, `/api/anime/:id/watch` and a signed `/api/proxy` that adds the required Referer, rewrites HLS playlists and serves subtitles with CORS. Needs `ANIVEXA_API_URL` (see README).
+- The video player plays HLS (`.m3u8`) with hls.js, or natively on Safari. It stays mounted between episodes so auto-next keeps fullscreen.
+
+### Changed
+- Subtitles use Trebuchet MS (bold, outlined) like Miruro instead of Poppins.
+- Watch buttons on the home and info pages open the new watch page.
+
 ## 1.13.0
 
 ### Changed

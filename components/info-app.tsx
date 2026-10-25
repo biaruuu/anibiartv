@@ -518,7 +518,7 @@ function ActionButtons({ a, title }: { a: Detail; title: string }) {
         asChild
         className="h-10 flex-[1.4] rounded-lg bg-white text-sm font-semibold text-black hover:bg-white/90 sm:h-11 sm:text-base"
       >
-        <Link href={`/watch?title=${encodeURIComponent(title)}&ep=1`} aria-label={`Watch ${a.id}`}>
+        <Link href={`/watch/${a.id}?ep=1`} aria-label={`Watch ${title}`}>
           <Play className="fill-current" />
           Watch Now
         </Link>

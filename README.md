@@ -1,11 +1,23 @@
 # AniBiar
 
-A modern, responsive video player web app built with **Next.js**, **shadcn/ui** and **Tailwind CSS v4**. Flat design, no gradients. Captions and the video player render in **Poppins**; the rest of the site uses **Karla**. The video player uses **Vidstack** icons; the rest of the website uses **Lucide** icons.
+A modern, responsive video player web app built with **Next.js**, **shadcn/ui** and **Tailwind CSS v4**. Flat design, no gradients. The video player menus render in **Poppins** and subtitles in **Trebuchet MS**; the rest of the site uses **Karla**. The video player uses **Vidstack** icons; the rest of the website uses **Lucide** icons.
 
 ## Pages
 
 - `/` anime home screen (AniList GraphQL: trending hero, latest episodes, search).
-- `/watch` the video player. Streaming servers are not connected yet, so it plays demo videos.
+- `/watch/:anilistId?ep=1&audio=sub` the watch page (Miruro layout): your video player, episode list, Sub/Dub and server menus, seasons. Streams come from the `anipm` provider of the Anivexa API.
+- `/watch` the stand-alone player with demo videos and local file upload.
+
+## Streaming (Anivexa API, ani.pm provider)
+
+The watch page uses **only** the `anipm` provider of [Anivexa-API](https://github.com/walterwhite-69/Anivexa-API). That API must run as its own server: the provider needs a Node process with browser TLS impersonation (`wreq-js`), and its README warns that Vercel's shared IPs are widely blocked. Host it on a VPS, Railway or Render (`npm install && node server.js`), then set in this project's Vercel environment variables:
+
+| Variable | Meaning |
+|---|---|
+| `ANIVEXA_API_URL` | Required. Base address of your Anivexa API, e.g. `https://anivexa.example.com` (no trailing slash). |
+| `STREAM_PROXY_SECRET` | Optional. Any long random string used to sign stream links. |
+
+How it works: the browser asks this site's `/api/anime/:id/episodes` and `/api/anime/:id/watch`, which call `GET /episodes/anipm/:id` and `GET /watch/anipm/:id/sub|dub/anipm-:ep` on your Anivexa API. Stream and subtitle links go through the signed `/api/proxy` route, which adds the Referer the provider requires, rewrites HLS playlists and allows CORS (needed for volume boost). The player plays HLS with hls.js (native on Safari).
 
 ## Title logos (optional)
 

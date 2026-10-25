@@ -332,8 +332,8 @@ export function timeAgo(unix: number) {
   return `${Math.floor(s / 86400)}d ago`
 }
 
-export const watchHref = (a: Anime, episode?: number) =>
-  `/watch?title=${encodeURIComponent(animeTitle(a))}${episode ? `&ep=${episode}` : ""}`
+export const watchHref = (a: { id: number }, episode?: number) =>
+  `/watch/${a.id}${episode ? `?ep=${episode}` : ""}`
 
 /* ------------------------------ info page data ------------------------------ */
 

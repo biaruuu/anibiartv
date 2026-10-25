@@ -59,6 +59,8 @@ export type VideoPlayerProps = {
   autoPlay?: boolean
   className?: string
   onEnded?: () => void
+  /** "hls" plays .m3u8 streams (hls.js, or native HLS on Safari). Detected from the URL when omitted. */
+  type?: "hls" | "file"
 }
 
 type WebkitVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
@@ -70,6 +72,9 @@ type LockableOrientation = ScreenOrientation & {
 }
 type MenuView = "main" | "captions" | "style" | "speed" | "sync" | "boost"
 type Notice = { text: string; tone: "default" | "error" }
+
+// Subtitle font, the same family Miruro uses for its captions.
+const CAPTION_FONT = '"Trebuchet MS", "Lucida Grande", "Lucida Sans Unicode", "Segoe UI", Tahoma, sans-serif'
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
 const SEEK_STEP = 10
@@ -260,6 +265,7 @@ export function VideoPlayer({
   autoPlay = false,
   className,
   onEnded,
+  type,
 }: VideoPlayerProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const hideTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -420,6 +426,53 @@ export function VideoPlayer({
   React.useEffect(() => {
     setCors(true)
   }, [src])
+
+  // HLS (.m3u8) streams: native on Safari, hls.js everywhere else.
+  const isHls = type === "hls" || (type === undefined && /\.m3u8(\?|$)/i.test(src))
+  React.useEffect(() => {
+    const video = videoRef.current
+    if (!video || !isHls) return
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = src
+      return () => {
+        video.removeAttribute("src")
+        video.load()
+      }
+    }
+    let cancelled = false
+    const live: { hls: import("hls.js").default | null } = { hls: null }
+    void import("hls.js").then(({ default: Hls }) => {
+      if (cancelled) return
+      if (!Hls.isSupported()) {
+        setLoading(false)
+        setError(true)
+        return
+      }
+      let retries = 0
+      let recovered = false
+      const hls = new Hls({ enableWorker: true, maxBufferLength: 40, backBufferLength: 30 })
+      live.hls = hls
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (!data.fatal) return
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && retries < 2) {
+          retries += 1
+          hls.startLoad()
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) {
+          recovered = true
+          hls.recoverMediaError()
+        } else {
+          setLoading(false)
+          setError(true)
+        }
+      })
+      hls.loadSource(src)
+      hls.attachMedia(video)
+    })
+    return () => {
+      cancelled = true
+      live.hls?.destroy()
+    }
+  }, [src, isHls])
 
   const changeSpeed = (value: number) => {
     if (videoRef.current) videoRef.current.playbackRate = value
@@ -643,7 +696,7 @@ export function VideoPlayer({
     }
   }, [])
 
-  /* ---------- captions (own parser, own timing, rendered in Poppins) ---------- */
+  /* ---------- captions (own parser, own timing, rendered in Trebuchet MS) ---------- */
   // When the available tracks change (for example a subtitle was added),
   // switch to the first one.
   React.useEffect(() => {
@@ -819,7 +872,7 @@ export function VideoPlayer({
       >
         <video
           ref={videoRef}
-          src={src}
+          src={isHls ? undefined : src}
           poster={poster}
           autoPlay={autoPlay}
           loop={loop}
@@ -883,7 +936,7 @@ export function VideoPlayer({
           )}
         />
 
-        {/* Captions: Poppins, sized from the player width, with a readable style */}
+        {/* Captions: Trebuchet MS like Miruro, sized from the player width, with a readable style */}
         {cueText && (
           <div
             className={cn(
@@ -896,8 +949,9 @@ export function VideoPlayer({
             <p
               style={{
                 fontSize: `calc(clamp(0.9rem, 2.8cqw, 2.75rem) * ${CAPTION_SIZES[captionSize].scale})`,
+                fontFamily: CAPTION_FONT,
               }}
-              className="max-w-full text-center font-poppins leading-[1.55] font-semibold whitespace-pre-line text-white"
+              className="max-w-full text-center leading-[1.45] font-bold whitespace-pre-line text-white"
             >
               <span
                 className={
