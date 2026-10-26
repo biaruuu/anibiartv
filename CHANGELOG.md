@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.21.0
+
+- Google and Discord sign-in now go straight from your own domain (`/auth/start/<provider>` and `/auth/callback/<provider>`), so the consent screens no longer say "continue to ...supabase.co". Needs `SUPABASE_SERVICE_ROLE_KEY`, `GOOGLE_CLIENT_ID/SECRET` and `DISCORD_CLIENT_SECRET`; until they are set it falls back to the Supabase-hosted sign-in.
+
 ## 1.20.3
 
 - New app logo (glassy white "A" with a play button, transparent background) used as the favicon, home-screen icon and in the footer. The header logo is unchanged.
