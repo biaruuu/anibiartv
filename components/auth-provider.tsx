@@ -5,7 +5,7 @@ import type { User } from "@supabase/supabase-js"
 
 import { getSupabase } from "@/lib/supabase/client"
 
-export type Profile = { username: string | null; avatar_url: string | null; banner_url: string | null }
+export type Profile = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null }
 
 type AuthState = {
   user: User | null
@@ -67,8 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = React.useCallback(async () => {
     if (!userId) return setProfile(null)
     try {
-      const { data } = await getSupabase().from("profiles").select("username, avatar_url, banner_url").eq("id", userId).maybeSingle()
-      setProfile((data as Profile | null) ?? { username: null, avatar_url: null, banner_url: null })
+      const { data } = await getSupabase().from("profiles").select("username, avatar_url, banner_url, bio").eq("id", userId).maybeSingle()
+      setProfile((data as Profile | null) ?? { username: null, avatar_url: null, banner_url: null, bio: null })
     } catch {
       /* offline: fall back to what the sign-in provider gave */
     }

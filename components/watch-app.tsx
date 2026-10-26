@@ -7,6 +7,7 @@ import {
   ArrowDownUp,
   Captions,
   Check,
+  Heart,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -38,7 +39,7 @@ import {
   type FranchiseGraph,
 } from "@/lib/anilist"
 import type { EpisodesPayload, WatchEpisode, WatchPayload } from "@/lib/anivexa"
-import { loadHistory, loadList, localList, saveProgress, toggleList } from "@/lib/library"
+import { loadFavorites, loadHistory, loadList, localFavorites, localList, saveProgress, toggleFavorite, toggleList } from "@/lib/library"
 import { cn } from "@/lib/utils"
 
 type Audio = "sub" | "dub"
@@ -472,16 +473,19 @@ export function WatchApp({ id }: { id: number }) {
   const [synopsis, setSynopsis] = React.useState<"anime" | "episode">("anime")
   const [expanded, setExpanded] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
+  const [loved, setLoved] = React.useState(false)
   const panelRef = React.useRef<HTMLDivElement>(null)
 
   React.useEffect(() => {
     setPrefs(readJson<Prefs>(PREFS_KEY, { autoplay: true, autoNext: true, autoSkip: true }))
     setSaved(localList().some((l) => l.animeId === id))
+    setLoved(localFavorites().some((l) => l.animeId === id))
   }, [id])
   React.useEffect(() => {
     if (!authReady) return
     let alive = true
     loadList(user?.id).then((l) => alive && setSaved(l.some((x) => x.animeId === id)))
+    loadFavorites(user?.id).then((l) => alive && setLoved(l.some((x) => x.animeId === id)))
     return () => {
       alive = false
     }
@@ -494,13 +498,13 @@ export function WatchApp({ id }: { id: number }) {
       return next
     })
 
-  const toggleSaved = async () => {
-    const now = await toggleList(
-      { animeId: id, title: anime ? animeTitle(anime) : (eps?.title ?? `Anime ${id}`), image: anime?.coverImage.large ?? anime?.coverImage.extraLarge ?? null },
-      user?.id
-    )
-    setSaved(now)
-  }
+  const entry = () => ({
+    animeId: id,
+    title: anime ? animeTitle(anime) : (eps?.title ?? `Anime ${id}`),
+    image: anime?.coverImage.large ?? anime?.coverImage.extraLarge ?? null,
+  })
+  const toggleSaved = async () => setSaved(await toggleList(entry(), user?.id))
+  const toggleLoved = async () => setLoved(await toggleFavorite(entry(), user?.id))
 
   /* anime details + seasons (AniList) */
   React.useEffect(() => {
@@ -936,6 +940,16 @@ export function WatchApp({ id }: { id: number }) {
                       )}
                     </p>
                   </div>
+                  <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleLoved}
+                    aria-label={loved ? "Remove from favorites" : "Add to favorites"}
+                    aria-pressed={loved}
+                    className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/25 bg-white/[0.06] transition-colors hover:bg-white/15 sm:size-12"
+                  >
+                    <Heart className={cn("size-5", loved && "fill-red-500 text-red-500")} />
+                  </button>
                   <button
                     type="button"
                     onClick={toggleSaved}
@@ -945,6 +959,7 @@ export function WatchApp({ id }: { id: number }) {
                   >
                     {saved ? <Check className="size-5" /> : <Plus className="size-5" />}
                   </button>
+                  </div>
                 </div>
 
                 {shown ? (

@@ -3,14 +3,14 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Camera, ImagePlus, Trash2, User, X } from "lucide-react"
+import { Calendar, Camera, Heart, ImagePlus, Mail, Pencil, Trash2, User, X } from "lucide-react"
 
 import { useAuth } from "@/components/auth-provider"
 import { HistoryCard, useHistory } from "@/components/continue-watching"
 import { SiteFooter, SiteHeader } from "@/components/site-header"
 import { Spinner } from "@/components/ui/spinner"
-import { loadList, toggleList, type ListItem } from "@/lib/library"
-import { ACCEPT, deleteProfileImage, uploadProfileImage } from "@/lib/profile-images"
+import { loadFavorites, loadList, toggleFavorite, toggleList, type ListItem } from "@/lib/library"
+import { ACCEPT, deleteProfileImage, MAX_BYTES, uploadProfileImage } from "@/lib/profile-images"
 import { getSupabase } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
@@ -34,6 +34,7 @@ type Pick = { file: File; preview: string } | null
 function EditProfile({ onClose }: { onClose: () => void }) {
   const { user, name, avatar, banner, profile, refreshProfile } = useAuth()
   const [username, setUsername] = React.useState(profile?.username ?? name ?? "")
+  const [bio, setBio] = React.useState(profile?.bio ?? "")
   const [avatarPick, setAvatarPick] = React.useState<Pick>(null)
   const [bannerPick, setBannerPick] = React.useState<Pick>(null)
   const [dropAvatar, setDropAvatar] = React.useState(false)
@@ -41,12 +42,13 @@ function EditProfile({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  // Previews are released when replaced and when the panel closes.
+  const previews = React.useRef<string[]>([])
   React.useEffect(
     () => () => {
-      if (avatarPick) URL.revokeObjectURL(avatarPick.preview)
-      if (bannerPick) URL.revokeObjectURL(bannerPick.preview)
+      previews.current.forEach((u) => URL.revokeObjectURL(u))
     },
-    [avatarPick, bannerPick]
+    []
   )
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose()
@@ -59,14 +61,15 @@ function EditProfile({ onClose }: { onClose: () => void }) {
     e.target.value = ""
     if (!file) return
     if (!ACCEPT.split(",").includes(file.type)) return setError("Use a PNG, JPG, WebP or GIF image.")
-    if (file.size > 8 * 1024 * 1024) return setError("Images can be up to 8 MB.")
+    if (file.size > MAX_BYTES) return setError("Images can be up to 8 MB.")
     setError(null)
-    const pick = { file, preview: URL.createObjectURL(file) }
+    const preview = URL.createObjectURL(file)
+    previews.current.push(preview)
     if (kind === "avatar") {
-      setAvatarPick(pick)
+      setAvatarPick({ file, preview })
       setDropAvatar(false)
     } else {
-      setBannerPick(pick)
+      setBannerPick({ file, preview })
       setDropBanner(false)
     }
   }
@@ -78,7 +81,6 @@ function EditProfile({ onClose }: { onClose: () => void }) {
     if (!user) return
     const clean = username.trim()
     if (!clean) return setError("Enter a display name.")
-    if (clean.length > 32) return setError("Display names can be up to 32 characters.")
     setBusy(true)
     setError(null)
     try {
@@ -101,7 +103,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
       }
       const { error } = await getSupabase()
         .from("profiles")
-        .upsert({ id: user.id, username: clean, avatar_url: avatarUrl, banner_url: bannerUrl }, { onConflict: "id" })
+        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl }, { onConflict: "id" })
       if (error) throw new Error(error.message)
       await refreshProfile()
       void Promise.all(stale.map(deleteProfileImage))
@@ -113,7 +115,10 @@ function EditProfile({ onClose }: { onClose: () => void }) {
   }
 
   const btn =
-    "inline-flex h-9 items-center gap-1.5 rounded-full border border-white/25 px-3.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+    "inline-flex h-10 items-center gap-1.5 rounded-full border border-white/25 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+  const input =
+    "w-full rounded-xl border border-white/20 bg-transparent px-4 text-base text-white outline-none placeholder:text-white/40 focus:border-white/60 sm:text-sm"
+  const label = "mb-2 block text-xs font-semibold tracking-wide text-white/50 uppercase"
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-end bg-black/70 sm:place-items-center sm:p-6" onClick={() => !busy && onClose()}>
@@ -122,7 +127,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
         aria-modal="true"
         aria-label="Edit profile"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[92svh] w-full overflow-y-auto rounded-t-2xl border border-white/20 bg-[#121113] sm:max-w-lg sm:rounded-2xl"
+        className="max-h-[94svh] w-full overflow-y-auto rounded-t-2xl border border-white/20 bg-[#121113] sm:max-w-lg sm:rounded-2xl"
       >
         <div className="flex items-center justify-between px-4 pt-4 sm:px-6 sm:pt-5">
           <h2 className="text-lg font-semibold text-white">Edit profile</h2>
@@ -131,76 +136,84 @@ function EditProfile({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* banner + avatar preview, like the real profile */}
-        <div className="mt-4 px-4 sm:px-6">
-          <div className="relative aspect-[3/1] overflow-hidden rounded-xl bg-white/[0.06]">
+        {/* live preview, laid out like the real profile */}
+        <div className="mt-3 px-4 sm:px-6">
+          <div className="relative h-24 overflow-hidden rounded-xl bg-white/[0.08] sm:h-28">
             {shownBanner && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={shownBanner} alt="" className="size-full object-cover" />
             )}
           </div>
-          <div className="-mt-9 flex items-end gap-3 px-3 sm:-mt-10">
-            <Avatar src={shownAvatar} className="size-[4.5rem] border-4 border-[#121113] sm:size-20" />
-          </div>
+          <Avatar src={shownAvatar} className="-mt-9 ml-3 size-[4.5rem] border-[5px] border-[#121113] sm:size-20" />
         </div>
 
         <div className="mt-4 grid gap-5 px-4 pb-5 sm:px-6">
-          <div>
-            <p className="mb-2 text-xs font-semibold tracking-wide text-white/50 uppercase">Avatar</p>
-            <div className="flex flex-wrap gap-2">
-              <label className={cn(btn, "cursor-pointer")}>
-                <Camera className="size-4" /> Change avatar
-                <input type="file" accept={ACCEPT} className="sr-only" onChange={choose("avatar")} disabled={busy} />
-              </label>
-              {(avatarPick || avatar) && (
-                <button
-                  type="button"
-                  className={btn}
-                  disabled={busy}
-                  onClick={() => {
-                    setAvatarPick(null)
-                    setDropAvatar(true)
-                  }}
-                >
-                  <Trash2 className="size-4" /> Remove
-                </button>
-              )}
+          <div className="grid gap-4 min-[440px]:grid-cols-2">
+            <div>
+              <span className={label}>Avatar</span>
+              <div className="flex flex-wrap gap-2">
+                <label className={cn(btn, "cursor-pointer")}>
+                  <Camera className="size-4" /> Change
+                  <input type="file" accept={ACCEPT} className="sr-only" onChange={choose("avatar")} disabled={busy} />
+                </label>
+                {(avatarPick || avatar) && (
+                  <button
+                    type="button"
+                    aria-label="Remove avatar"
+                    className={cn(btn, "px-3")}
+                    disabled={busy}
+                    onClick={() => {
+                      setAvatarPick(null)
+                      setDropAvatar(true)
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-semibold tracking-wide text-white/50 uppercase">Banner (GIFs work too)</p>
-            <div className="flex flex-wrap gap-2">
-              <label className={cn(btn, "cursor-pointer")}>
-                <ImagePlus className="size-4" /> Change banner
-                <input type="file" accept={ACCEPT} className="sr-only" onChange={choose("banner")} disabled={busy} />
-              </label>
-              {(bannerPick || banner) && (
-                <button
-                  type="button"
-                  className={btn}
-                  disabled={busy}
-                  onClick={() => {
-                    setBannerPick(null)
-                    setDropBanner(true)
-                  }}
-                >
-                  <Trash2 className="size-4" /> Remove
-                </button>
-              )}
+            <div>
+              <span className={label}>Banner · GIFs work</span>
+              <div className="flex flex-wrap gap-2">
+                <label className={cn(btn, "cursor-pointer")}>
+                  <ImagePlus className="size-4" /> Change
+                  <input type="file" accept={ACCEPT} className="sr-only" onChange={choose("banner")} disabled={busy} />
+                </label>
+                {(bannerPick || banner) && (
+                  <button
+                    type="button"
+                    aria-label="Remove banner"
+                    className={cn(btn, "px-3")}
+                    disabled={busy}
+                    onClick={() => {
+                      setBannerPick(null)
+                      setDropBanner(true)
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
           <label className="block">
-            <span className="mb-2 block text-xs font-semibold tracking-wide text-white/50 uppercase">Display name</span>
-            <input
-              value={username}
-              maxLength={32}
-              onChange={(e) => setUsername(e.target.value)}
+            <span className={label}>Display name</span>
+            <input value={username} maxLength={32} onChange={(e) => setUsername(e.target.value)} disabled={busy} className={cn(input, "h-12")} placeholder="Your name" />
+          </label>
+
+          <label className="block">
+            <span className={label}>Bio</span>
+            <textarea
+              value={bio}
+              maxLength={190}
+              rows={3}
+              onChange={(e) => setBio(e.target.value)}
               disabled={busy}
-              className="h-12 w-full rounded-xl border border-white/20 bg-transparent px-4 text-base text-white outline-none placeholder:text-white/40 focus:border-white/60 sm:text-sm"
-              placeholder="Your name"
+              className={cn(input, "resize-none py-3")}
+              placeholder="Tell people what you watch"
             />
+            <span className="mt-1 block text-right text-xs text-white/40">{bio.length}/190</span>
           </label>
 
           {error && (
@@ -231,18 +244,57 @@ function EditProfile({ onClose }: { onClose: () => void }) {
 
 /* -------------------------------- page -------------------------------- */
 
+const TABS = [
+  { id: "history", label: "History" },
+  { id: "favorites", label: "Favorites" },
+  { id: "list", label: "My List" },
+] as const
+type Tab = (typeof TABS)[number]["id"]
+
+function PosterGrid({ items, onRemove, empty }: { items: ListItem[] | null; onRemove: (it: ListItem) => void; empty: string }) {
+  if (items && items.length === 0) return <p className="py-12 text-center text-sm text-white/60">{empty}</p>
+  return (
+    <div className="grid grid-cols-3 gap-x-2.5 gap-y-5 sm:grid-cols-4 sm:gap-x-4 lg:grid-cols-5">
+      {(items ?? []).map((it) => (
+        <div key={it.animeId} className="group relative min-w-0">
+          <Link href={`/anime/${it.animeId}`} className="block">
+            <div className="aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
+              {it.image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={it.image} alt="" loading="lazy" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
+              )}
+            </div>
+            <h3 className="mt-1.5 line-clamp-2 text-xs font-medium text-white group-hover:text-lime-300 sm:text-sm">{it.title}</h3>
+          </Link>
+          <button
+            type="button"
+            aria-label={`Remove ${it.title}`}
+            onClick={() => onRemove(it)}
+            className="absolute top-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function ProfileApp() {
   const router = useRouter()
-  const tab = useSearchParams().get("tab") === "list" ? "list" : "history"
-  const { user, ready, name, avatar, banner, signOut } = useAuth()
+  const raw = useSearchParams().get("tab")
+  const tab: Tab = raw === "favorites" || raw === "list" ? raw : "history"
+  const { user, ready, name, avatar, banner, profile } = useAuth()
   const { items, remove } = useHistory()
   const [list, setList] = React.useState<ListItem[] | null>(null)
+  const [favorites, setFavorites] = React.useState<ListItem[] | null>(null)
   const [editing, setEditing] = React.useState(false)
 
   React.useEffect(() => {
     if (!ready) return
     let alive = true
     loadList(user?.id).then((l) => alive && setList(l))
+    loadFavorites(user?.id).then((l) => alive && setFavorites(l))
     return () => {
       alive = false
     }
@@ -252,114 +304,129 @@ export function ProfileApp() {
     setList((l) => l?.filter((x) => x.animeId !== it.animeId) ?? null)
     void toggleList(it, user?.id)
   }
+  const unfavorite = (it: ListItem) => {
+    setFavorites((l) => l?.filter((x) => x.animeId !== it.animeId) ?? null)
+    void toggleFavorite(it, user?.id)
+  }
+
+  const joined = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    : null
+  const counts: Record<Tab, number | null> = {
+    history: items?.length ?? null,
+    favorites: favorites?.length ?? null,
+    list: list?.length ?? null,
+  }
 
   return (
     <div className="min-h-svh bg-[#121113] text-[#eeeef0]">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-7xl px-4 pt-[4.5rem] pb-10 sm:px-8 sm:pt-24">
-        {/* profile card: banner, avatar, name */}
-        <section className="overflow-hidden rounded-2xl border border-white/20">
-          <div className="relative aspect-[5/2] bg-white/[0.06] sm:aspect-[4/1]">
+
+      <main className="mx-auto w-full max-w-4xl pb-10 sm:px-8 sm:pt-20">
+        <div className="overflow-hidden bg-[#121113] sm:rounded-2xl sm:border sm:border-white/20">
+          {/* banner: sits under the header on phones, like Discord */}
+          <div className="relative h-40 bg-white/[0.08] sm:h-52">
             {banner && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={banner} alt="" className="size-full object-cover" />
             )}
+            <div aria-hidden className="absolute inset-x-0 top-0 h-16 bg-black/20 sm:hidden" />
           </div>
-          <div className="px-4 pb-5 sm:px-6">
-            <div className="-mt-12 flex items-end justify-between gap-3 sm:-mt-14">
-              <Avatar src={user ? avatar : null} className="size-24 border-[5px] border-[#121113] sm:size-28" />
-              {user && (
-                <div className="flex gap-2 pb-1">
-                  <button
-                    type="button"
-                    onClick={() => setEditing(true)}
-                    className="h-10 rounded-full bg-white px-4 text-sm font-semibold text-black transition-colors hover:bg-white/90"
-                  >
-                    Edit profile
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await signOut()
-                      router.replace("/")
-                    }}
-                    className="h-10 rounded-full border border-white/25 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-                  >
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="mt-3 min-w-0">
-              <h1 className="truncate text-xl font-semibold tracking-tight text-white sm:text-2xl">{user ? name : "Guest"}</h1>
-              <p className="truncate text-sm text-white/55">
-                {user ? user.email : "Log in to set an avatar and banner and keep your list on every device."}
-              </p>
-              {ready && !user && (
-                <Link href="/login?next=/profile" className="mt-3 inline-flex h-10 items-center rounded-full bg-white px-5 text-sm font-semibold text-black hover:bg-white/90">
-                  Log in / Sign up
-                </Link>
-              )}
-            </div>
-          </div>
-        </section>
 
-        {/* tabs */}
-        <div role="tablist" className="mt-6 mb-5 inline-flex rounded-full border border-white/20 p-0.5">
-          {(["history", "list"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => router.replace(`/profile?tab=${t}`, { scroll: false })}
-              className={cn(
-                "rounded-full px-5 py-1.5 text-sm font-semibold transition-colors",
-                tab === t ? "bg-white text-black" : "text-white/70 hover:text-white"
-              )}
-            >
-              {t === "history" ? "History" : "My List"}
-            </button>
-          ))}
-        </div>
+          <div className="px-4 pb-1 sm:px-6">
+            <Avatar src={user ? avatar : null} className="-mt-14 size-28 border-[6px] border-[#121113] sm:-mt-16 sm:size-32" />
 
-        {tab === "history" ? (
-          items && items.length === 0 ? (
-            <p className="py-14 text-center text-white/60">Nothing watched yet. Start an episode and it will show up here.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-x-4 gap-y-6 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {(items ?? []).map((h) => (
-                <HistoryCard key={h.animeId} h={h} onRemove={() => remove(h.animeId)} />
-              ))}
-            </div>
-          )
-        ) : list && list.length === 0 ? (
-          <p className="py-14 text-center text-white/60">Your list is empty. Tap the + on a watch page to add anime.</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-x-2.5 gap-y-5 sm:gap-x-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {(list ?? []).map((it) => (
-              <div key={it.animeId} className="group relative min-w-0">
-                <Link href={`/anime/${it.animeId}`} className="block">
-                  <div className="aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
-                    {it.image && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={it.image} alt="" loading="lazy" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
+            <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-bold tracking-tight text-white sm:text-3xl">{user ? name : "Guest"}</h1>
+                {user ? (
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-white/75">
+                    <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-white/[0.08] px-2.5 py-1.5">
+                      <Mail className="size-3.5 shrink-0" />
+                      <span className="truncate">{user.email}</span>
+                    </span>
+                    {joined && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.08] px-2.5 py-1.5">
+                        <Calendar className="size-3.5" />
+                        Joined {joined}
+                      </span>
                     )}
                   </div>
-                  <h3 className="mt-1.5 line-clamp-2 text-xs font-medium text-white group-hover:text-lime-300 sm:text-sm">{it.title}</h3>
-                </Link>
+                ) : (
+                  <p className="mt-1 text-sm text-white/60">Log in to set an avatar and banner and keep your lists on every device.</p>
+                )}
+              </div>
+
+              {user ? (
                 <button
                   type="button"
-                  aria-label={`Remove ${it.title} from my list`}
-                  onClick={() => unlist(it)}
-                  className="absolute top-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80"
+                  onClick={() => setEditing(true)}
+                  className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-black transition-colors hover:bg-white/90 sm:w-auto"
                 >
-                  ×
+                  <Pencil className="size-4" />
+                  Edit profile
                 </button>
-              </div>
+              ) : (
+                ready && (
+                  <Link
+                    href="/login?next=/profile"
+                    className="inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl bg-white px-6 text-sm font-semibold text-black hover:bg-white/90 sm:w-auto"
+                  >
+                    Log in / Sign up
+                  </Link>
+                )
+              )}
+            </div>
+
+            {user && (
+              <section className="mt-5 rounded-xl border border-white/15 bg-white/[0.03] p-4">
+                <h2 className="text-xs font-semibold tracking-wide text-white/50 uppercase">About me</h2>
+                <p className={cn("mt-1.5 text-sm whitespace-pre-wrap", profile?.bio ? "text-white/85" : "text-white/40")}>
+                  {profile?.bio || "No bio yet. Tap Edit profile to add one."}
+                </p>
+              </section>
+            )}
+          </div>
+
+          {/* tabs with an underline, like the Discord profile */}
+          <div role="tablist" aria-label="Profile sections" className="mt-5 flex border-b border-white/15 px-4 sm:px-6">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => router.replace(`/profile?tab=${t.id}`, { scroll: false })}
+                className={cn(
+                  "relative flex-1 py-3 text-sm font-semibold transition-colors sm:flex-none sm:px-6",
+                  tab === t.id ? "text-white" : "text-white/55 hover:text-white"
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  {t.id === "favorites" && <Heart className="size-4" />}
+                  {t.label}
+                  {counts[t.id] ? <span className="rounded-full bg-white/10 px-1.5 text-[0.7rem] font-medium text-white/70">{counts[t.id]}</span> : null}
+                </span>
+                {tab === t.id && <span className="absolute inset-x-3 bottom-[-1px] h-0.5 rounded-full bg-white" />}
+              </button>
             ))}
           </div>
-        )}
+
+          <div className="px-4 py-5 sm:px-6">
+            {tab === "history" &&
+              (items && items.length === 0 ? (
+                <p className="py-12 text-center text-sm text-white/60">Nothing watched yet. Start an episode and it will show up here.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-x-4 gap-y-6 min-[480px]:grid-cols-2 lg:grid-cols-3">
+                  {(items ?? []).map((h) => (
+                    <HistoryCard key={h.animeId} h={h} onRemove={() => remove(h.animeId)} />
+                  ))}
+                </div>
+              ))}
+            {tab === "favorites" && <PosterGrid items={favorites} onRemove={unfavorite} empty="No favorites yet. Tap the heart on a watch page to add anime." />}
+            {tab === "list" && <PosterGrid items={list} onRemove={unlist} empty="Your list is empty. Tap the + on a watch page to add anime." />}
+          </div>
+        </div>
       </main>
       <SiteFooter />
       {editing && user && <EditProfile onClose={() => setEditing(false)} />}

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.1
+
+- Profile page redesigned like a Discord profile: full-width banner under the header, large avatar overlapping it, name, email and joined-date chips, About me (bio), full-width Edit profile button, and underlined tabs History / Favorites / My List.
+- New Favorites list (heart button on the watch page) stored in Supabase; bio field.
+- Fixed "That image could not be read": avatar and banner now upload as-is (PNG, JPG, WebP, GIF up to 8 MB) instead of being re-drawn in the browser.
+
 ## 1.22.0
 
 - New profile page (`/profile`): avatar, Discord-style banner (PNG, JPG, WebP or animated GIF, up to 8 MB) and display name you can change, with History and My List as switchable tabs. Images are stored in Supabase Storage (`profiles` bucket, each user can only change their own files).

@@ -131,49 +131,62 @@ export async function removeHistory(animeId: number, userId?: string | null) {
   } catch {}
 }
 
-/* ------------------------------- my list ------------------------------- */
+/* ------------------- my list and favorites (same shape) ------------------- */
 
-export const localList = () => read<ListItem>(LIST_KEY).sort((a, b) => b.addedAt - a.addedAt)
+function collection(table: "my_list" | "favorites", key: string) {
+  const local = () => read<ListItem>(key).sort((a, b) => b.addedAt - a.addedAt)
 
-export async function loadList(userId?: string | null): Promise<ListItem[]> {
-  const local = localList()
-  if (!userId) return local
-  try {
-    const { data, error } = await getSupabase().from("my_list").select("*").eq("user_id", userId).order("added_at", { ascending: false })
-    if (error || !data) return local
-    const remote = (data as { anime_id: number; title: string; image: string | null; added_at: string }[]).map((r) => ({
-      animeId: r.anime_id,
-      title: r.title,
-      image: r.image,
-      addedAt: new Date(r.added_at).getTime(),
-    }))
-    const have = new Set(remote.map((r) => r.animeId))
-    const extra = local.filter((l) => !have.has(l.animeId))
-    if (extra.length) {
-      await getSupabase().from("my_list").upsert(
-        extra.map((l) => ({ user_id: userId, anime_id: l.animeId, title: l.title, image: l.image, added_at: new Date(l.addedAt).toISOString() })),
-        { onConflict: "user_id,anime_id" }
-      )
-    }
-    const merged = [...remote, ...extra].sort((a, b) => b.addedAt - a.addedAt)
-    write(LIST_KEY, merged)
-    return merged
-  } catch {
-    return local
-  }
-}
-
-/** Returns true when the title is in the list afterwards. */
-export async function toggleList(item: Omit<ListItem, "addedAt">, userId?: string | null): Promise<boolean> {
-  const list = read<ListItem>(LIST_KEY)
-  const has = list.some((l) => l.animeId === item.animeId)
-  write(LIST_KEY, has ? list.filter((l) => l.animeId !== item.animeId) : [{ ...item, addedAt: Date.now() }, ...list])
-  if (userId) {
+  async function load(userId?: string | null): Promise<ListItem[]> {
+    const mine = local()
+    if (!userId) return mine
     try {
-      const t = getSupabase().from("my_list")
-      if (has) await t.delete().eq("user_id", userId).eq("anime_id", item.animeId)
-      else await t.upsert({ user_id: userId, anime_id: item.animeId, title: item.title, image: item.image }, { onConflict: "user_id,anime_id" })
-    } catch {}
+      const { data, error } = await getSupabase().from(table).select("*").eq("user_id", userId).order("added_at", { ascending: false })
+      if (error || !data) return mine
+      const remote = (data as { anime_id: number; title: string; image: string | null; added_at: string }[]).map((r) => ({
+        animeId: r.anime_id,
+        title: r.title,
+        image: r.image,
+        addedAt: new Date(r.added_at).getTime(),
+      }))
+      const have = new Set(remote.map((r) => r.animeId))
+      const extra = mine.filter((l) => !have.has(l.animeId))
+      if (extra.length) {
+        await getSupabase().from(table).upsert(
+          extra.map((l) => ({ user_id: userId, anime_id: l.animeId, title: l.title, image: l.image, added_at: new Date(l.addedAt).toISOString() })),
+          { onConflict: "user_id,anime_id" }
+        )
+      }
+      const merged = [...remote, ...extra].sort((a, b) => b.addedAt - a.addedAt)
+      write(key, merged)
+      return merged
+    } catch {
+      return mine
+    }
   }
-  return !has
+
+  /** Returns true when the title is in the collection afterwards. */
+  async function toggle(item: Omit<ListItem, "addedAt">, userId?: string | null): Promise<boolean> {
+    const all = read<ListItem>(key)
+    const has = all.some((l) => l.animeId === item.animeId)
+    write(key, has ? all.filter((l) => l.animeId !== item.animeId) : [{ ...item, addedAt: Date.now() }, ...all])
+    if (userId) {
+      try {
+        const t = getSupabase().from(table)
+        if (has) await t.delete().eq("user_id", userId).eq("anime_id", item.animeId)
+        else await t.upsert({ user_id: userId, anime_id: item.animeId, title: item.title, image: item.image }, { onConflict: "user_id,anime_id" })
+      } catch {}
+    }
+    return !has
+  }
+  return { local, load, toggle }
 }
+
+const myList = collection("my_list", LIST_KEY)
+const favs = collection("favorites", "anibiar:favorites")
+
+export const localList = myList.local
+export const loadList = myList.load
+export const toggleList = myList.toggle
+export const localFavorites = favs.local
+export const loadFavorites = favs.load
+export const toggleFavorite = favs.toggle
