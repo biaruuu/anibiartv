@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.22.3
+
+- Fixed the avatar being drawn underneath the banner (it looked cut off / glassy). It now sits fully on top, with a solid ring, like Discord.
+
 ## 1.22.2
 
 - Profile page has no site header or footer, so the banner is fully visible; a close (X) button in the corner goes back. Bio and Member Since (long date like January 20, 2021, with the AniBiar logo) are laid out like a Discord profile.

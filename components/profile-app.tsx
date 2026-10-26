@@ -143,7 +143,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
               <img src={shownBanner} alt="" className="size-full object-cover" />
             )}
           </div>
-          <Avatar src={shownAvatar} className="-mt-9 ml-3 size-[4.5rem] border-[5px] border-[#121113] sm:size-20" />
+          <Avatar src={shownAvatar} className="relative z-10 -mt-9 ml-3 size-[4.5rem] border-[5px] border-[#121113] sm:size-20" />
         </div>
 
         <div className="mt-4 grid gap-5 px-4 pb-5 sm:px-6">
@@ -340,7 +340,7 @@ export function ProfileApp() {
           </div>
 
           <div className="px-4 sm:px-6">
-            <Avatar src={user ? avatar : null} className="-mt-14 size-28 border-[6px] border-[#121113] sm:-mt-16 sm:size-32" />
+            <Avatar src={user ? avatar : null} className="relative z-10 -mt-14 size-28 border-[6px] border-[#121113] sm:-mt-16 sm:size-32" />
 
             <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
