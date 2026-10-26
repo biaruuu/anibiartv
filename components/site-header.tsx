@@ -547,7 +547,11 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-white/10">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 py-6 text-sm text-white/50 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <p className="font-medium text-white/80">AniBiar TV</p>
+        <p className="flex items-center gap-2 font-medium text-white/80">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-mark.svg" alt="" className="size-7" />
+          AniBiar TV
+        </p>
         <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <Link href="/privacy" className="hover:text-white">
             Privacy Policy

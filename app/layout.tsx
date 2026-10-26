@@ -20,7 +20,13 @@ export const metadata: Metadata = {
   description:
     "Watch anime with a modern glass-style player, Poppins captions and volume boost.",
   applicationName: "AniBiar TV",
-  icons: { icon: "/icon.svg" },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-48.png", sizes: "48x48", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
 }
 
 export const viewport: Viewport = {

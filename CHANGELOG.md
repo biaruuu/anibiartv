@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.20.3
+
+- New app logo (glassy white "A" with a play button, transparent background) used as the favicon, home-screen icon and in the footer. The header logo is unchanged.
+
 ## 1.20.2
 
 - Login / sign up restyled to match the rest of the site (flat dark card, white buttons, no gradients or glows).
