@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Bookmark, Captions, ChevronRight, History, Home, LogIn, LogOut, Menu, PlayCircle, Search, Star, TrendingUp, User, X } from "lucide-react"
+import { ArrowLeft, Captions, ChevronRight, History, Home, LogIn, LogOut, Menu, Search, Star, TrendingUp, User, X } from "lucide-react"
 
 import { useAuth } from "@/components/auth-provider"
 
@@ -462,8 +462,8 @@ export function SiteHeader() {
             className="fixed inset-x-3 top-[3.75rem] z-40 mx-auto flex max-h-[calc(100svh-4.5rem)] max-w-md flex-col gap-2 overflow-y-auto rounded-2xl border border-white/15 bg-[#121113]/95 p-2 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:top-[4.25rem] sm:right-8 sm:left-auto sm:mx-0 sm:w-80"
           >
             {auth.user ? (
-              <div className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5">
-                <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-violet-500/25 text-violet-200">
+              <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5 hover:bg-white/10">
+                <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#2a282d] text-white/70">
                   {auth.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={auth.avatar} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
@@ -473,9 +473,10 @@ export function SiteHeader() {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-white">{auth.name}</span>
-                  <span className="block truncate text-xs text-white/50">{auth.user.email}</span>
+                  <span className="block truncate text-xs text-white/50">View profile</span>
                 </span>
-              </div>
+                <ChevronRight className="size-4 text-white/60" />
+              </Link>
             ) : (
               <Link href="/login" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5 hover:bg-white/10">
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-violet-500/25 text-violet-200">
@@ -487,29 +488,21 @@ export function SiteHeader() {
             )}
 
             <div className="grid grid-cols-2 gap-2">
-              {[
-                { href: "/", label: "Home", icon: Home },
-                { href: "/library?tab=history", label: "History", icon: History },
-                { href: "/library?tab=list", label: "My List", icon: Bookmark },
-                { href: "/watch", label: "Video player", icon: PlayCircle },
-              ].map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  onClick={() => setMenuOpen(false)}
-                  className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/15 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
-                >
-                  <Icon className="size-5 text-white/70" />
-                  {label}
-                </Link>
-              ))}
+              <Link
+                href="/"
+                onClick={() => setMenuOpen(false)}
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/15 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
+              >
+                <Home className="size-5 text-white/70" />
+                Home
+              </Link>
               <button
                 type="button"
                 onClick={() => {
                   setMenuOpen(false)
                   setSearching(true)
                 }}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-white/15 py-3.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/15 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
               >
                 <Search className="size-5 text-white/70" />
                 Search

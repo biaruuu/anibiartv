@@ -5,6 +5,7 @@ A modern, responsive video player web app built with **Next.js**, **shadcn/ui** 
 ## Pages
 
 - `/` anime home screen (AniList GraphQL: trending hero, latest episodes, search).
+- `/profile` account page: avatar, banner (GIF allowed), display name, History and My List tabs.
 - `/watch/:anilistId?ep=1&audio=sub` the watch page (Miruro layout): your video player, episode list, Sub/Dub and server menus, seasons. Streams come from the Anivexa API (see Streaming).
 - `/watch` the stand-alone player with demo videos and local file upload.
 

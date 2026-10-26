@@ -1,13 +1,7 @@
-import { Suspense } from "react"
+import { redirect } from "next/navigation"
 
-import { LibraryApp } from "@/components/library-app"
-
-export const metadata = { title: "History & My List" }
-
-export default function LibraryPage() {
-  return (
-    <Suspense>
-      <LibraryApp />
-    </Suspense>
-  )
+// History and My List now live on the profile page.
+export default async function LibraryPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams
+  redirect(`/profile?tab=${tab === "list" ? "list" : "history"}`)
 }

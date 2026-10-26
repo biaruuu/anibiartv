@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22.0
+
+- New profile page (`/profile`): avatar, Discord-style banner (PNG, JPG, WebP or animated GIF, up to 8 MB) and display name you can change, with History and My List as switchable tabs. Images are stored in Supabase Storage (`profiles` bucket, each user can only change their own files).
+- Menu now has Profile, Home and Search; History, My List and the test Video player entries were removed. `/library` redirects to the profile page.
+- Removed the old `/watch` demo page. The anime watch page and its video player (`/watch/:id`) are unchanged.
+
 ## 1.21.4
 
 - When a phone's browser is stuck in "Desktop site" mode, a notice explains how to switch it off (a website cannot do that itself).

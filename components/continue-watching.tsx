@@ -86,7 +86,7 @@ export function ContinueWatching() {
     <section className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-8 sm:pt-8">
       <div className="mb-3 flex items-center justify-between sm:mb-4">
         <h2 className="text-lg font-semibold tracking-tight text-white sm:text-2xl">Continue Watching</h2>
-        <Link href="/library?tab=history" className="inline-flex items-center gap-1 text-sm text-white/60 hover:text-white">
+        <Link href="/profile?tab=history" className="inline-flex items-center gap-1 text-sm text-white/60 hover:text-white">
           View all <ChevronRight className="size-4" />
         </Link>
       </div>

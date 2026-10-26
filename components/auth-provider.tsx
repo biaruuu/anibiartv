@@ -5,21 +5,37 @@ import type { User } from "@supabase/supabase-js"
 
 import { getSupabase } from "@/lib/supabase/client"
 
+export type Profile = { username: string | null; avatar_url: string | null; banner_url: string | null }
+
 type AuthState = {
   user: User | null
   /** False until the first answer from Supabase, so the UI doesn't flash "Log in". */
   ready: boolean
+  /** The viewer's own choices first (profile page), then what Google / Discord gave. */
   name: string | null
   avatar: string | null
+  banner: string | null
+  profile: Profile | null
+  refreshProfile: () => Promise<void>
   signOut: () => Promise<void>
 }
 
-const Ctx = React.createContext<AuthState>({ user: null, ready: false, name: null, avatar: null, signOut: async () => {} })
+const Ctx = React.createContext<AuthState>({
+  user: null,
+  ready: false,
+  name: null,
+  avatar: null,
+  banner: null,
+  profile: null,
+  refreshProfile: async () => {},
+  signOut: async () => {},
+})
 
 export const useAuth = () => React.useContext(Ctx)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<User | null>(null)
+  const [profile, setProfile] = React.useState<Profile | null>(null)
   const [ready, setReady] = React.useState(false)
 
   React.useEffect(() => {
@@ -47,20 +63,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const userId = user?.id ?? null
+  const refreshProfile = React.useCallback(async () => {
+    if (!userId) return setProfile(null)
+    try {
+      const { data } = await getSupabase().from("profiles").select("username, avatar_url, banner_url").eq("id", userId).maybeSingle()
+      setProfile((data as Profile | null) ?? { username: null, avatar_url: null, banner_url: null })
+    } catch {
+      /* offline: fall back to what the sign-in provider gave */
+    }
+  }, [userId])
+
+  React.useEffect(() => {
+    setProfile(null)
+    void refreshProfile()
+  }, [refreshProfile])
+
   const value = React.useMemo<AuthState>(() => {
     const m = (user?.user_metadata ?? {}) as Record<string, unknown>
     const pick = (...keys: string[]) => keys.map((k) => m[k]).find((v): v is string => typeof v === "string" && !!v) ?? null
     return {
       user,
       ready,
-      name: pick("full_name", "name", "user_name") ?? user?.email?.split("@")[0] ?? null,
-      avatar: pick("avatar_url", "picture"),
+      profile,
+      refreshProfile,
+      name: profile?.username || pick("full_name", "name", "user_name") || user?.email?.split("@")[0] || null,
+      avatar: profile?.avatar_url || pick("avatar_url", "picture"),
+      banner: profile?.banner_url ?? null,
       signOut: async () => {
         await getSupabase().auth.signOut()
         setUser(null)
+        setProfile(null)
       },
     }
-  }, [user, ready])
+  }, [user, ready, profile, refreshProfile])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
