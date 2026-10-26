@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.20.1
+
+- Redesigned login / sign up page: site header with the logo, glass card, sliding tabs, Google and Discord side by side, icons in the fields, responsive layout. "Back to home" removed.
+- Sign-in always returns to the site you signed in on; a stray `?code=` link is finished automatically.
+
 ## 1.20.0
 
 - Accounts with Supabase: log in / sign up with Google, Discord or email and password (`/login`).

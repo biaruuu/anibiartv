@@ -23,6 +23,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = React.useState(false)
 
   React.useEffect(() => {
+    // If a sign-in link ever lands on another page with ?code=..., finish it on the callback route.
+    const q = new URLSearchParams(window.location.search)
+    const code = q.get("code")
+    if (code && !window.location.pathname.startsWith("/auth/callback")) {
+      window.location.replace(`/auth/callback?code=${encodeURIComponent(code)}&next=${encodeURIComponent(window.location.pathname)}`)
+      return
+    }
     const supabase = getSupabase()
     let alive = true
     supabase.auth
