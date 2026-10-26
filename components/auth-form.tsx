@@ -50,25 +50,8 @@ export function AuthForm() {
     if (ready && user) router.replace(next)
   }, [ready, user, next, router])
 
-  const viaSupabase = params.get("via") === "supabase" ? params.get("provider") : null
-  const startedRef = React.useRef(false)
-  React.useEffect(() => {
-    if (startedRef.current || (viaSupabase !== "google" && viaSupabase !== "discord")) return
-    startedRef.current = true
-    void oauth(viaSupabase)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viaSupabase])
-
   // Always send people back to the site they signed in on (not a fixed address).
   const redirectTo = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-
-  // Google / Discord go straight from our own site (the server route); if it isn't set up with its own keys
-  // it sends us back here with ?via=supabase and we use the Supabase-hosted sign-in instead.
-  const direct = (provider: "google" | "discord") => {
-    setBusy(provider)
-    setError(null)
-    window.location.href = `/auth/start/${provider}?next=${encodeURIComponent(next)}`
-  }
 
   const oauth = async (provider: "google" | "discord") => {
     setBusy(provider)
@@ -144,10 +127,10 @@ export function AuthForm() {
           </div>
 
           <div className="mt-5 space-y-2.5">
-            <button type="button" className={social} disabled={!!busy} onClick={() => direct("google")}>
+            <button type="button" className={social} disabled={!!busy} onClick={() => oauth("google")}>
               {busy === "google" ? <Spinner className="size-5" /> : <Google />} Continue with Google
             </button>
-            <button type="button" className={social} disabled={!!busy} onClick={() => direct("discord")}>
+            <button type="button" className={social} disabled={!!busy} onClick={() => oauth("discord")}>
               {busy === "discord" ? <Spinner className="size-5" /> : <Discord />} Continue with Discord
             </button>
           </div>
