@@ -548,7 +548,15 @@ export function SiteFooter() {
     <footer className="border-t border-white/10">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 py-6 text-sm text-white/50 sm:flex-row sm:items-center sm:justify-between sm:px-8">
         <p className="font-medium text-white/80">AniBiar TV</p>
-        <p>Anime data from AniList. Streaming servers coming soon.</p>
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link href="/privacy" className="hover:text-white">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="hover:text-white">
+            Terms of Service
+          </Link>
+          <span>Anime data from AniList.</span>
+        </p>
       </div>
     </footer>
   )

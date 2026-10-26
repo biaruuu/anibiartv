@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Bookmark, Eye, EyeOff, History, Lock, Mail, MonitorSmartphone } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 
 import { useAuth } from "@/components/auth-provider"
 import { SiteHeader } from "@/components/site-header"
@@ -27,12 +28,6 @@ function Discord() {
     </svg>
   )
 }
-
-const PERKS = [
-  { icon: History, title: "Continue Watching", text: "Pick up every episode right where you stopped." },
-  { icon: Bookmark, title: "My List", text: "Save anime to watch later, on any device." },
-  { icon: MonitorSmartphone, title: "Everywhere", text: "Phone, tablet or computer: it all follows you." },
-]
 
 export function AuthForm() {
   const router = useRouter()
@@ -89,166 +84,139 @@ export function AuthForm() {
     setBusy(null)
   }
 
+  const switchMode = (m: "login" | "signup") => {
+    setMode(m)
+    setError(null)
+    setNotice(null)
+  }
+
   const field =
-    "h-12 w-full rounded-xl border border-white/12 bg-white/[0.05] pl-11 pr-4 text-[0.95rem] text-white outline-none transition-colors placeholder:text-white/35 focus:border-lime-300/60 focus:bg-white/[0.08] focus:ring-4 focus:ring-lime-300/10"
+    "h-12 w-full rounded-xl border border-white/20 bg-transparent px-4 text-base text-white outline-none transition-colors placeholder:text-white/40 focus:border-white/60 sm:text-sm"
   const social =
-    "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-white/12 bg-white/[0.05] text-sm font-semibold text-white transition-all hover:border-white/25 hover:bg-white/[0.1] active:scale-[0.98] disabled:opacity-60"
+    "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-white/20 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60"
 
   return (
-    <div className="relative min-h-svh overflow-x-clip bg-[#121113] text-[#eeeef0]">
+    <div className="min-h-svh bg-[#121113] text-[#eeeef0]">
       <SiteHeader />
 
-      {/* soft colour glows behind everything */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-24 size-[28rem] rounded-full bg-lime-400/15 blur-[110px]" />
-        <div className="absolute top-1/3 -right-24 size-[30rem] rounded-full bg-violet-500/20 blur-[120px]" />
-        <div className="absolute -bottom-40 left-1/3 size-[26rem] rounded-full bg-rose-500/10 blur-[120px]" />
-      </div>
-
-      <main className="relative mx-auto grid min-h-svh w-full max-w-6xl items-center gap-10 px-4 pt-24 pb-12 sm:px-8 lg:grid-cols-[1.05fr_minmax(0,26rem)] lg:gap-16">
-        {/* left: why sign in (desktop only) */}
-        <section className="hidden lg:block">
-          <p className="mb-3 inline-flex rounded-full border border-lime-300/30 bg-lime-300/10 px-3 py-1 text-xs font-semibold tracking-wide text-lime-200 uppercase">
-            Free account
-          </p>
-          <h1 className="text-5xl leading-[1.08] font-bold tracking-tight text-white">
-            Your anime,
-            <br />
-            <span className="bg-gradient-to-r from-lime-300 to-emerald-300 bg-clip-text text-transparent">wherever you watch.</span>
+      <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center px-4 pt-20 pb-10 sm:pt-24">
+        <div className="rounded-2xl border border-white/20 p-5 sm:p-7">
+          <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+            {mode === "login" ? "Welcome back" : "Create your account"}
           </h1>
-          <ul className="mt-9 space-y-5">
-            {PERKS.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex items-start gap-4">
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/12 bg-white/[0.06] text-lime-300">
-                  <Icon className="size-5" />
-                </span>
-                <span>
-                  <span className="block font-semibold text-white">{title}</span>
-                  <span className="block text-sm text-white/55">{text}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+          <p className="mt-1 text-sm text-white/60">
+            {mode === "login" ? "Log in to continue watching." : "Save your progress and your list on every device."}
+          </p>
 
-        {/* right: the form */}
-        <section className="mx-auto w-full max-w-md lg:max-w-none">
-          <div className="rounded-3xl border border-white/12 bg-white/[0.045] p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-8">
-            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-[1.7rem]">
-              {mode === "login" ? "Welcome back" : "Create your account"}
-            </h2>
-            <p className="mt-1 text-sm text-white/55">
-              {mode === "login" ? "Log in to continue watching." : "Join to save your progress and your list."}
-            </p>
-
-            <div role="tablist" aria-label="Log in or sign up" className="relative mt-5 grid grid-cols-2 rounded-full border border-white/15 bg-black/20 p-1">
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute inset-y-1 w-[calc(50%-0.25rem)] rounded-full bg-white shadow transition-transform duration-300",
-                  mode === "login" ? "translate-x-0" : "translate-x-full"
-                )}
-              />
-              {(["login", "signup"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === m}
-                  onClick={() => {
-                    setMode(m)
-                    setError(null)
-                    setNotice(null)
-                  }}
-                  className={cn(
-                    "relative z-10 rounded-full py-2 text-sm font-semibold transition-colors",
-                    mode === m ? "text-black" : "text-white/70 hover:text-white"
-                  )}
-                >
-                  {m === "login" ? "Log in" : "Sign up"}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-5 grid gap-2.5 min-[420px]:grid-cols-2">
-              <button type="button" className={social} disabled={!!busy} onClick={() => oauth("google")}>
-                {busy === "google" ? <Spinner className="size-5" /> : <Google />} Google
-              </button>
-              <button type="button" className={social} disabled={!!busy} onClick={() => oauth("discord")}>
-                {busy === "discord" ? <Spinner className="size-5" /> : <Discord />} Discord
-              </button>
-            </div>
-
-            <div className="my-5 flex items-center gap-3 text-[0.7rem] font-medium tracking-wider text-white/35 uppercase">
-              <span className="h-px flex-1 bg-white/12" /> or use email <span className="h-px flex-1 bg-white/12" />
-            </div>
-
-            <form onSubmit={submit} className="space-y-3">
-              <label className="relative block">
-                <span className="sr-only">Email</span>
-                <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-[1.15rem] -translate-y-1/2 text-white/40" />
-                <input type="email" required autoComplete="email" inputMode="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
-              </label>
-              <label className="relative block">
-                <span className="sr-only">Password</span>
-                <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-[1.15rem] -translate-y-1/2 text-white/40" />
-                <input
-                  type={show ? "text" : "password"}
-                  required
-                  minLength={6}
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  placeholder={mode === "login" ? "Password" : "Password (6+ characters)"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={cn(field, "pr-12")}
-                />
-                <button
-                  type="button"
-                  aria-label={show ? "Hide password" : "Show password"}
-                  onClick={() => setShow((s) => !s)}
-                  className="absolute inset-y-0 right-0 grid w-12 place-items-center text-white/45 hover:text-white"
-                >
-                  {show ? <EyeOff className="size-[1.15rem]" /> : <Eye className="size-[1.15rem]" />}
-                </button>
-              </label>
-
-              {error && (
-                <p role="alert" className="rounded-xl border border-red-400/20 bg-red-500/10 px-3.5 py-2.5 text-[0.8rem] text-red-200">
-                  {error}
-                </p>
-              )}
-              {notice && (
-                <p role="status" className="rounded-xl border border-lime-300/20 bg-lime-300/10 px-3.5 py-2.5 text-[0.8rem] text-lime-100">
-                  {notice}
-                </p>
-              )}
-
+          <div role="tablist" aria-label="Log in or sign up" className="mt-5 flex rounded-full border border-white/20 p-0.5">
+            {(["login", "signup"] as const).map((m) => (
               <button
-                type="submit"
-                disabled={!!busy}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-lime-300 to-emerald-300 text-[0.95rem] font-bold text-black shadow-lg shadow-lime-400/10 transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                onClick={() => switchMode(m)}
+                className={cn(
+                  "flex-1 rounded-full py-1.5 text-sm font-semibold transition-colors",
+                  mode === m ? "bg-white text-black" : "text-white/70 hover:text-white"
+                )}
               >
-                {busy === "email" && <Spinner className="size-4" />}
-                {mode === "login" ? "Log in" : "Create account"}
+                {m === "login" ? "Log in" : "Sign up"}
               </button>
-            </form>
+            ))}
+          </div>
 
-            <p className="mt-5 text-center text-sm text-white/55">
-              {mode === "login" ? "New here? " : "Already have an account? "}
+          <div className="mt-5 space-y-2.5">
+            <button type="button" className={social} disabled={!!busy} onClick={() => oauth("google")}>
+              {busy === "google" ? <Spinner className="size-5" /> : <Google />} Continue with Google
+            </button>
+            <button type="button" className={social} disabled={!!busy} onClick={() => oauth("discord")}>
+              {busy === "discord" ? <Spinner className="size-5" /> : <Discord />} Continue with Discord
+            </button>
+          </div>
+
+          <div className="my-5 flex items-center gap-3 text-xs text-white/40">
+            <span className="h-px flex-1 bg-white/15" /> or <span className="h-px flex-1 bg-white/15" />
+          </div>
+
+          <form onSubmit={submit} className="space-y-3">
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              inputMode="email"
+              aria-label="Email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={field}
+            />
+            <div className="relative">
+              <input
+                type={show ? "text" : "password"}
+                required
+                minLength={6}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                aria-label="Password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={cn(field, "pr-12")}
+              />
               <button
                 type="button"
-                onClick={() => {
-                  setMode(mode === "login" ? "signup" : "login")
-                  setError(null)
-                  setNotice(null)
-                }}
-                className="font-semibold text-white underline-offset-4 hover:underline"
+                aria-label={show ? "Hide password" : "Show password"}
+                onClick={() => setShow((s) => !s)}
+                className="absolute inset-y-0 right-0 grid w-12 place-items-center text-white/50 hover:text-white"
               >
-                {mode === "login" ? "Create an account" : "Log in"}
+                {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
-            </p>
-          </div>
-        </section>
+            </div>
+
+            {error && (
+              <p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-300">
+                {error}
+              </p>
+            )}
+            {notice && (
+              <p role="status" className="rounded-xl border border-white/20 bg-white/5 px-3.5 py-2.5 text-xs text-white/80">
+                {notice}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={!!busy}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-semibold text-black transition-colors hover:bg-white/90 disabled:opacity-60"
+            >
+              {busy === "email" && <Spinner className="size-4" />}
+              {mode === "login" ? "Log in" : "Create account"}
+            </button>
+          </form>
+
+          <p className="mt-5 text-center text-sm text-white/60">
+            {mode === "login" ? "New here? " : "Already have an account? "}
+            <button
+              type="button"
+              onClick={() => switchMode(mode === "login" ? "signup" : "login")}
+              className="font-semibold text-white underline-offset-4 hover:underline"
+            >
+              {mode === "login" ? "Create an account" : "Log in"}
+            </button>
+          </p>
+        </div>
+
+        <p className="mt-4 px-2 text-center text-xs leading-relaxed text-white/45">
+          By continuing you agree to our{" "}
+          <Link href="/terms" className="text-white/80 underline-offset-2 hover:underline">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="text-white/80 underline-offset-2 hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </main>
     </div>
   )

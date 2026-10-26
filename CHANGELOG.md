@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.20.2
+
+- Login / sign up restyled to match the rest of the site (flat dark card, white buttons, no gradients or glows).
+- New `/privacy` (Privacy Policy) and `/terms` (Terms of Service) pages, linked in the footer and on the login page. Optional `NEXT_PUBLIC_CONTACT_EMAIL` adds a contact address to both.
+
 ## 1.20.1
 
 - Redesigned login / sign up page: site header with the logo, glass card, sliding tabs, Google and Discord side by side, icons in the fields, responsive layout. "Back to home" removed.
