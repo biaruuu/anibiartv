@@ -4,10 +4,12 @@
 import type { HistoryItem, ListItem } from "@/lib/library"
 
 export type StoryTab = "history" | "favorites" | "list"
+export type StoryFormat = "story" | "post" | "screen"
 export type StoryInput = {
   name: string
   handle: string | null
   bio: string | null
+  joined: string | null
   avatar: string | null
   banner: string | null
   tab: StoryTab
@@ -15,14 +17,26 @@ export type StoryInput = {
   favorites: ListItem[]
   list: ListItem[]
   host: string
+  format: StoryFormat
 }
 
 export const STORY_W = 1080
-export const STORY_H = 1920
 const PAD = 60
 const BG = "#121113"
 const CARD = "#26242a"
 const FONT = "Poppins, Karla, system-ui, sans-serif"
+
+export const FORMAT_LABEL: Record<StoryFormat, string> = { story: "Story 9:16", post: "Post 4:5", screen: "My screen" }
+
+/** Picture size for a format. "My screen" follows this device's own shape, kept within a sensible range. */
+export function sizeFor(format: StoryFormat): { w: number; h: number } {
+  if (format === "story") return { w: STORY_W, h: 1920 }
+  if (format === "post") return { w: STORY_W, h: 1350 }
+  const ratio = typeof screen !== "undefined" && screen.width > 0 ? Math.max(screen.width, screen.height) / Math.min(screen.width, screen.height) : 16 / 9
+  const portrait = typeof screen === "undefined" || screen.height >= screen.width
+  const r = portrait ? ratio : 1 / ratio
+  return { w: STORY_W, h: Math.round(Math.min(2400, Math.max(1350, STORY_W * r))) }
+}
 
 export const TAB_LABEL: Record<StoryTab, string> = { history: "History", favorites: "Favorites", list: "Watchlist" }
 
@@ -103,46 +117,50 @@ export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
     /* falls back to the system font */
   }
 
+  const { w: W, h: H } = sizeFor(i.format)
+  // Shorter pictures use slightly smaller pieces so everything still fits.
+  const k = H < 1700 ? 0.8 : 1
+  const px = (n: number) => Math.round(n * k)
+
   const landscape = i.tab === "history"
   const cards: Card[] =
     i.tab === "history"
-      ? i.history.slice(0, 9).map((h) => ({
+      ? i.history.slice(0, 12).map((h) => ({
           image: h.image,
           title: h.title,
           sub: `Episode ${h.episode}${h.totalEpisodes ? ` / ${h.totalEpisodes}` : ""}${h.audio === "dub" ? " · Dub" : ""}`,
           progress: h.duration > 0 ? Math.min(1, h.position / h.duration) : 0,
         }))
-      : (i.tab === "favorites" ? i.favorites : i.list).slice(0, 12).map((l) => ({ image: l.image, title: l.title }))
-  const total = i.tab === "history" ? i.history.length : (i.tab === "favorites" ? i.favorites : i.list).length
+      : (i.tab === "favorites" ? i.favorites : i.list).slice(0, 16).map((l) => ({ image: l.image, title: l.title }))
 
   // grid geometry
   const gap = landscape ? 24 : 20
   const cols = landscape ? 2 : 4
-  const cw = (STORY_W - PAD * 2 - gap * (cols - 1)) / cols
+  const cw = (W - PAD * 2 - gap * (cols - 1)) / cols
   const ch = landscape ? Math.round(cw * 0.46) : Math.round(cw * 1.5)
   const textH = landscape ? 78 : 50
 
   const c = document.createElement("canvas")
-  c.width = STORY_W
-  c.height = STORY_H
+  c.width = W
+  c.height = H
   const ctx = c.getContext("2d")!
 
   const [avatar, banner, logo, ...covers] = await Promise.all([
     loadImage(i.avatar),
     loadImage(i.banner),
     loadImage("/logo-mark.svg"),
-    ...cards.map((k) => loadImage(k.image)),
+    ...cards.map((card) => loadImage(card.image)),
   ])
 
   ctx.fillStyle = BG
-  ctx.fillRect(0, 0, STORY_W, STORY_H)
+  ctx.fillRect(0, 0, W, H)
 
   // banner
-  const BANNER_H = 340
-  cover(ctx, banner, 0, 0, STORY_W, BANNER_H)
+  const BANNER_H = px(340)
+  cover(ctx, banner, 0, 0, W, BANNER_H)
 
   // avatar with a solid ring
-  const D = 232
+  const D = px(232)
   const ax = PAD
   const ay = BANNER_H - D / 2
   ctx.fillStyle = BG
@@ -162,98 +180,127 @@ export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
     ctx.fillStyle = "#2a282d"
     ctx.fillRect(ax, ay, D, D)
     ctx.fillStyle = "rgba(255,255,255,.75)"
-    ctx.font = `700 110px ${FONT}`
+    ctx.font = `700 ${px(110)}px ${FONT}`
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillText((i.name.trim()[0] ?? "?").toUpperCase(), ax + D / 2, ay + D / 2 + 6)
   }
   ctx.restore()
 
-  // name, username, bio
+  // name and username
   ctx.textAlign = "left"
   ctx.textBaseline = "alphabetic"
-  let y = ay + D + 84
+  let y = ay + D + 12 + px(70)
   ctx.fillStyle = "#ffffff"
-  ctx.font = `700 64px ${FONT}`
-  ctx.fillText(fit(ctx, i.name, STORY_W - PAD * 2), PAD, y)
+  ctx.font = `700 ${px(64)}px ${FONT}`
+  ctx.fillText(fit(ctx, i.name, W - PAD * 2), PAD, y)
   if (i.handle) {
-    y += 52
+    y += px(52)
     ctx.fillStyle = "rgba(255,255,255,.65)"
-    ctx.font = `400 34px ${FONT}`
+    ctx.font = `400 ${px(34)}px ${FONT}`
     ctx.fillText(`@${i.handle}`, PAD, y)
   }
+
+  // Bio and Member Since, laid out like the profile page
+  const label = (text: string) => {
+    ctx.fillStyle = "#ffffff"
+    ctx.font = `600 ${px(34)}px ${FONT}`
+    ctx.fillText(text, PAD, y)
+  }
   if (i.bio) {
-    ctx.font = `400 32px ${FONT}`
-    ctx.fillStyle = "rgba(255,255,255,.82)"
-    for (const line of wrap(ctx, i.bio, STORY_W - PAD * 2, 2)) {
-      y += 46
+    y += px(80)
+    label("Bio")
+    ctx.font = `400 ${px(32)}px ${FONT}`
+    ctx.fillStyle = "rgba(255,255,255,.8)"
+    for (const line of wrap(ctx, i.bio, W - PAD * 2, k < 1 ? 1 : 2)) {
+      y += px(46)
       ctx.fillText(line, PAD, y)
     }
   }
+  if (i.joined) {
+    y += px(i.bio ? 74 : 80)
+    label("Member Since")
+    y += px(56)
+    const L = px(44)
+    if (logo) ctx.drawImage(logo, PAD, y - L + px(8), L, L)
+    ctx.fillStyle = "rgba(255,255,255,.8)"
+    ctx.font = `400 ${px(32)}px ${FONT}`
+    ctx.fillText(i.joined, PAD + L + 18, y)
+  }
 
-  // section title
-  y += 84
-  ctx.fillStyle = "#ffffff"
-  ctx.font = `700 46px ${FONT}`
-  ctx.fillText(TAB_LABEL[i.tab], PAD, y)
-  ctx.textAlign = "right"
-  ctx.fillStyle = "rgba(255,255,255,.55)"
-  ctx.font = `400 30px ${FONT}`
-  ctx.fillText(`${total} ${total === 1 ? "title" : "titles"}`, STORY_W - PAD, y)
+  // tab bar with an underline under the active tab, like the page
+  y += px(92)
+  const tabs: StoryTab[] = ["history", "favorites", "list"]
+  const tabW = (W - PAD * 2) / 3
+  ctx.textAlign = "center"
+  tabs.forEach((t, n) => {
+    const on = t === i.tab
+    ctx.fillStyle = on ? "#ffffff" : "rgba(255,255,255,.55)"
+    ctx.font = `600 ${px(36)}px ${FONT}`
+    ctx.fillText(TAB_LABEL[t], PAD + tabW * n + tabW / 2, y)
+  })
   ctx.textAlign = "left"
+  const lineY = y + px(26)
   ctx.fillStyle = "rgba(255,255,255,.15)"
-  ctx.fillRect(PAD, y + 20, STORY_W - PAD * 2, 2)
+  ctx.fillRect(PAD, lineY, W - PAD * 2, 2)
+  const at = tabs.indexOf(i.tab)
+  ctx.fillStyle = "#ffffff"
+  rr(ctx, PAD + tabW * at + tabW * 0.2, lineY - 3, tabW * 0.6, 6, 3)
+  ctx.fill()
 
-  // grid
-  const gridTop = y + 56
-  const gridBottom = STORY_H - 152
-  const rowH = ch + textH + gap
-  const rows = Math.max(1, Math.floor((gridBottom - gridTop + gap) / rowH))
+  // footer position
+  const fy = H - px(96)
+  const gridTop = lineY + 44
+  const gridBottom = fy - px(56)
+  const rows = Math.max(0, Math.floor((gridBottom - gridTop + gap) / (ch + textH + gap)))
+  // Use up spare height by making the pictures a little taller (never by more than 30%).
+  const cardH = rows ? Math.min(Math.round(ch * 1.3), Math.max(ch, Math.floor((gridBottom - gridTop - rows * textH - (rows - 1) * gap) / rows))) : ch
+  const rowH = cardH + textH + gap
   const shown = Math.min(cards.length, rows * cols)
 
   if (!cards.length) {
     ctx.textAlign = "center"
     ctx.fillStyle = "rgba(255,255,255,.5)"
-    ctx.font = `400 36px ${FONT}`
-    ctx.fillText("Nothing here yet", STORY_W / 2, gridTop + 140)
+    ctx.font = `400 ${px(34)}px ${FONT}`
+    ctx.fillText("Nothing here yet", W / 2, gridTop + px(120))
     ctx.textAlign = "left"
   }
   for (let n = 0; n < shown; n++) {
-    const k = cards[n]
+    const card = cards[n]
     const x = PAD + (n % cols) * (cw + gap)
     const top = gridTop + Math.floor(n / cols) * rowH
-    cover(ctx, covers[n] ?? null, x, top, cw, ch, 22)
-    if (k.progress !== undefined) {
+    cover(ctx, covers[n] ?? null, x, top, cw, cardH, 22)
+    if (card.progress !== undefined) {
       ctx.save()
-      rr(ctx, x, top, cw, ch, 22)
+      rr(ctx, x, top, cw, cardH, 22)
       ctx.clip()
       ctx.fillStyle = "rgba(255,255,255,.3)"
-      ctx.fillRect(x, top + ch - 8, cw, 8)
+      ctx.fillRect(x, top + cardH - 8, cw, 8)
       ctx.fillStyle = "#dc2626"
-      ctx.fillRect(x, top + ch - 8, cw * Math.max(0.03, k.progress), 8)
+      ctx.fillRect(x, top + cardH - 8, cw * Math.max(0.03, card.progress), 8)
       ctx.restore()
     }
     ctx.fillStyle = "#ffffff"
     ctx.font = `600 ${landscape ? 28 : 24}px ${FONT}`
-    ctx.fillText(fit(ctx, k.title, cw), x, top + ch + (landscape ? 38 : 34))
-    if (k.sub) {
+    ctx.fillText(fit(ctx, card.title, cw), x, top + cardH + (landscape ? 38 : 34))
+    if (card.sub) {
       ctx.fillStyle = "rgba(255,255,255,.6)"
       ctx.font = `400 24px ${FONT}`
-      ctx.fillText(fit(ctx, k.sub, cw), x, top + ch + 68)
+      ctx.fillText(fit(ctx, card.sub, cw), x, top + cardH + 68)
     }
   }
 
   // footer
-  const fy = STORY_H - 96
   ctx.fillStyle = "rgba(255,255,255,.15)"
-  ctx.fillRect(PAD, fy - 40, STORY_W - PAD * 2, 2)
-  if (logo) ctx.drawImage(logo, PAD, fy - 6, 64, 64)
+  ctx.fillRect(PAD, fy - px(40), W - PAD * 2, 2)
+  const F = px(64)
+  if (logo) ctx.drawImage(logo, PAD, fy - px(6), F, F)
   ctx.fillStyle = "#ffffff"
-  ctx.font = `700 38px ${FONT}`
-  ctx.fillText("AniBiar TV", PAD + 84, fy + 26)
+  ctx.font = `700 ${px(38)}px ${FONT}`
+  ctx.fillText("AniBiar TV", PAD + F + 20, fy + px(26))
   ctx.fillStyle = "rgba(255,255,255,.6)"
-  ctx.font = `400 26px ${FONT}`
-  ctx.fillText(i.host, PAD + 84, fy + 62)
+  ctx.font = `400 ${px(26)}px ${FONT}`
+  ctx.fillText(i.host, PAD + F + 20, fy + px(62))
 
   return c
 }

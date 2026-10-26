@@ -452,6 +452,7 @@ export function ProfileApp() {
           name={name ?? "AniBiar viewer"}
           handle={handle}
           bio={profile?.bio ?? null}
+          joined={joined}
           avatar={avatar}
           banner={banner}
           history={storyHistory}

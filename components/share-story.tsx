@@ -5,7 +5,7 @@ import { Download, Share2, X } from "lucide-react"
 
 import { Spinner } from "@/components/ui/spinner"
 import type { HistoryItem, ListItem } from "@/lib/library"
-import { canvasToBlob, renderStory, TAB_LABEL, type StoryTab } from "@/lib/story"
+import { canvasToBlob, FORMAT_LABEL, renderStory, sizeFor, TAB_LABEL, type StoryFormat, type StoryTab } from "@/lib/story"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -13,6 +13,7 @@ type Props = {
   name: string
   handle: string | null
   bio: string | null
+  joined: string | null
   avatar: string | null
   banner: string | null
   history: HistoryItem[]
@@ -24,6 +25,8 @@ type Props = {
 /** Preview of the profile as a 9:16 story picture, with Save and Share. */
 export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
   const [tab, setTab] = React.useState<StoryTab>(startTab)
+  const [format, setFormat] = React.useState<StoryFormat>("story")
+  const [size, setSize] = React.useState({ w: 1080, h: 1920 })
   const [blob, setBlob] = React.useState<Blob | null>(null)
   const [url, setUrl] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
@@ -42,7 +45,8 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     setBlob(null)
     setUrl(null)
     setError(null)
-    renderStory({ ...data, tab, host: window.location.host })
+    setSize(sizeFor(format))
+    renderStory({ ...data, tab, format, host: window.location.host })
       .then(canvasToBlob)
       .then((b) => {
         if (!alive) return
@@ -63,9 +67,9 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     }
     // data props change identity every render; the picture only depends on these values
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, data.name, data.handle, data.bio, data.avatar, data.banner, data.history, data.favorites, data.list])
+  }, [tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.history, data.favorites, data.list])
 
-  const fileName = `anibiar-${data.handle ?? "profile"}-${tab}.png`
+  const fileName = `anibiar-${data.handle ?? "profile"}-${tab}-${format}.png`
 
   const save = () => {
     if (!url) return
@@ -121,9 +125,30 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
           ))}
         </div>
 
-        {/* 9:16 preview, as tall as the screen allows */}
+        <div role="tablist" aria-label="Picture size" className="mx-4 mt-2 flex gap-1.5 sm:mx-5">
+          {(Object.keys(FORMAT_LABEL) as StoryFormat[]).map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={format === f}
+              onClick={() => setFormat(f)}
+              className={cn(
+                "flex-1 rounded-full border px-2 py-1.5 text-xs font-semibold transition-colors",
+                format === f ? "border-white bg-white/15 text-white" : "border-white/20 text-white/60 hover:text-white"
+              )}
+            >
+              {FORMAT_LABEL[f]}
+            </button>
+          ))}
+        </div>
+
+        {/* preview in the chosen shape, as tall as the screen allows */}
         <div className="grid min-h-0 flex-1 place-items-center px-4 py-4 sm:px-5">
-          <div className="relative aspect-[9/16] h-full max-h-[min(62svh,38rem)] overflow-hidden rounded-xl border border-white/15 bg-white/[0.04]">
+          <div
+            style={{ aspectRatio: `${size.w} / ${size.h}` }}
+            className="relative h-full max-h-[min(54svh,36rem)] max-w-full overflow-hidden rounded-xl border border-white/15 bg-white/[0.04]"
+          >
             {url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={url} alt="Preview of your profile picture for stories" className="size-full object-contain" />
@@ -159,7 +184,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               </button>
             )}
           </div>
-          <p className="text-center text-[0.7rem] text-white/45">1080 × 1920, the size of an Instagram or Facebook story.</p>
+          <p className="text-center text-[0.7rem] text-white/45">{size.w} × {size.h}px{format === "story" ? ", the size of an Instagram or Facebook story" : format === "post" ? ", a feed post" : ", the shape of this device's screen"}.</p>
         </div>
       </div>
     </div>

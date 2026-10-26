@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.24.1
+
+- Share picture now looks like the profile page: banner, avatar, name, @username, Bio, Member Since (with the logo), the History / Favorites / Watchlist tab bar with the active underline, and that tab's list.
+- Picture size picker: Story 9:16, Post 4:5 or My screen (matches the shape of the device's own screen). Layout scales so everything fits each size.
+
 ## 1.24.0
 
 - Share button on the profile: a 9:16 (1080 x 1920) story picture of your profile (banner, avatar, name, username, bio and your History, Favorites or Watchlist, whichever tab you pick) with Save image and Share (native share sheet where the phone supports it). Made in the browser; images go through `/api/img` (allow-listed hosts) so they can be drawn.
