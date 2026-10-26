@@ -3,7 +3,9 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Captions, History, Menu, Search, Star, TrendingUp, X } from "lucide-react"
+import { ArrowLeft, Bookmark, Captions, ChevronRight, History, Home, LogIn, LogOut, Menu, PlayCircle, Search, Star, TrendingUp, User, X } from "lucide-react"
+
+import { useAuth } from "@/components/auth-provider"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -410,6 +412,7 @@ export function SiteHeader() {
   const [searching, setSearching] = React.useState(false)
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
+  const auth = useAuth()
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -450,17 +453,91 @@ export function SiteHeader() {
             </button>
           </div>
         </div>
-        {menuOpen && (
-          <nav className="mx-auto flex w-full max-w-7xl flex-col px-4 pb-3 text-sm sm:px-8">
-            <Link href="/" className="rounded-lg px-3 py-2.5 text-white hover:bg-white/10">
-              Home
-            </Link>
-            <Link href="/watch" className="rounded-lg px-3 py-2.5 text-white hover:bg-white/10">
-              Video player
-            </Link>
-          </nav>
-        )}
       </header>
+      {menuOpen && (
+        <>
+          <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-30 cursor-default bg-black/60" />
+          <nav
+            aria-label="Main menu"
+            className="fixed inset-x-3 top-[3.75rem] z-40 mx-auto flex max-h-[calc(100svh-4.5rem)] max-w-md flex-col gap-2 overflow-y-auto rounded-2xl border border-white/15 bg-[#121113]/95 p-2 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:top-[4.25rem] sm:right-8 sm:left-auto sm:mx-0 sm:w-80"
+          >
+            {auth.user ? (
+              <div className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5">
+                <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-violet-500/25 text-violet-200">
+                  {auth.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={auth.avatar} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
+                  ) : (
+                    <User className="size-5" />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-white">{auth.name}</span>
+                  <span className="block truncate text-xs text-white/50">{auth.user.email}</span>
+                </span>
+              </div>
+            ) : (
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5 hover:bg-white/10">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-violet-500/25 text-violet-200">
+                  <User className="size-5" />
+                </span>
+                <span className="flex-1 text-sm font-semibold text-white">Profile</span>
+                <ChevronRight className="size-4 text-white/60" />
+              </Link>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { href: "/", label: "Home", icon: Home },
+                { href: "/library?tab=history", label: "History", icon: History },
+                { href: "/library?tab=list", label: "My List", icon: Bookmark },
+                { href: "/watch", label: "Video player", icon: PlayCircle },
+              ].map(({ href, label, icon: Icon }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  onClick={() => setMenuOpen(false)}
+                  className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/15 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                >
+                  <Icon className="size-5 text-white/70" />
+                  {label}
+                </Link>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setSearching(true)
+                }}
+                className="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-white/15 py-3.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+              >
+                <Search className="size-5 text-white/70" />
+                Search
+              </button>
+            </div>
+
+            <div className="h-px bg-white/15" />
+            {auth.user ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  setMenuOpen(false)
+                  await auth.signOut()
+                }}
+                className="flex items-center gap-3 rounded-xl border border-white/15 px-4 py-3.5 text-sm font-medium text-white hover:bg-white/10"
+              >
+                <LogOut className="size-5 text-white/70" />
+                Log out
+              </button>
+            ) : (
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 px-4 py-3.5 text-sm font-medium text-white hover:bg-white/10">
+                <LogIn className="size-5 text-white/70" />
+                Login / Sign up
+              </Link>
+            )}
+          </nav>
+        </>
+      )}
       {searching && <SearchOverlay onClose={() => setSearching(false)} />}
     </>
   )

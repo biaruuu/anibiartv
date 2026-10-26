@@ -17,6 +17,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Spinner } from "@/components/ui/spinner"
 import {
   animeTitle,
   getLatestEpisodes,
@@ -30,6 +31,7 @@ import {
   type LatestEpisode,
 } from "@/lib/anilist"
 import { getTitleLogo, logosEnabled } from "@/lib/logos"
+import { ContinueWatching } from "@/components/continue-watching"
 import { SiteFooter, SiteHeader } from "@/components/site-header"
 import { cn } from "@/lib/utils"
 
@@ -192,11 +194,11 @@ function Hero({
 
 /* ------------------------------ latest episodes ----------------------------- */
 
-function EpisodeCard({ item }: { item: LatestEpisode }) {
+function EpisodeCard({ item, dub }: { item: LatestEpisode; dub?: boolean }) {
   const a = item.media
   const meta = a.format === "TV_SHORT" ? "TV" : (a.format ?? "TV").replace("_", " ")
   return (
-    <Link href={infoHref(a)} className="group block min-w-0">
+    <Link href={dub ? `/watch/${a.id}?ep=${item.episode}&audio=dub` : infoHref(a)} className="group block min-w-0">
       <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -240,6 +242,46 @@ function EpisodeCard({ item }: { item: LatestEpisode }) {
   )
 }
 
+/** Dub is checked against the streaming servers, one title at a time. Remembered for the visit. */
+const dubCache = new Map<string, boolean>()
+
+function useDubCheck(items: LatestEpisode[] | null, on: boolean) {
+  const [, tick] = React.useReducer((n: number) => n + 1, 0)
+  const [pending, setPending] = React.useState(0)
+  React.useEffect(() => {
+    if (!on || !items) return
+    const todo = items.filter((it) => !dubCache.has(`${it.media.id}:${it.episode}`))
+    if (!todo.length) return
+    let alive = true
+    let next = 0
+    let active = 0
+    setPending(todo.length)
+    const run = async () => {
+      while (alive && next < todo.length) {
+        const it = todo[next++]
+        active++
+        try {
+          const r = await fetch(`/api/anime/${it.media.id}/episodes`)
+          const data = r.ok ? ((await r.json()) as { dub?: { number: number }[] }) : null
+          dubCache.set(`${it.media.id}:${it.episode}`, !!data?.dub?.some((e) => e.number === it.episode))
+        } catch {
+          dubCache.set(`${it.media.id}:${it.episode}`, false)
+        }
+        active--
+        if (alive) {
+          setPending(todo.length - Math.min(next, todo.length) + active)
+          tick()
+        }
+      }
+    }
+    void Promise.all([run(), run(), run()]).then(() => alive && setPending(0))
+    return () => {
+      alive = false
+    }
+  }, [items, on])
+  return { has: (it: LatestEpisode) => dubCache.get(`${it.media.id}:${it.episode}`) === true, pending: on ? pending : 0 }
+}
+
 function LatestEpisodes() {
   const [page, setPage] = React.useState(1)
   const [lastPage, setLastPage] = React.useState(MAX_PAGES)
@@ -248,6 +290,8 @@ function LatestEpisodes() {
   const [mode, setMode] = React.useState<"sub" | "dub">("sub")
   const [retry, setRetry] = React.useState(0)
   const top = React.useRef<HTMLDivElement>(null)
+  const dub = useDubCheck(items, mode === "dub")
+  const shown = items && mode === "dub" ? items.filter(dub.has) : items
 
   React.useEffect(() => {
     const ctrl = new AbortController()
@@ -323,10 +367,17 @@ function LatestEpisodes() {
         </div>
       </div>
 
-      {mode === "dub" && (
-        <p className="mb-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-          Dub availability comes from your streaming servers, which are not connected yet. The
-          list below shows every latest episode.
+      {mode === "dub" && items && (
+        <p className="mb-5 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
+          {dub.pending > 0 ? (
+            <>
+              <Spinner className="size-4" /> Checking which of these episodes have an English dub…
+            </>
+          ) : shown && shown.length > 0 ? (
+            "Showing only episodes that have an English dub on the servers."
+          ) : (
+            "None of the latest episodes on this page have a dub yet. Try another page or switch back to Sub."
+          )}
         </p>
       )}
 
@@ -340,8 +391,8 @@ function LatestEpisodes() {
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-x-2.5 gap-y-5 sm:gap-x-4 sm:gap-y-7 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {items
-            ? items.map((it) => <EpisodeCard key={it.id} item={it} />)
+          {shown
+            ? shown.map((it) => <EpisodeCard key={it.id} item={it} dub={mode === "dub"} />)
             : Array.from({ length: 12 }, (_, i) => (
                 <div key={i} className="space-y-3">
                   <Skeleton className="aspect-[2/3] rounded-xl bg-white/5" />
@@ -531,6 +582,7 @@ export function HomeApp() {
             setHeroRetry((n) => n + 1)
           }}
         />
+        <ContinueWatching />
         <LatestEpisodes />
         <RankedLists />
       </main>

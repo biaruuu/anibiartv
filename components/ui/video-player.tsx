@@ -71,6 +71,10 @@ export type VideoPlayerProps = {
   autoSkipOption?: { value: boolean; onChange: (value: boolean) => void }
   /** Length the intro/outro times were made for. If the video is much longer or shorter, they are ignored. */
   skipLength?: number | null
+  /** Start here (seconds) instead of at 0; used to resume. Applied once per source. */
+  startAt?: number | null
+  /** Called about every 10 seconds while playing, and when paused, with the position and length. */
+  onTime?: (position: number, duration: number) => void
 }
 
 type WebkitVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void }
@@ -286,6 +290,8 @@ export function VideoPlayer({
   outro,
   autoSkipOption,
   skipLength,
+  startAt,
+  onTime,
 }: VideoPlayerProps) {
   const onFailRef = React.useRef(onFail)
   React.useEffect(() => {
@@ -299,6 +305,14 @@ export function VideoPlayer({
   const autoPlayRef = React.useRef(autoPlay)
   React.useEffect(() => {
     autoPlayRef.current = autoPlay
+  })
+  const startAtRef = React.useRef(startAt)
+  const resumedRef = React.useRef<string | null>(null)
+  const onTimeRef = React.useRef(onTime)
+  const lastReportRef = React.useRef(0)
+  React.useEffect(() => {
+    startAtRef.current = startAt
+    onTimeRef.current = onTime
   })
   const fireEnded = () => {
     if (endedRef.current) return
@@ -1134,6 +1148,12 @@ export function VideoPlayer({
           onLoadedMetadata={(e) => {
             const v = e.currentTarget
             setDuration(v.duration)
+            // Resume once per source (a server switch keeps the spot the viewer was at).
+            const from = startAtRef.current
+            if (from && from > 3 && Number.isFinite(v.duration) && from < v.duration - 15 && resumedRef.current !== src) {
+              v.currentTime = from
+            }
+            resumedRef.current = src
             // A new source resets the rate, so re-apply the chosen speed.
             v.playbackRate = speed
             updateBuffered(v)
@@ -1146,6 +1166,10 @@ export function VideoPlayer({
             if (!scrubbing) setCurrentTime(v.currentTime)
             updateBuffered(v)
             checkSkip(v)
+            if (onTimeRef.current && Number.isFinite(v.duration) && v.duration > 0 && v.currentTime > 5 && Math.abs(v.currentTime - lastReportRef.current) >= 10) {
+              lastReportRef.current = v.currentTime
+              onTimeRef.current(v.currentTime, v.duration)
+            }
             // Some streams never fire "ended"; treat the last quarter second as the end.
             if (Number.isFinite(v.duration) && v.duration > 1 && v.currentTime >= v.duration - 0.25) fireEnded()
           }}

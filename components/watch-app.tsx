@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react"
 
+import { useAuth } from "@/components/auth-provider"
 import { SiteFooter, SiteHeader } from "@/components/site-header"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
@@ -37,6 +38,7 @@ import {
   type FranchiseGraph,
 } from "@/lib/anilist"
 import type { EpisodesPayload, WatchEpisode, WatchPayload } from "@/lib/anivexa"
+import { loadHistory, loadList, localList, saveProgress, toggleList } from "@/lib/library"
 import { cn } from "@/lib/utils"
 
 type Audio = "sub" | "dub"
@@ -44,7 +46,6 @@ type Audio = "sub" | "dub"
 /* ------------------------------ small helpers ------------------------------ */
 
 const PREFS_KEY = "anibiar:watch-prefs"
-const LIST_KEY = "anibiar:my-list"
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -449,6 +450,7 @@ type Prefs = { autoplay: boolean; autoNext: boolean; autoSkip: boolean }
 
 export function WatchApp({ id }: { id: number }) {
   const params = useSearchParams()
+  const { user, ready: authReady } = useAuth()
   const isDesktop = useMedia("(min-width: 1024px)")
 
   const [anime, setAnime] = React.useState<Detail | null>(null)
@@ -474,8 +476,16 @@ export function WatchApp({ id }: { id: number }) {
 
   React.useEffect(() => {
     setPrefs(readJson<Prefs>(PREFS_KEY, { autoplay: true, autoNext: true, autoSkip: true }))
-    setSaved(readJson<{ ids: number[] }>(LIST_KEY, { ids: [] }).ids.includes(id))
+    setSaved(localList().some((l) => l.animeId === id))
   }, [id])
+  React.useEffect(() => {
+    if (!authReady) return
+    let alive = true
+    loadList(user?.id).then((l) => alive && setSaved(l.some((x) => x.animeId === id)))
+    return () => {
+      alive = false
+    }
+  }, [id, user?.id, authReady])
 
   const updatePrefs = (patch: Partial<Prefs>) =>
     setPrefs((p) => {
@@ -484,11 +494,12 @@ export function WatchApp({ id }: { id: number }) {
       return next
     })
 
-  const toggleSaved = () => {
-    const list = readJson<{ ids: number[] }>(LIST_KEY, { ids: [] }).ids
-    const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
-    writeJson(LIST_KEY, { ids: next })
-    setSaved(next.includes(id))
+  const toggleSaved = async () => {
+    const now = await toggleList(
+      { animeId: id, title: anime ? animeTitle(anime) : (eps?.title ?? `Anime ${id}`), image: anime?.coverImage.large ?? anime?.coverImage.extraLarge ?? null },
+      user?.id
+    )
+    setSaved(now)
   }
 
   /* anime details + seasons (AniList) */
@@ -589,6 +600,38 @@ export function WatchApp({ id }: { id: number }) {
 
   const ready = !!watch && watch.episode === currentEp?.number && watch.audio === audio
 
+  // Continue Watching: where this viewer stopped in this episode (read once per episode).
+  const [resumeAt, setResumeAt] = React.useState<number | null>(null)
+  React.useEffect(() => {
+    setResumeAt(null)
+    if (!authReady || !epNumber) return
+    let alive = true
+    loadHistory(user?.id).then((h) => {
+      const mine = h.find((x) => x.animeId === id && x.episode === epNumber)
+      if (alive && mine && mine.position > 5) setResumeAt(mine.position)
+    })
+    return () => {
+      alive = false
+    }
+  }, [id, epNumber, user?.id, authReady])
+
+  const remember = (position: number, duration: number, episode = epNumber, forAudio = audio) => {
+    if (!episode) return
+    void saveProgress(
+      {
+        animeId: id,
+        episode,
+        audio: forAudio,
+        position,
+        duration,
+        title: anime ? animeTitle(anime) : (eps?.title ?? `Anime ${id}`),
+        image: anime?.bannerImage ?? currentEp?.image ?? anime?.coverImage.extraLarge ?? null,
+        totalEpisodes: list.length ? list[list.length - 1].number : (anime?.episodes ?? null),
+      },
+      user?.id
+    )
+  }
+
   const tracks = React.useMemo<VideoTrack[]>(() => {
     if (!stream || stream.kind === "hard") return []
     const rank = (t: { label: string; srclang: string; default: boolean }) =>
@@ -669,8 +712,13 @@ export function WatchApp({ id }: { id: number }) {
                   intro={skip.intro}
                   outro={skip.outro}
                   skipLength={skip.length}
+                  startAt={resumeAt}
+                  onTime={(t, d) => remember(t, d)}
                   className="rounded-none border-x-0 sm:rounded-2xl sm:border-x"
                   onEnded={() => {
+                    // Watched to the end: Continue Watching should point at the next episode.
+                    if (next) remember(0, 0, next.number)
+                    else remember(1, 1)
                     if (prefs.autoNext && next) select(next.number)
                   }}
                 />

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.20.0
+
+- Accounts with Supabase: log in / sign up with Google, Discord or email and password (`/login`).
+- Database tables `profiles`, `watch_history` and `my_list`, protected by row-level security.
+- Continue Watching row on the home page (resumes where you stopped); works signed out (this device) and signed in (every device). History and My List page at `/library`.
+- Home "Dub" tab now only lists latest episodes that really have an English dub on the servers.
+- New Miruro-style menu with profile, History, My List, Search and login / logout.
+
 ## 1.19.1
 
 - Skip intro / outro now shows on every server: when a server has no timings, a backup list (AniSkip) is used, cached in Redis. Times are ignored if the video length differs a lot.
