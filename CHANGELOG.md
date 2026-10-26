@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.24.0
+
+- Share button on the profile: a 9:16 (1080 x 1920) story picture of your profile (banner, avatar, name, username, bio and your History, Favorites or Watchlist, whichever tab you pick) with Save image and Share (native share sheet where the phone supports it). Made in the browser; images go through `/api/img` (allow-listed hosts) so they can be drawn.
+- Edit profile button is smaller.
+
 ## 1.23.0
 
 - Bottom navigation bar on phones and tablets: Home, Search, Profile (your avatar) and Settings. Hidden on the profile, settings, login and watch pages.

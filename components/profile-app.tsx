@@ -3,10 +3,11 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Camera, ImagePlus, Pencil, Trash2, User, X } from "lucide-react"
+import { Camera, ImagePlus, Pencil, Share2, Trash2, User, X } from "lucide-react"
 
 import { useAuth } from "@/components/auth-provider"
 import { HistoryCard, useHistory } from "@/components/continue-watching"
+import { ShareStory } from "@/components/share-story"
 import { Spinner } from "@/components/ui/spinner"
 import { loadFavorites, loadList, toggleFavorite, toggleList, type ListItem } from "@/lib/library"
 import { ACCEPT, deleteProfileImage, MAX_BYTES, uploadProfileImage } from "@/lib/profile-images"
@@ -288,6 +289,10 @@ export function ProfileApp() {
   const [list, setList] = React.useState<ListItem[] | null>(null)
   const [favorites, setFavorites] = React.useState<ListItem[] | null>(null)
   const [editing, setEditing] = React.useState(false)
+  const [sharing, setSharing] = React.useState(false)
+  const storyHistory = React.useMemo(() => items ?? [], [items])
+  const storyFavorites = React.useMemo(() => favorites ?? [], [favorites])
+  const storyList = React.useMemo(() => list ?? [], [list])
 
   React.useEffect(() => {
     if (!ready) return
@@ -351,19 +356,29 @@ export function ProfileApp() {
               </div>
 
               {user ? (
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="inline-flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 text-base font-semibold text-black transition-colors hover:bg-white/90 sm:w-auto"
-                >
-                  <Pencil className="size-[1.1rem]" />
-                  Edit profile
-                </button>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-black transition-colors hover:bg-white/90 sm:flex-none"
+                  >
+                    <Pencil className="size-4" />
+                    Edit profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSharing(true)}
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-white/25 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:flex-none"
+                  >
+                    <Share2 className="size-4" />
+                    Share
+                  </button>
+                </div>
               ) : (
                 ready && (
                   <Link
                     href="/login?next=/profile"
-                    className="inline-flex h-12 w-full shrink-0 items-center justify-center rounded-xl bg-white px-6 text-base font-semibold text-black hover:bg-white/90 sm:w-auto"
+                    className="inline-flex h-10 w-full shrink-0 items-center justify-center rounded-xl bg-white px-5 text-sm font-semibold text-black hover:bg-white/90 sm:w-auto"
                   >
                     Log in / Sign up
                   </Link>
@@ -431,6 +446,20 @@ export function ProfileApp() {
         </div>
       </main>
       {editing && user && <EditProfile onClose={() => setEditing(false)} />}
+      {sharing && user && (
+        <ShareStory
+          tab={tab}
+          name={name ?? "AniBiar viewer"}
+          handle={handle}
+          bio={profile?.bio ?? null}
+          avatar={avatar}
+          banner={banner}
+          history={storyHistory}
+          favorites={storyFavorites}
+          list={storyList}
+          onClose={() => setSharing(false)}
+        />
+      )}
     </div>
   )
 }
