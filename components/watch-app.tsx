@@ -953,7 +953,7 @@ export function WatchApp({ id }: { id: number }) {
                   <button
                     type="button"
                     onClick={toggleSaved}
-                    aria-label={saved ? "Remove from my list" : "Add to my list"}
+                    aria-label={saved ? "Remove from watchlist" : "Add to watchlist"}
                     aria-pressed={saved}
                     className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/25 bg-white/[0.06] transition-colors hover:bg-white/15 sm:size-12"
                   >

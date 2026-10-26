@@ -3,11 +3,10 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Calendar, Camera, Heart, ImagePlus, Mail, Pencil, Trash2, User, X } from "lucide-react"
+import { Camera, ImagePlus, Pencil, Trash2, User, X } from "lucide-react"
 
 import { useAuth } from "@/components/auth-provider"
 import { HistoryCard, useHistory } from "@/components/continue-watching"
-import { SiteFooter, SiteHeader } from "@/components/site-header"
 import { Spinner } from "@/components/ui/spinner"
 import { loadFavorites, loadList, toggleFavorite, toggleList, type ListItem } from "@/lib/library"
 import { ACCEPT, deleteProfileImage, MAX_BYTES, uploadProfileImage } from "@/lib/profile-images"
@@ -247,7 +246,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
 const TABS = [
   { id: "history", label: "History" },
   { id: "favorites", label: "Favorites" },
-  { id: "list", label: "My List" },
+  { id: "list", label: "Watchlist" },
 ] as const
 type Tab = (typeof TABS)[number]["id"]
 
@@ -310,7 +309,7 @@ export function ProfileApp() {
   }
 
   const joined = user?.created_at
-    ? new Date(user.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    ? new Date(user.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
     : null
   const counts: Record<Tab, number | null> = {
     history: items?.length ?? null,
@@ -318,59 +317,53 @@ export function ProfileApp() {
     list: list?.length ?? null,
   }
 
+  const close = () => (window.history.length > 1 ? router.back() : router.push("/"))
+
   return (
     <div className="min-h-svh bg-[#121113] text-[#eeeef0]">
-      <SiteHeader />
-
-      <main className="mx-auto w-full max-w-4xl pb-10 sm:px-8 sm:pt-20">
+      <main className="mx-auto w-full max-w-4xl pb-10 sm:px-8 sm:py-10">
         <div className="overflow-hidden bg-[#121113] sm:rounded-2xl sm:border sm:border-white/20">
-          {/* banner: sits under the header on phones, like Discord */}
-          <div className="relative h-40 bg-white/[0.08] sm:h-52">
+          {/* banner, plain and fully visible (no header on this page) */}
+          <div className="relative h-36 bg-white/[0.08] sm:h-52">
             {banner && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={banner} alt="" className="size-full object-cover" />
             )}
-            <div aria-hidden className="absolute inset-x-0 top-0 h-16 bg-black/20 sm:hidden" />
+            <button
+              type="button"
+              aria-label="Close profile"
+              onClick={close}
+              className="absolute top-3 left-3 grid size-11 place-items-center rounded-xl bg-black/65 text-white transition-colors hover:bg-black/80 sm:top-4 sm:left-4"
+            >
+              <X className="size-6" />
+            </button>
           </div>
 
-          <div className="px-4 pb-1 sm:px-6">
+          <div className="px-4 sm:px-6">
             <Avatar src={user ? avatar : null} className="-mt-14 size-28 border-[6px] border-[#121113] sm:-mt-16 sm:size-32" />
 
             <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <h1 className="truncate text-2xl font-bold tracking-tight text-white sm:text-3xl">{user ? name : "Guest"}</h1>
-                {user ? (
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-white/75">
-                    <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-white/[0.08] px-2.5 py-1.5">
-                      <Mail className="size-3.5 shrink-0" />
-                      <span className="truncate">{user.email}</span>
-                    </span>
-                    {joined && (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.08] px-2.5 py-1.5">
-                        <Calendar className="size-3.5" />
-                        Joined {joined}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <p className="mt-1 text-sm text-white/60">Log in to set an avatar and banner and keep your lists on every device.</p>
-                )}
+                <h1 className="truncate text-3xl font-bold tracking-tight text-white">{user ? name : "Guest"}</h1>
+                <p className="mt-0.5 truncate text-base text-white/70">
+                  {user ? user.email : "Log in to set an avatar and banner and keep your lists on every device."}
+                </p>
               </div>
 
               {user ? (
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-black transition-colors hover:bg-white/90 sm:w-auto"
+                  className="inline-flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 text-base font-semibold text-black transition-colors hover:bg-white/90 sm:w-auto"
                 >
-                  <Pencil className="size-4" />
+                  <Pencil className="size-[1.1rem]" />
                   Edit profile
                 </button>
               ) : (
                 ready && (
                   <Link
                     href="/login?next=/profile"
-                    className="inline-flex h-11 w-full shrink-0 items-center justify-center rounded-xl bg-white px-6 text-sm font-semibold text-black hover:bg-white/90 sm:w-auto"
+                    className="inline-flex h-12 w-full shrink-0 items-center justify-center rounded-xl bg-white px-6 text-base font-semibold text-black hover:bg-white/90 sm:w-auto"
                   >
                     Log in / Sign up
                   </Link>
@@ -379,17 +372,27 @@ export function ProfileApp() {
             </div>
 
             {user && (
-              <section className="mt-5 rounded-xl border border-white/15 bg-white/[0.03] p-4">
-                <h2 className="text-xs font-semibold tracking-wide text-white/50 uppercase">About me</h2>
-                <p className={cn("mt-1.5 text-sm whitespace-pre-wrap", profile?.bio ? "text-white/85" : "text-white/40")}>
-                  {profile?.bio || "No bio yet. Tap Edit profile to add one."}
-                </p>
-              </section>
+              <div className="mt-6 space-y-6">
+                <section>
+                  <h2 className="text-base font-semibold text-white">Bio</h2>
+                  <p className={cn("mt-2 text-base whitespace-pre-wrap", profile?.bio ? "text-white/80" : "text-white/40")}>
+                    {profile?.bio || "No bio yet."}
+                  </p>
+                </section>
+                <section>
+                  <h2 className="text-base font-semibold text-white">Member Since</h2>
+                  <p className="mt-2 flex items-center gap-3 text-base text-white/80">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo-mark.svg" alt="" className="size-6" />
+                    {joined}
+                  </p>
+                </section>
+              </div>
             )}
           </div>
 
           {/* tabs with an underline, like the Discord profile */}
-          <div role="tablist" aria-label="Profile sections" className="mt-5 flex border-b border-white/15 px-4 sm:px-6">
+          <div role="tablist" aria-label="Profile sections" className="mt-6 flex border-b border-white/15 px-4 sm:px-6">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -403,7 +406,6 @@ export function ProfileApp() {
                 )}
               >
                 <span className="inline-flex items-center gap-1.5">
-                  {t.id === "favorites" && <Heart className="size-4" />}
                   {t.label}
                   {counts[t.id] ? <span className="rounded-full bg-white/10 px-1.5 text-[0.7rem] font-medium text-white/70">{counts[t.id]}</span> : null}
                 </span>
@@ -424,11 +426,10 @@ export function ProfileApp() {
                 </div>
               ))}
             {tab === "favorites" && <PosterGrid items={favorites} onRemove={unfavorite} empty="No favorites yet. Tap the heart on a watch page to add anime." />}
-            {tab === "list" && <PosterGrid items={list} onRemove={unlist} empty="Your list is empty. Tap the + on a watch page to add anime." />}
+            {tab === "list" && <PosterGrid items={list} onRemove={unlist} empty="Your watchlist is empty. Tap the + on a watch page to add anime." />}
           </div>
         </div>
       </main>
-      <SiteFooter />
       {editing && user && <EditProfile onClose={() => setEditing(false)} />}
     </div>
   )

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.22.2
+
+- Profile page has no site header or footer, so the banner is fully visible; a close (X) button in the corner goes back. Bio and Member Since (long date like January 20, 2021, with the AniBiar logo) are laid out like a Discord profile.
+- Tabs are now History / Favorites / Watchlist (My List renamed), with no icons.
+
 ## 1.22.1
 
 - Profile page redesigned like a Discord profile: full-width banner under the header, large avatar overlapping it, name, email and joined-date chips, About me (bio), full-width Edit profile button, and underlined tabs History / Favorites / My List.
