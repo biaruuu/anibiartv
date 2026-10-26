@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.23.0
+
+- Bottom navigation bar on phones and tablets: Home, Search, Profile (your avatar) and Settings. Hidden on the profile, settings, login and watch pages.
+- Profile shows your display name and your @username (the email is no longer shown there). Usernames are unique and stored in Supabase (`profiles.handle`).
+- New Settings page (`/settings`) styled like Discord's account screen, with Account Information: Username, Display Name and Email, each editable. Settings is also in the top menu on desktop.
+
 ## 1.22.3
 
 - Fixed the avatar being drawn underneath the banner (it looked cut off / glassy). It now sits fully on top, with a solid ring, like Discord.

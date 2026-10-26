@@ -283,7 +283,7 @@ export function ProfileApp() {
   const router = useRouter()
   const raw = useSearchParams().get("tab")
   const tab: Tab = raw === "favorites" || raw === "list" ? raw : "history"
-  const { user, ready, name, avatar, banner, profile } = useAuth()
+  const { user, ready, name, handle, avatar, banner, profile } = useAuth()
   const { items, remove } = useHistory()
   const [list, setList] = React.useState<ListItem[] | null>(null)
   const [favorites, setFavorites] = React.useState<ListItem[] | null>(null)
@@ -346,7 +346,7 @@ export function ProfileApp() {
               <div className="min-w-0">
                 <h1 className="truncate text-3xl font-bold tracking-tight text-white">{user ? name : "Guest"}</h1>
                 <p className="mt-0.5 truncate text-base text-white/70">
-                  {user ? user.email : "Log in to set an avatar and banner and keep your lists on every device."}
+                  {user ? handle : "Log in to set an avatar and banner and keep your lists on every device."}
                 </p>
               </div>
 

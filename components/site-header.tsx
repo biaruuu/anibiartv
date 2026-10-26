@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Captions, ChevronRight, History, Home, LogIn, LogOut, Menu, Search, Star, TrendingUp, User, X } from "lucide-react"
+import { ArrowLeft, Captions, ChevronRight, History, Home, LogIn, LogOut, Menu, Search, Settings, Star, TrendingUp, User, X } from "lucide-react"
 
 import { useAuth } from "@/components/auth-provider"
 
@@ -413,6 +413,11 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const auth = useAuth()
+  React.useEffect(() => {
+    const open = () => setSearching(true)
+    window.addEventListener("anibiar:search", open)
+    return () => window.removeEventListener("anibiar:search", open)
+  }, [])
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -487,7 +492,7 @@ export function SiteHeader() {
               </Link>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Link
                 href="/"
                 onClick={() => setMenuOpen(false)}
@@ -507,6 +512,14 @@ export function SiteHeader() {
                 <Search className="size-5 text-white/70" />
                 Search
               </button>
+              <Link
+                href="/settings"
+                onClick={() => setMenuOpen(false)}
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/15 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
+              >
+                <Settings className="size-5 text-white/70" />
+                Settings
+              </Link>
             </div>
 
             <div className="h-px bg-white/15" />

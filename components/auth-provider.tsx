@@ -5,7 +5,7 @@ import type { User } from "@supabase/supabase-js"
 
 import { getSupabase } from "@/lib/supabase/client"
 
-export type Profile = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null }
+export type Profile = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null; handle: string | null }
 
 type AuthState = {
   user: User | null
@@ -15,6 +15,8 @@ type AuthState = {
   name: string | null
   avatar: string | null
   banner: string | null
+  /** The @username (unique); falls back to the start of the email until one is saved. */
+  handle: string | null
   profile: Profile | null
   refreshProfile: () => Promise<void>
   signOut: () => Promise<void>
@@ -26,6 +28,7 @@ const Ctx = React.createContext<AuthState>({
   name: null,
   avatar: null,
   banner: null,
+  handle: null,
   profile: null,
   refreshProfile: async () => {},
   signOut: async () => {},
@@ -67,8 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshProfile = React.useCallback(async () => {
     if (!userId) return setProfile(null)
     try {
-      const { data } = await getSupabase().from("profiles").select("username, avatar_url, banner_url, bio").eq("id", userId).maybeSingle()
-      setProfile((data as Profile | null) ?? { username: null, avatar_url: null, banner_url: null, bio: null })
+      const { data } = await getSupabase().from("profiles").select("username, avatar_url, banner_url, bio, handle").eq("id", userId).maybeSingle()
+      setProfile((data as Profile | null) ?? { username: null, avatar_url: null, banner_url: null, bio: null, handle: null })
     } catch {
       /* offline: fall back to what the sign-in provider gave */
     }
@@ -90,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: profile?.username || pick("full_name", "name", "user_name") || user?.email?.split("@")[0] || null,
       avatar: profile?.avatar_url || pick("avatar_url", "picture"),
       banner: profile?.banner_url ?? null,
+      handle: profile?.handle ?? user?.email?.split("@")[0] ?? null,
       signOut: async () => {
         await getSupabase().auth.signOut()
         setUser(null)

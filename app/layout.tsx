@@ -10,6 +10,7 @@ import "@fontsource/open-sans/700.css"
 
 import "./globals.css"
 import { AuthProvider } from "@/components/auth-provider"
+import { BottomNav } from "@/components/bottom-nav"
 import { DesktopSiteNotice } from "@/components/desktop-site-notice"
 import { ThemeProvider } from "@/components/theme-provider"
 
@@ -52,7 +53,10 @@ export default function RootLayout({
           defaultTheme="dark"
           disableTransitionOnChange
         >
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {children}
+            <BottomNav />
+          </AuthProvider>
           <DesktopSiteNotice />
         </ThemeProvider>
       </body>
