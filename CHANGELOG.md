@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.21.4
+
+- When a phone's browser is stuck in "Desktop site" mode, a notice explains how to switch it off (a website cannot do that itself).
+
 ## 1.21.3
 
 - Explicit mobile viewport and no sideways overflow, so pages stay in mobile layout after signing in; sign-in redirect is now a no-store 303.

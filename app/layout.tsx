@@ -10,6 +10,7 @@ import "@fontsource/open-sans/700.css"
 
 import "./globals.css"
 import { AuthProvider } from "@/components/auth-provider"
+import { DesktopSiteNotice } from "@/components/desktop-site-notice"
 import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
@@ -52,6 +53,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>{children}</AuthProvider>
+          <DesktopSiteNotice />
         </ThemeProvider>
       </body>
     </html>
