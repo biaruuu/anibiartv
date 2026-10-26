@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.21.3
+
+- Explicit mobile viewport and no sideways overflow, so pages stay in mobile layout after signing in; sign-in redirect is now a no-store 303.
+
 ## 1.21.2
 
 - Direct Google / Discord sign-in on your own domain is back (needs the Vercel environment variables). Falls back to the Supabase-hosted sign-in if they are missing.

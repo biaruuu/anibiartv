@@ -33,5 +33,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
     return fail(url.origin, e instanceof Error && /verified|missing/i.test(e.message) ? e.message : "Sign in failed. Please try again.")
   }
   const target = next.startsWith("/") && !next.startsWith("//") ? next : "/"
-  return NextResponse.redirect(new URL(target, url.origin))
+  const res = NextResponse.redirect(new URL(target, url.origin), 303)
+  res.headers.set("Cache-Control", "no-store")
+  return res
 }
