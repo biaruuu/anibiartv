@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.21.2
+
+- Direct Google / Discord sign-in on your own domain is back (needs the Vercel environment variables). Falls back to the Supabase-hosted sign-in if they are missing.
+
 ## 1.21.1
 
 - Reverted direct Google / Discord sign-in. Login uses Supabase only, no extra environment variables needed.
