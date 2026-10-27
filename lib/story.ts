@@ -364,39 +364,115 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     ctx.beginPath()
     ctx.rect(0, 0, Wc, regionH)
     ctx.clip()
+    const R = regionH
     for (const q of fxParticles) {
-      const ph = ((t / SEC / q.dur + q.delay) % 1 + 1) % 1
-      ctx.fillStyle = fx.colors[q.color]
-      ctx.shadowColor = fx.colors[q.color]
+      const ph = (((t / SEC / q.dur + q.delay) % 1) + 1) % 1
+      const col = fx.colors[q.color]
+      ctx.fillStyle = col
+      ctx.strokeStyle = col
+      ctx.shadowColor = col
       ctx.shadowBlur = 0
-      if (fx.kind === "spark") {
-        const k = 0.5 + 0.5 * Math.sin(ph * Math.PI * 2 - Math.PI / 2)
-        ctx.globalAlpha = 0.1 + 0.9 * k
-        const r = (q.size / 2) * (0.5 + 0.5 * k)
-        ctx.translate(q.x * Wc, q.y * regionH)
-        ctx.rotate((Math.PI / 4) * k)
-        ctx.beginPath()
-        const pts = [[0, -1], [0.22, -0.22], [1, 0], [0.22, 0.22], [0, 1], [-0.22, 0.22], [-1, 0], [-0.22, -0.22]]
-        pts.forEach(([x, y], n) => (n ? ctx.lineTo(x * r * 1.4, y * r * 1.4) : ctx.moveTo(x * r * 1.4, y * r * 1.4)))
-        ctx.closePath()
-        ctx.fill()
-      } else if (fx.kind === "petal") {
-        const y = -0.08 * regionH + ph * 1.16 * regionH
-        const x = q.x * Wc + Math.sin(ph * Math.PI * 2) * q.sway
-        ctx.globalAlpha = ph < 0.1 ? ph * 9.5 : 0.92
-        ctx.translate(x, y)
-        ctx.rotate(ph * Math.PI * 2)
-        ctx.beginPath()
-        ctx.ellipse(0, 0, q.size / 2, (q.size * 0.7) / 2, 0, 0, Math.PI * 2)
-        ctx.fill()
-      } else {
-        const y = 1.08 * regionH - ph * 1.16 * regionH
-        const x = q.x * Wc + ph * q.sway
-        ctx.globalAlpha = ph < 0.15 ? ph / 0.15 : 1 - (ph - 0.15) / 0.85
-        ctx.shadowBlur = 8
-        ctx.beginPath()
-        ctx.arc(x, y, q.size / 2, 0, Math.PI * 2)
-        ctx.fill()
+      ctx.globalAlpha = 1
+      switch (fx.kind) {
+        case "spark": {
+          const k = 0.5 + 0.5 * Math.sin(ph * Math.PI * 2 - Math.PI / 2)
+          ctx.globalAlpha = 0.1 + 0.9 * k
+          const r = (q.size / 2) * (0.5 + 0.5 * k) * 1.4
+          ctx.translate(q.x * Wc, q.y * R)
+          ctx.rotate((Math.PI / 4) * k)
+          ctx.beginPath()
+          const pts = [[0, -1], [0.22, -0.22], [1, 0], [0.22, 0.22], [0, 1], [-0.22, 0.22], [-1, 0], [-0.22, -0.22]]
+          pts.forEach(([x, y], n) => (n ? ctx.lineTo(x * r, y * r) : ctx.moveTo(x * r, y * r)))
+          ctx.closePath()
+          ctx.fill()
+          break
+        }
+        case "petal": {
+          ctx.globalAlpha = ph < 0.1 ? ph * 9.5 : 0.92
+          ctx.translate(q.x * Wc + Math.sin(ph * Math.PI * 2) * q.sway, -0.08 * R + ph * 1.16 * R)
+          ctx.rotate(ph * Math.PI * 2)
+          ctx.beginPath()
+          ctx.ellipse(0, 0, q.size / 2, (q.size * 0.7) / 2, 0, 0, Math.PI * 2)
+          ctx.fill()
+          break
+        }
+        case "ember": {
+          ctx.globalAlpha = ph < 0.15 ? ph / 0.15 : 1 - (ph - 0.15) / 0.85
+          ctx.shadowBlur = 8
+          ctx.beginPath()
+          ctx.arc(q.x * Wc + ph * q.sway, 1.08 * R - ph * 1.16 * R, q.size / 2, 0, Math.PI * 2)
+          ctx.fill()
+          break
+        }
+        case "lantern": {
+          ctx.globalAlpha = ph < 0.15 ? ph / 0.15 : 1 - (ph - 0.15) / 0.85
+          ctx.shadowBlur = 10
+          const w = q.size
+          const h = q.size * 1.25
+          rr(ctx, q.x * Wc + Math.sin(ph * Math.PI * 2) * q.sway - w / 2, 1.08 * R - ph * 1.16 * R - h / 2, w, h, w * 0.28)
+          ctx.fill()
+          break
+        }
+        case "firework": {
+          if (ph >= 0.7) break
+          const e = ph / 0.7
+          ctx.globalAlpha = 1 - e
+          const cx = q.x * Wc
+          const cy = q.y * R
+          for (let d = 0; d < 8; d++) {
+            const a = (d * Math.PI) / 4
+            ctx.beginPath()
+            ctx.arc(cx + Math.sin(a) * q.size * e, cy - Math.cos(a) * q.size * e, 2, 0, Math.PI * 2)
+            ctx.fill()
+          }
+          break
+        }
+        case "koi": {
+          const w = q.size * 2.4
+          const h = q.size
+          const x = (-0.14 + ph * 1.22) * Wc
+          const y = q.y * R + Math.sin(ph * Math.PI * 4) * 5
+          ctx.beginPath()
+          ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.beginPath()
+          ctx.moveTo(x + w * 0.1, y + h / 2)
+          ctx.lineTo(x - w * 0.22, y + h * 0.06)
+          ctx.lineTo(x - w * 0.22, y + h * 0.94)
+          ctx.closePath()
+          ctx.fill()
+          break
+        }
+        case "rain": {
+          ctx.globalAlpha = 0.7
+          ctx.lineWidth = 1.5
+          const y = -0.14 * R + ph * 1.22 * R
+          ctx.beginPath()
+          ctx.moveTo(q.x * Wc, y)
+          ctx.lineTo(q.x * Wc, y + q.size)
+          ctx.stroke()
+          break
+        }
+        case "wash": {
+          const cx = q.x * Wc + Math.sin(ph * Math.PI * 2) * q.sway
+          const cy = q.y * R - Math.sin(ph * Math.PI * 2) * q.sway * 0.6
+          const rad = (q.size / 2) * (0.95 + 0.2 * Math.sin(ph * Math.PI * 2 - Math.PI / 2))
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad * 1.1)
+          g.addColorStop(0, col + "70")
+          g.addColorStop(1, col + "00")
+          ctx.fillStyle = g
+          ctx.beginPath()
+          ctx.arc(cx, cy, rad * 1.1, 0, Math.PI * 2)
+          ctx.fill()
+          break
+        }
+        case "note": {
+          ctx.globalAlpha = ph < 0.15 ? ph / 0.15 : 1 - (ph - 0.15) / 0.85
+          ctx.font = `700 ${q.size * 1.6}px ${FONT}`
+          ctx.textBaseline = "middle"
+          ctx.fillText(q.color % 2 ? "\u266B" : "\u266A", q.x * Wc + ph * q.sway, 1.08 * R - ph * 1.16 * R)
+          break
+        }
       }
       ctx.setTransform(s, 0, 0, s, 0, 0)
       ctx.globalAlpha = 1

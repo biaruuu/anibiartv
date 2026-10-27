@@ -24,25 +24,47 @@ export function EffectLayer({ effect, className }: { effect: EffectId | null; cl
   const e = effectOf(effect)
   return (
     <div aria-hidden className={cn("pointer-events-none absolute inset-x-0 top-0 z-[5] overflow-hidden", className)}>
-      {particlesFor(effect).map((p, n) => (
-        <span
-          key={n}
-          className={cn("absolute block", `fx-${e.kind}`)}
-          style={
-            {
-              left: `${p.x * 100}%`,
-              top: e.kind === "spark" ? `${p.y * 100}%` : undefined,
-              width: p.size,
-              height: e.kind === "petal" ? p.size * 0.7 : p.size,
-              background: e.colors[p.color],
-              color: e.colors[p.color],
-              animationDuration: `${p.dur}s`,
-              animationDelay: `-${p.delay * p.dur}s`,
-              "--sway": `${p.sway}px`,
-            } as React.CSSProperties
-          }
-        />
-      ))}
+      {particlesFor(effect).map((p, n) => {
+        const k = e.kind
+        const color = e.colors[p.color]
+        const style: Record<string, string | number | undefined> = {
+          left: `${p.x * 100}%`,
+          top: ["spark", "firework", "koi", "wash"].includes(k) ? `${p.y * 100}%` : undefined,
+          width: p.size,
+          height: p.size,
+          background: color,
+          color,
+          animationDuration: `${p.dur}s`,
+          animationDelay: `-${p.delay * p.dur}s`,
+          "--sway": `${p.sway}px`,
+        }
+        if (k === "petal") style.height = p.size * 0.7
+        if (k === "lantern") style.height = p.size * 1.25
+        if (k === "koi") style.width = p.size * 2.4
+        if (k === "rain") {
+          style.width = 1.5
+        }
+        if (k === "wash") {
+          style.marginLeft = -p.size / 2
+          style.marginTop = -p.size / 2
+        }
+        if (k === "firework") {
+          style.width = 4
+          style.height = 4
+          style.fontSize = p.size
+        }
+        if (k === "note") {
+          style.background = "transparent"
+          style.width = "auto"
+          style.height = "auto"
+          style.fontSize = p.size * 1.6
+        }
+        return (
+          <span key={n} className={cn("absolute block", `fx-${k}`)} style={style as React.CSSProperties}>
+            {k === "note" ? (p.color % 2 ? "\u266B" : "\u266A") : null}
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -51,7 +73,7 @@ export function EffectLayer({ effect, className }: { effect: EffectId | null; cl
 export function EffectPicker({ value, onChange, disabled }: { value: EffectId | null; onChange: (v: EffectId | null) => void; disabled?: boolean }) {
   const items: { id: EffectId | null; label: string }[] = [{ id: null, label: "None" }, ...EFFECTS.map((e) => ({ id: e.id, label: e.label }))]
   return (
-    <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Profile effect">
+    <div className="grid grid-cols-4 gap-2 sm:grid-cols-5" role="radiogroup" aria-label="Profile effect">
       {items.map((it) => (
         <button
           key={it.label}

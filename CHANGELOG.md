@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.29.0
+
+- 6 more animated profile effects (9 in total): Lanterns, Fireworks, Koi, Rain, Watercolor and Lofi notes, each with its own spinning ring colours. They run on the profile page, in the Edit profile preview, in the Share picture and in the Live clip. Pick one in Edit profile.
+- The two uploaded Lofi / Lunar New Year `.css` files only work inside Discord's own app (they target Discord's page classes and load Discord's artwork from its servers), so they are not copied in; these are original effects in the same spirit.
+
 ## 1.28.0
 
 - Whole site recoloured to Discord's Onyx dark theme: pure black base, near-black cards, grey text (#949ba4), Discord-style borders; blurple (#5865f2) for the active profile tab and Edit profile.

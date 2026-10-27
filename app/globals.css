@@ -189,7 +189,111 @@ html {
   box-shadow: 0 0 8px 2px currentColor;
   animation: fx-rise 4s ease-out infinite;
 }
+@keyframes fx-burst {
+  0% {
+    transform: scale(0.05);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+@keyframes fx-swim {
+  0% {
+    left: -14%;
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-5px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(5px);
+  }
+  100% {
+    left: 108%;
+    transform: translateY(0);
+  }
+}
+@keyframes fx-drop {
+  0% {
+    top: -14%;
+  }
+  100% {
+    top: 108%;
+  }
+}
+@keyframes fx-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(0.9);
+  }
+  50% {
+    transform: translate(var(--sway), calc(var(--sway) * -0.6)) scale(1.15);
+  }
+}
+.fx-lantern {
+  border-radius: 28%;
+  box-shadow: 0 0 10px 2px currentColor;
+  animation: fx-rise 9s ease-out infinite;
+}
+.fx-firework {
+  border-radius: 9999px;
+  box-shadow:
+    0 -1em 0 0 currentColor,
+    0.71em -0.71em 0 0 currentColor,
+    1em 0 0 0 currentColor,
+    0.71em 0.71em 0 0 currentColor,
+    0 1em 0 0 currentColor,
+    -0.71em 0.71em 0 0 currentColor,
+    -1em 0 0 0 currentColor,
+    -0.71em -0.71em 0 0 currentColor;
+  animation: fx-burst 2.6s ease-out infinite;
+}
+.fx-koi {
+  border-radius: 50%;
+  animation: fx-swim 12s linear infinite;
+}
+.fx-koi::after {
+  content: "";
+  position: absolute;
+  left: -42%;
+  top: 6%;
+  width: 52%;
+  height: 88%;
+  background: inherit;
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
+}
+.fx-rain {
+  border-radius: 2px;
+  opacity: 0.7;
+  animation: fx-drop 1.2s linear infinite;
+}
+.fx-wash {
+  border-radius: 9999px;
+  filter: blur(14px);
+  opacity: 0.38;
+  animation: fx-drift 10s ease-in-out infinite;
+}
+.fx-note {
+  font-weight: 700;
+  line-height: 1;
+  animation: fx-rise 7s ease-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
+  .fx-lantern,
+  .fx-firework,
+  .fx-koi,
+  .fx-rain,
+  .fx-wash,
+  .fx-note,
   .fx-ring,
   .fx-glow,
   .fx-spark,
