@@ -26,7 +26,7 @@ export function BottomNav() {
       <div aria-hidden className="h-[calc(3.75rem+env(safe-area-inset-bottom))] lg:hidden" />
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/15 bg-[#121113] pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/15 bg-[#000000] pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
         <div className="mx-auto flex h-[3.75rem] max-w-xl items-stretch">
           <Link href="/" className={cn(item, tone(path === "/"))} aria-current={path === "/" ? "page" : undefined}>
@@ -38,7 +38,7 @@ export function BottomNav() {
             Search
           </button>
           <Link href={user || !ready ? "/profile" : "/login?next=/profile"} className={cn(item, tone(false))}>
-            <span className="grid size-6 place-items-center overflow-hidden rounded-full bg-[#2a282d] text-white/70">
+            <span className="grid size-6 place-items-center overflow-hidden rounded-full bg-[#141416] text-white/70">
               {user && avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatar} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />

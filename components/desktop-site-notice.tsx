@@ -23,7 +23,7 @@ export function DesktopSiteNotice() {
   if (!show) return null
   return (
     <div role="status" className="fixed inset-x-0 bottom-0 z-[60] flex justify-center p-3">
-      <div className="flex w-full max-w-xl items-start gap-3 rounded-2xl border border-white/20 bg-[#121113]/95 p-4 text-white shadow-2xl backdrop-blur-xl">
+      <div className="flex w-full max-w-xl items-start gap-3 rounded-2xl border border-white/20 bg-[#000000]/95 p-4 text-white shadow-2xl backdrop-blur-xl">
         <Smartphone className="mt-0.5 size-8 shrink-0 text-white/80" />
         <div className="min-w-0 flex-1 text-sm">
           <p className="font-semibold">Your browser is showing the desktop site</p>

@@ -6,7 +6,7 @@ import type { User } from "@supabase/supabase-js"
 import { bumpLibrary, fetchBundle } from "@/lib/library"
 import { getSupabase } from "@/lib/supabase/client"
 
-export type Profile = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null; handle: string | null }
+export type Profile = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null; handle: string | null; effect?: string | null }
 
 type AuthState = {
   user: User | null
@@ -68,14 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const userId = user?.id ?? null
-  const empty: Profile = { username: null, avatar_url: null, banner_url: null, bio: null, handle: null }
+  const empty: Profile = { username: null, avatar_url: null, banner_url: null, bio: null, handle: null, effect: null }
   /** The profile comes from Upstash Redis through /api/me/library (fast); Supabase is the fallback. */
   const loadProfile = React.useCallback(async () => {
     if (!userId) return setProfile(null)
     try {
       const bundle = await fetchBundle()
       if (bundle) return setProfile((bundle.profile as Profile | null) ?? empty)
-      const { data } = await getSupabase().from("profiles").select("username, avatar_url, banner_url, bio, handle").eq("id", userId).maybeSingle()
+      const { data } = await getSupabase().from("profiles").select("username, avatar_url, banner_url, bio, handle, effect").eq("id", userId).maybeSingle()
       setProfile((data as Profile | null) ?? empty)
     } catch {
       /* offline: fall back to what the sign-in provider gave */

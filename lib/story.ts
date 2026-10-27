@@ -1,11 +1,12 @@
 "use client"
 
 /** Draws the viewer's profile page as a picture (a clean "screenshot") for Instagram / Facebook stories and posts. */
+import { effectOf, particlesFor, type EffectId } from "@/lib/effects"
 import { decodeGif, isGif } from "@/lib/gif"
 import type { HistoryItem, ListItem } from "@/lib/library"
 
 export type StoryTab = "history" | "favorites" | "list"
-export type StoryFormat = "story" | "post" | "screen" | "full"
+export type StoryFormat = "story" | "post" | "screen"
 export type StoryInput = {
   name: string
   handle: string | null
@@ -13,6 +14,7 @@ export type StoryInput = {
   joined: string | null
   avatar: string | null
   banner: string | null
+  effect?: EffectId | null
   tab: StoryTab
   history: HistoryItem[]
   favorites: ListItem[]
@@ -22,15 +24,16 @@ export type StoryInput = {
 }
 
 export const STORY_W = 1080
-const BG = "#121113"
-const CARD = "#26242a"
+const BG = "#000000"
+const ACCENT = "#5865f2"
+const CARD = "#141416"
 const FONT = '"Karla Variable", Karla, system-ui, sans-serif'
 
-export const FORMAT_LABEL: Record<StoryFormat, string> = { story: "Story 9:16", post: "Post 4:5", screen: "My screen", full: "Full page" }
+export const FORMAT_LABEL: Record<StoryFormat, string> = { story: "Story 9:16", post: "Post 4:5", screen: "My screen" }
 
 /** Height / width of the picture for each format. "My screen" follows this device's own screen shape. */
 export function ratioFor(format: StoryFormat): number {
-  if (format === "story" || format === "full") return 16 / 9
+  if (format === "story") return 16 / 9
   if (format === "post") return 5 / 4
   if (typeof screen === "undefined" || !screen.width || !screen.height) return 19.5 / 9
   const r = screen.height / screen.width
@@ -266,7 +269,7 @@ export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
 
 /** Builds the profile picture and returns a `draw(t)` that advances any moving banner or avatar. */
 export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {}): Promise<StoryScene> {
-  const scroll = !!opts.scroll || i.format === "full"
+  const scroll = !!opts.scroll
   try {
     await Promise.all(["400", "500", "600", "700"].map((w) => document.fonts.load(`${w} 16px "Karla Variable"`)))
   } catch {
@@ -286,7 +289,7 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
           left: h.duration > 0 ? `${clock(h.duration - h.position)} left` : undefined,
         }))
       : (i.tab === "favorites" ? i.favorites : i.list).map((l) => ({ image: l.image, title: l.title }))
-  const cards = all.slice(0, scroll ? 60 : 18)
+  const cards = all.slice(0, 3) // the picture shows the first 3, like a row on the page
 
   const measure = document.createElement("canvas").getContext("2d")!
   const ctx0 = measure
@@ -349,11 +352,77 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
       ctx.fillRect(0, 0, Wc, p.bannerH)
     }
   }
+  const fxId = i.effect ?? null
+  const fx = fxId ? effectOf(fxId) : null
+  const fxParticles = fxId ? particlesFor(fxId) : []
+  const regionH = p.bannerH + AV / 2
+  const SEC = 1000
+  /** Particles over the banner, same motion as the page. */
+  const drawParticles = (t: number) => {
+    if (!fx) return
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, Wc, regionH)
+    ctx.clip()
+    for (const q of fxParticles) {
+      const ph = ((t / SEC / q.dur + q.delay) % 1 + 1) % 1
+      ctx.fillStyle = fx.colors[q.color]
+      ctx.shadowColor = fx.colors[q.color]
+      ctx.shadowBlur = 0
+      if (fx.kind === "spark") {
+        const k = 0.5 + 0.5 * Math.sin(ph * Math.PI * 2 - Math.PI / 2)
+        ctx.globalAlpha = 0.1 + 0.9 * k
+        const r = (q.size / 2) * (0.5 + 0.5 * k)
+        ctx.translate(q.x * Wc, q.y * regionH)
+        ctx.rotate((Math.PI / 4) * k)
+        ctx.beginPath()
+        const pts = [[0, -1], [0.22, -0.22], [1, 0], [0.22, 0.22], [0, 1], [-0.22, 0.22], [-1, 0], [-0.22, -0.22]]
+        pts.forEach(([x, y], n) => (n ? ctx.lineTo(x * r * 1.4, y * r * 1.4) : ctx.moveTo(x * r * 1.4, y * r * 1.4)))
+        ctx.closePath()
+        ctx.fill()
+      } else if (fx.kind === "petal") {
+        const y = -0.08 * regionH + ph * 1.16 * regionH
+        const x = q.x * Wc + Math.sin(ph * Math.PI * 2) * q.sway
+        ctx.globalAlpha = ph < 0.1 ? ph * 9.5 : 0.92
+        ctx.translate(x, y)
+        ctx.rotate(ph * Math.PI * 2)
+        ctx.beginPath()
+        ctx.ellipse(0, 0, q.size / 2, (q.size * 0.7) / 2, 0, 0, Math.PI * 2)
+        ctx.fill()
+      } else {
+        const y = 1.08 * regionH - ph * 1.16 * regionH
+        const x = q.x * Wc + ph * q.sway
+        ctx.globalAlpha = ph < 0.15 ? ph / 0.15 : 1 - (ph - 0.15) / 0.85
+        ctx.shadowBlur = 8
+        ctx.beginPath()
+        ctx.arc(x, y, q.size / 2, 0, Math.PI * 2)
+        ctx.fill()
+      }
+      ctx.setTransform(s, 0, 0, s, 0, 0)
+      ctx.globalAlpha = 1
+    }
+    ctx.restore()
+  }
   const drawAvatar = (t: number) => {
     ctx.fillStyle = BG
     ctx.beginPath()
-    ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2, 0, Math.PI * 2)
+    ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2 + 1, 0, Math.PI * 2)
     ctx.fill()
+    if (fx) {
+      // spinning colour ring (and a soft glow), like the page
+      const ang = (t / 3000) * Math.PI * 2
+      const g = ctx.createConicGradient(ang, ax + AV / 2, ay + AV / 2)
+      fx.ring.forEach((c, n) => g.addColorStop(n / (fx.ring.length - 1), c))
+      ctx.save()
+      ctx.strokeStyle = g
+      ctx.shadowColor = fx.ring[1]
+      ctx.shadowBlur = 10
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2 - 1.5, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.restore()
+    }
     ctx.save()
     ctx.beginPath()
     ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2 - inset, 0, Math.PI * 2)
@@ -364,7 +433,7 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
       const dh = avatar.h * k
       ctx.drawImage(avatar.at(t), ax + inset + (D - dw) / 2, ay + inset + (D - dh) / 2, dw, dh)
     } else {
-      ctx.fillStyle = "#2a282d"
+      ctx.fillStyle = "#141416"
       ctx.fillRect(ax, ay, AV, AV)
       ctx.fillStyle = "rgba(255,255,255,.6)"
       ctx.font = `700 44px ${FONT}`
@@ -376,8 +445,15 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     ctx.textAlign = "left"
     ctx.textBaseline = "alphabetic"
   }
-  drawBanner(0)
-  drawAvatar(0)
+  /** One frame of the header: banner, particles, then the avatar on top. */
+  const drawHeader = (t: number) => {
+    drawBanner(t)
+    ctx.fillStyle = BG
+    ctx.fillRect(0, p.bannerH, Wc, AV / 2 + 4)
+    drawParticles(t)
+    drawAvatar(t)
+  }
+  drawHeader(0)
 
   // name and username
   ctx.textAlign = "left"
@@ -413,35 +489,19 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
 
   // tabs with counts and an underline under the active one
   const tabs: StoryTab[] = ["history", "favorites", "list"]
-  const counts: Record<StoryTab, number> = { history: i.history.length, favorites: i.favorites.length, list: i.list.length }
   const tabW = (Wc - PX * 2) / 3
   tabs.forEach((t, n) => {
     const on = t === i.tab
     ctx.font = `600 14px ${FONT}`
-    const label = TAB_LABEL[t]
-    const lw = ctx.measureText(label).width
-    const count = counts[t] ? String(counts[t]) : null
-    ctx.font = `500 11.2px ${FONT}`
-    const pw = count ? ctx.measureText(count).width + 12 : 0
-    const total = lw + (count ? 6 + pw : 0)
-    const x0 = PX + tabW * n + (tabW - total) / 2
-    const baseY = p.tabsY + 27
-    ctx.font = `600 14px ${FONT}`
-    ctx.fillStyle = on ? "#ffffff" : "rgba(255,255,255,.55)"
-    ctx.fillText(label, x0, baseY)
-    if (count) {
-      ctx.fillStyle = "rgba(255,255,255,.1)"
-      rr(ctx, x0 + lw + 6, baseY - 13, pw, 16, 8)
-      ctx.fill()
-      ctx.fillStyle = "rgba(255,255,255,.7)"
-      ctx.font = `500 11.2px ${FONT}`
-      ctx.fillText(count, x0 + lw + 6 + 6, baseY - 1)
-    }
+    ctx.textAlign = "center"
+    ctx.fillStyle = on ? ACCENT : "#949ba4"
+    ctx.fillText(TAB_LABEL[t], PX + tabW * n + tabW / 2, p.tabsY + 27)
+    ctx.textAlign = "left"
   })
   ctx.fillStyle = "rgba(255,255,255,.15)"
   ctx.fillRect(0, p.tabsY + 44 - 1, Wc, 1)
   const at = tabs.indexOf(i.tab)
-  ctx.fillStyle = "#ffffff"
+  ctx.fillStyle = ACCENT
   rr(ctx, PX + tabW * at + 12, p.tabsY + 44 - 2, tabW - 24, 2, 1)
   ctx.fill()
 
@@ -503,7 +563,7 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     }
   }
 
-  const animated = !!(banner?.animated || avatar?.animated)
+  const animated = !!(banner?.animated || avatar?.animated || fx)
   return {
     canvas: c,
     animated,
@@ -511,8 +571,7 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     viewH: H,
     draw: (t: number) => {
       if (!animated) return
-      drawBanner(t)
-      drawAvatar(t)
+      drawHeader(t)
     },
   }
 }

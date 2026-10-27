@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/spinner"
 import type { HistoryItem, ListItem } from "@/lib/library"
 import { canvasToBlob, FORMAT_LABEL, prepareStory, sizeFor, TAB_LABEL, type StoryFormat, type StoryTab } from "@/lib/story"
 import { canMakeVideo, recordScene, type VideoResult } from "@/lib/story-video"
+import type { EffectId } from "@/lib/effects"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
   joined: string | null
   avatar: string | null
   banner: string | null
+  effect: EffectId | null
   history: HistoryItem[]
   favorites: ListItem[]
   list: ListItem[]
@@ -72,9 +74,9 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     }
     // data props change identity every render; the picture only depends on these values
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.history, data.favorites, data.list])
+  }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.history, data.favorites, data.list])
 
-  // Live: the picked tab only, every item (a long list scrolls), GIFs keep moving, any length you choose
+  // Live: the picked tab only, GIFs and profile effects keep moving, any length you choose
   React.useEffect(() => {
     if (kind !== "live") return
     const signal = { cancelled: false }
@@ -84,10 +86,10 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     setError(null)
     setProgress(0)
     ;(async () => {
-      const scene = await prepareStory({ ...data, tab, format: format === "full" ? "screen" : format, host: window.location.host }, { scroll: true })
+      const scene = await prepareStory({ ...data, tab, format, host: window.location.host })
       if (signal.cancelled) return
       setMoving(scene.animated)
-      setSize({ w: 1080, h: scene.viewH })
+      setSize({ w: scene.canvas.width, h: scene.canvas.height })
       const result = await recordScene(scene, seconds * 1000, (p) => !signal.cancelled && setProgress(p), signal)
       if (signal.cancelled) return
       made = URL.createObjectURL(result.blob)
@@ -99,7 +101,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
       if (made) URL.revokeObjectURL(made)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.history, data.favorites, data.list])
+  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.history, data.favorites, data.list])
 
   const fileName =
     kind !== "image" ? `anibiar-${data.handle ?? "profile"}-${tab}${kind === "live" ? "-live" : ""}.${video?.ext ?? "mp4"}` : `anibiar-${data.handle ?? "profile"}-${tab}-${format}.png`
@@ -148,7 +150,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
         aria-modal="true"
         aria-label="Share your profile"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[96svh] w-full flex-col overflow-hidden rounded-t-2xl border border-white/20 bg-[#121113] sm:max-w-md sm:rounded-2xl"
+        className="flex max-h-[96svh] w-full flex-col overflow-hidden rounded-t-2xl border border-white/20 bg-[#000000] sm:max-w-md sm:rounded-2xl"
       >
         <div className="flex items-center justify-between px-4 pt-4 sm:px-5">
           <h2 className="text-lg font-semibold text-white">Share your profile</h2>
@@ -173,7 +175,6 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               onClick={() => {
                 setNote(null)
                 setKind(id)
-                if (id === "live" && format === "full") setFormat("screen")
               }}
               className={cn(
                 "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-40",
@@ -205,7 +206,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
         </div>
 
         <div role="tablist" aria-label="Picture size" className="mx-4 mt-2 flex gap-1.5 sm:mx-5">
-          {(Object.keys(FORMAT_LABEL) as StoryFormat[]).filter((f) => kind === "image" || f !== "full").map((f) => (
+          {(Object.keys(FORMAT_LABEL) as StoryFormat[]).map((f) => (
             <button
               key={f}
               type="button"
@@ -306,8 +307,8 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
           </div>
           <p className="text-center text-[0.7rem] text-white/45">
             {kind === "live"
-              ? `${seconds} second looping clip of the ${TAB_LABEL[tab]} tab, scrolling through everything${moving ? ", your GIF keeps moving" : ". Set a GIF banner or avatar in Edit profile to make it move"}.`
-              : `${size.w} × ${size.h}px${format === "story" ? ", the size of an Instagram or Facebook story" : format === "post" ? ", a feed post" : format === "full" ? ", every item on one tall picture" : ", the same shape as this device's screen"}.`}
+              ? `${seconds} second looping clip of the ${TAB_LABEL[tab]} tab${moving ? ", your GIF keeps moving" : ". Set a GIF banner or avatar in Edit profile to make it move"}.`
+              : `${size.w} × ${size.h}px${format === "story" ? ", the size of an Instagram or Facebook story" : format === "post" ? ", a feed post" : ", the same shape as this device's screen"}.`}
           </p>
         </div>
       </div>

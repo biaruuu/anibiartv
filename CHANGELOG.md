@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.28.0
+
+- Whole site recoloured to Discord's Onyx dark theme: pure black base, near-black cards, grey text (#949ba4), Discord-style borders; blurple (#5865f2) for the active profile tab and Edit profile.
+- Profile effects: 3 animated looks (Neon sparkles, Sakura petals, Ember) = spinning colour ring around the avatar plus particles over the banner. Pick one (or None) in Edit profile; saved in `profiles.effect` (new column). They also show on the Share picture and move in the Live clip.
+- Tab counters removed from the profile and the share picture. The share picture/Live show the first 3 items only; Full page removed.
+
 ## 1.27.0
 
 - Share: Video and Record my screen are removed. Modes are Screenshot and Live.

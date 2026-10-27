@@ -74,7 +74,7 @@ function EditSheet({ field, initial, onClose }: { field: Field; initial: string;
         aria-modal="true"
         aria-label={c.title}
         onClick={(e) => e.stopPropagation()}
-        className="w-full rounded-t-2xl border border-white/20 bg-[#121113] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-2xl sm:pb-5"
+        className="w-full rounded-t-2xl border border-white/20 bg-[#000000] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-2xl sm:pb-5"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">{c.title}</h2>
@@ -142,8 +142,8 @@ export function SettingsApp() {
   ]
 
   return (
-    <div className="min-h-svh bg-[#121113] text-[#eeeef0]">
-      <header className="sticky top-0 z-10 border-b border-white/15 bg-[#121113]">
+    <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
+      <header className="sticky top-0 z-10 border-b border-white/15 bg-[#000000]">
         <div className="mx-auto flex h-14 w-full max-w-2xl items-center gap-3 px-4 sm:h-16 sm:px-6">
           <button type="button" aria-label="Back" onClick={back} className="grid size-10 place-items-center rounded-full text-white hover:bg-white/10">
             <ArrowLeft className="size-6" />

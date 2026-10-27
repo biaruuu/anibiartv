@@ -9,7 +9,9 @@ import { useAuth } from "@/components/auth-provider"
 import { HistoryCard, useHistory } from "@/components/continue-watching"
 import { useLibrarySync } from "@/lib/use-library-sync"
 import { ShareStory } from "@/components/share-story"
+import { EffectAvatar, EffectLayer, EffectPicker } from "@/components/profile-effect"
 import { Spinner } from "@/components/ui/spinner"
+import { isEffect, type EffectId } from "@/lib/effects"
 import { loadFavorites, loadList, toggleFavorite, toggleList, type ListItem } from "@/lib/library"
 import { ACCEPT, deleteProfileImage, MAX_BYTES, uploadProfileImage } from "@/lib/profile-images"
 import { getSupabase } from "@/lib/supabase/client"
@@ -17,7 +19,7 @@ import { cn } from "@/lib/utils"
 
 function Avatar({ src, className }: { src: string | null; className?: string }) {
   return (
-    <span className={cn("grid shrink-0 place-items-center overflow-hidden rounded-full bg-[#2a282d] text-white/60", className)}>
+    <span className={cn("grid shrink-0 place-items-center overflow-hidden rounded-full bg-[#141416] text-white/60", className)}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />
@@ -36,6 +38,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
   const { user, name, avatar, banner, profile, refreshProfile } = useAuth()
   const [username, setUsername] = React.useState(profile?.username ?? name ?? "")
   const [bio, setBio] = React.useState(profile?.bio ?? "")
+  const [effect, setEffect] = React.useState<EffectId | null>(isEffect(profile?.effect) ? profile!.effect as EffectId : null)
   const [avatarPick, setAvatarPick] = React.useState<Pick>(null)
   const [bannerPick, setBannerPick] = React.useState<Pick>(null)
   const [dropAvatar, setDropAvatar] = React.useState(false)
@@ -104,7 +107,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
       }
       const { error } = await getSupabase()
         .from("profiles")
-        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl }, { onConflict: "id" })
+        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl, effect }, { onConflict: "id" })
       if (error) throw new Error(error.message)
       await refreshProfile()
       void Promise.all(stale.map(deleteProfileImage))
@@ -128,7 +131,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
         aria-modal="true"
         aria-label="Edit profile"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[94svh] w-full overflow-y-auto rounded-t-2xl border border-white/20 bg-[#121113] sm:max-w-lg sm:rounded-2xl"
+        className="max-h-[94svh] w-full overflow-y-auto rounded-t-2xl border border-white/20 bg-[#000000] sm:max-w-lg sm:rounded-2xl"
       >
         <div className="flex items-center justify-between px-4 pt-4 sm:px-6 sm:pt-5">
           <h2 className="text-lg font-semibold text-white">Edit profile</h2>
@@ -139,13 +142,18 @@ function EditProfile({ onClose }: { onClose: () => void }) {
 
         {/* live preview, laid out like the real profile */}
         <div className="mt-3 px-4 sm:px-6">
-          <div className="relative h-24 overflow-hidden rounded-xl bg-white/[0.08] sm:h-28">
-            {shownBanner && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={shownBanner} alt="" className="size-full object-cover" />
-            )}
+          <div className="relative">
+            <div className="relative h-24 overflow-hidden rounded-xl bg-white/[0.08] sm:h-28">
+              {shownBanner && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={shownBanner} alt="" className="size-full object-cover" />
+              )}
+            </div>
+            <EffectLayer effect={effect} className="h-[8.5rem] rounded-xl sm:h-[9.5rem]" />
+            <EffectAvatar effect={effect} className="relative z-10 -mt-9 ml-3 size-[4.5rem] sm:size-20">
+              <Avatar src={shownAvatar} className="size-full" />
+            </EffectAvatar>
           </div>
-          <Avatar src={shownAvatar} className="relative z-10 -mt-9 ml-3 size-[4.5rem] border-[5px] border-[#121113] sm:size-20" />
         </div>
 
         <div className="mt-4 grid gap-5 px-4 pb-5 sm:px-6">
@@ -196,6 +204,11 @@ function EditProfile({ onClose }: { onClose: () => void }) {
                 )}
               </div>
             </div>
+          </div>
+
+          <div>
+            <span className={label}>Profile effect</span>
+            <EffectPicker value={effect} onChange={setEffect} disabled={busy} />
           </div>
 
           <label className="block">
@@ -291,6 +304,7 @@ export function ProfileApp() {
   const [favorites, setFavorites] = React.useState<ListItem[] | null>(null)
   const [editing, setEditing] = React.useState(false)
   const [sharing, setSharing] = React.useState(false)
+  const fx: EffectId | null = isEffect(profile?.effect) ? (profile!.effect as EffectId) : null
   const storyHistory = React.useMemo(() => items ?? [], [items])
   const storyFavorites = React.useMemo(() => favorites ?? [], [favorites])
   const storyList = React.useMemo(() => list ?? [], [list])
@@ -328,9 +342,10 @@ export function ProfileApp() {
   const close = () => (window.history.length > 1 ? router.back() : router.push("/"))
 
   return (
-    <div className="min-h-svh bg-[#121113] text-[#eeeef0]">
+    <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
       <main className="mx-auto w-full max-w-4xl pb-10 sm:px-8 sm:py-10">
-        <div className="overflow-hidden bg-[#121113] sm:rounded-2xl sm:border sm:border-white/20">
+        <div className="relative overflow-hidden bg-[#000000] sm:rounded-2xl sm:border sm:border-white/20">
+          <EffectLayer effect={fx} className="h-[12.5rem] sm:h-[17rem]" />
           {/* banner, plain and fully visible (no header on this page) */}
           <div className="relative h-36 bg-white/[0.08] sm:h-52">
             {banner && (
@@ -348,7 +363,9 @@ export function ProfileApp() {
           </div>
 
           <div className="px-4 sm:px-6">
-            <Avatar src={user ? avatar : null} className="relative z-10 -mt-14 size-28 border-[6px] border-[#121113] sm:-mt-16 sm:size-32" />
+            <EffectAvatar effect={fx} className="relative z-10 -mt-14 size-28 sm:-mt-16 sm:size-32">
+              <Avatar src={user ? avatar : null} className="size-full" />
+            </EffectAvatar>
 
             <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -363,7 +380,7 @@ export function ProfileApp() {
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-black transition-colors hover:bg-white/90 sm:flex-none"
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#5865f2] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#4752c4] sm:flex-none"
                   >
                     <Pencil className="size-4" />
                     Edit profile
@@ -420,14 +437,13 @@ export function ProfileApp() {
                 onClick={() => router.replace(`/profile?tab=${t.id}`, { scroll: false })}
                 className={cn(
                   "relative flex-1 py-3 text-sm font-semibold transition-colors sm:flex-none sm:px-6",
-                  tab === t.id ? "text-white" : "text-white/55 hover:text-white"
+                  tab === t.id ? "text-[#5865f2]" : "text-[#949ba4] hover:text-white"
                 )}
               >
                 <span className="inline-flex items-center gap-1.5">
                   {t.label}
-                  {counts[t.id] ? <span className="rounded-full bg-white/10 px-1.5 text-[0.7rem] font-medium text-white/70">{counts[t.id]}</span> : null}
                 </span>
-                {tab === t.id && <span className="absolute inset-x-3 bottom-[-1px] h-0.5 rounded-full bg-white" />}
+                {tab === t.id && <span className="absolute inset-x-3 bottom-[-1px] h-0.5 rounded-full bg-[#5865f2]" />}
               </button>
             ))}
           </div>
@@ -458,6 +474,7 @@ export function ProfileApp() {
           joined={joined}
           avatar={avatar}
           banner={banner}
+          effect={fx}
           history={storyHistory}
           favorites={storyFavorites}
           list={storyList}

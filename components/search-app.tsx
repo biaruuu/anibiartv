@@ -58,7 +58,7 @@ export function SearchApp() {
   }
 
   return (
-    <div className="min-h-svh overflow-x-clip bg-[#121113] text-[#eeeef0]">
+    <div className="min-h-svh overflow-x-clip bg-[#000000] text-[#f2f3f5]">
       <SiteHeader />
       <main className="mx-auto w-full max-w-7xl px-4 pt-20 pb-14 sm:px-8 sm:pt-24">
         <h1 className="mb-5 text-lg font-semibold tracking-tight sm:text-2xl">

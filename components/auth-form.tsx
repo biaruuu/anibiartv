@@ -113,7 +113,7 @@ export function AuthForm() {
     "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-white/20 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60"
 
   return (
-    <div className="min-h-svh bg-[#121113] text-[#eeeef0]">
+    <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
       <SiteHeader />
 
       <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center px-4 pt-20 pb-10 sm:pt-24">

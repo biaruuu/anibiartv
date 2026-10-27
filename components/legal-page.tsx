@@ -7,7 +7,7 @@ export const UPDATED = "October 26, 2026"
 
 export function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-svh bg-[#121113] text-[#eeeef0]">
+    <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl px-4 pt-24 pb-14 sm:px-8 sm:pt-28">
         <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">{title}</h1>

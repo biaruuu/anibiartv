@@ -145,7 +145,7 @@ function Dropdown({
         <ul
           role="listbox"
           aria-label={label}
-          className="absolute top-full right-0 z-30 mt-2 max-h-72 w-max min-w-full overflow-y-auto rounded-xl border border-white/20 bg-[#1b1c20]/90 py-1.5 shadow-2xl backdrop-blur-xl"
+          className="absolute top-full right-0 z-30 mt-2 max-h-72 w-max min-w-full overflow-y-auto rounded-xl border border-white/20 bg-[#101012]/90 py-1.5 shadow-2xl backdrop-blur-xl"
         >
           {options.map((o) => (
             <li key={o.value} role="option" aria-selected={o.value === value}>
@@ -265,7 +265,7 @@ export function InfoApp({ id }: { id: number }) {
   }, [id, retry])
 
   return (
-    <div className="min-h-svh overflow-x-clip bg-[#121113] text-[#eeeef0]">
+    <div className="min-h-svh overflow-x-clip bg-[#000000] text-[#f2f3f5]">
       <SiteHeader />
       {error || a === null ? (
         <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 pt-40 pb-24 text-center">
@@ -903,7 +903,7 @@ function Characters({ a }: { a: Detail }) {
             return (
               <li
                 key={`${e.node.id}-${i}`}
-                className="flex h-[4.5rem] items-stretch overflow-hidden rounded-xl border border-white/20 bg-[#141517] sm:h-24"
+                className="flex h-[4.5rem] items-stretch overflow-hidden rounded-xl border border-white/20 bg-[#0b0b0d] sm:h-24"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={e.node.image.large ?? ""} alt="" loading="lazy" className="w-12 shrink-0 object-cover sm:w-16" />

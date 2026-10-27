@@ -569,7 +569,7 @@ export function HomeApp() {
   }, [heroRetry])
 
   return (
-    <div className="relative min-h-svh overflow-x-clip bg-[#121113] text-[#eeeef0]">
+    <div className="relative min-h-svh overflow-x-clip bg-[#000000] text-[#f2f3f5]">
       <SiteHeader />
 
       <main>

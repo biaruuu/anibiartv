@@ -258,7 +258,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
       <div className="pointer-events-none fixed inset-0 z-[55] bg-black/40" aria-hidden="true" />
       <div
         ref={panel}
-        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 bg-[#121113]/75 backdrop-blur-md"
+        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 bg-[#000000]/75 backdrop-blur-md"
       >
         <form onSubmit={submit} className="mx-auto flex h-14 w-full max-w-3xl items-center gap-2 px-3 sm:h-16 sm:px-4">
           <button
@@ -432,7 +432,7 @@ export function SiteHeader() {
         className={cn(
           "fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200",
           scrolled || menuOpen
-            ? "border-white/15 bg-[#121113]/60 backdrop-blur-lg backdrop-saturate-150"
+            ? "border-white/15 bg-[#000000]/60 backdrop-blur-lg backdrop-saturate-150"
             : "border-transparent bg-transparent"
         )}
       >
@@ -464,11 +464,11 @@ export function SiteHeader() {
           <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-30 cursor-default bg-black/60" />
           <nav
             aria-label="Main menu"
-            className="fixed inset-x-3 top-[3.75rem] z-40 mx-auto flex max-h-[calc(100svh-4.5rem)] max-w-md flex-col gap-2 overflow-y-auto rounded-2xl border border-white/15 bg-[#121113]/95 p-2 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:top-[4.25rem] sm:right-8 sm:left-auto sm:mx-0 sm:w-80"
+            className="fixed inset-x-3 top-[3.75rem] z-40 mx-auto flex max-h-[calc(100svh-4.5rem)] max-w-md flex-col gap-2 overflow-y-auto rounded-2xl border border-white/15 bg-[#000000]/95 p-2 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:top-[4.25rem] sm:right-8 sm:left-auto sm:mx-0 sm:w-80"
           >
             {auth.user ? (
               <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5 hover:bg-white/10">
-                <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#2a282d] text-white/70">
+                <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#141416] text-white/70">
                   {auth.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={auth.avatar} alt="" referrerPolicy="no-referrer" className="size-full object-cover" />

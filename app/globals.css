@@ -53,25 +53,25 @@
 }
 
 .dark {
-  /* Miruro's palette: background #121113, text #eeeef0, secondary text #b5b2bc. */
-  --background: #121113;
-  --foreground: #eeeef0;
-  --card: #18171a;
-  --card-foreground: #eeeef0;
-  --popover: #18171a;
-  --popover-foreground: #eeeef0;
-  --primary: #eeeef0;
-  --primary-foreground: #121113;
-  --secondary: #232226;
-  --secondary-foreground: #eeeef0;
-  --muted: #232226;
-  --muted-foreground: #b5b2bc;
-  --accent: #232226;
-  --accent-foreground: #eeeef0;
+  /* Discord's Onyx dark theme: pure black base, near-black surfaces, soft grey text, blurple accent. */
+  --background: #000000;
+  --foreground: #f2f3f5;
+  --card: #0b0b0d;
+  --card-foreground: #f2f3f5;
+  --popover: #0b0b0d;
+  --popover-foreground: #f2f3f5;
+  --primary: #f2f3f5;
+  --primary-foreground: #000000;
+  --secondary: #141416;
+  --secondary-foreground: #f2f3f5;
+  --muted: #141416;
+  --muted-foreground: #949ba4;
+  --accent: #141416;
+  --accent-foreground: #f2f3f5;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #2f2d33;
-  --input: #3a383f;
-  --ring: #77747e;
+  --border: #26272b;
+  --input: #2b2d31;
+  --ring: #5865f2;
 }
 
 /* Captions without a box: heavy dark outline so white text reads on any frame. */
@@ -106,4 +106,95 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* Profile effects: spinning ring + particles */
+@keyframes fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fx-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+@keyframes fx-twinkle {
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: scale(0.5) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
+}
+@keyframes fx-fall {
+  0% {
+    top: -8%;
+    opacity: 0;
+    transform: translateX(0) rotate(0deg);
+  }
+  10% {
+    opacity: 0.95;
+  }
+  50% {
+    transform: translateX(var(--sway)) rotate(180deg);
+  }
+  100% {
+    top: 108%;
+    opacity: 0.9;
+    transform: translateX(0) rotate(360deg);
+  }
+}
+@keyframes fx-rise {
+  0% {
+    top: 108%;
+    opacity: 0;
+    transform: translateX(0);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    top: -8%;
+    opacity: 0;
+    transform: translateX(var(--sway));
+  }
+}
+.fx-ring {
+  animation: fx-spin 3s linear infinite;
+}
+.fx-glow {
+  filter: blur(7px);
+  animation:
+    fx-spin 3s linear infinite,
+    fx-glow 2.4s ease-in-out infinite;
+}
+.fx-spark {
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  animation: fx-twinkle 2.4s ease-in-out infinite;
+}
+.fx-petal {
+  border-radius: 100% 0 100% 0;
+  animation: fx-fall 7s linear infinite;
+}
+.fx-ember {
+  border-radius: 9999px;
+  box-shadow: 0 0 8px 2px currentColor;
+  animation: fx-rise 4s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-ring,
+  .fx-glow,
+  .fx-spark,
+  .fx-petal,
+  .fx-ember {
+    animation: none;
+  }
 }
