@@ -46,7 +46,7 @@ export async function GET(req: Request) {
   if (hit && hit.v === version) return NextResponse.json({ changed: true, source: "redis", ...hit }, { headers: NO_STORE })
 
   const [profile, history, favorites, list] = await Promise.all([
-    me.supabase.from("profiles").select("username, avatar_url, banner_url, bio, handle, effect").eq("id", me.id).maybeSingle(),
+    me.supabase.from("profiles").select("username, avatar_url, banner_url, bio, handle, effect, decoration").eq("id", me.id).maybeSingle(),
     me.supabase.from("watch_history").select("*").eq("user_id", me.id).order("updated_at", { ascending: false }).limit(60),
     me.supabase.from("favorites").select("*").eq("user_id", me.id).order("added_at", { ascending: false }).limit(500),
     me.supabase.from("my_list").select("*").eq("user_id", me.id).order("added_at", { ascending: false }).limit(500),

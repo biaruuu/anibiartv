@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.30.0
+
+- Avatar decorations, separate from the profile effect: Cat, Bunny, Halo and Crown. They are drawn from SVG paths (original artwork, animated: ears twitch, halo floats, jewels sparkle), pickable in Edit profile (new `profiles.decoration` column), shown on the profile, and included in the Share picture and Live clip.
+
 ## 1.29.0
 
 - 6 more animated profile effects (9 in total): Lanterns, Fireworks, Koi, Rain, Watercolor and Lofi notes, each with its own spinning ring colours. They run on the profile page, in the Edit profile preview, in the Share picture and in the Live clip. Pick one in Edit profile.

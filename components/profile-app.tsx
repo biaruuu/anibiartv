@@ -9,9 +9,9 @@ import { useAuth } from "@/components/auth-provider"
 import { HistoryCard, useHistory } from "@/components/continue-watching"
 import { useLibrarySync } from "@/lib/use-library-sync"
 import { ShareStory } from "@/components/share-story"
-import { EffectAvatar, EffectLayer, EffectPicker } from "@/components/profile-effect"
+import { DecorationPicker, EffectAvatar, EffectLayer, EffectPicker } from "@/components/profile-effect"
 import { Spinner } from "@/components/ui/spinner"
-import { isEffect, type EffectId } from "@/lib/effects"
+import { isDecoration, isEffect, type DecorationId, type EffectId } from "@/lib/effects"
 import { loadFavorites, loadList, toggleFavorite, toggleList, type ListItem } from "@/lib/library"
 import { ACCEPT, deleteProfileImage, MAX_BYTES, uploadProfileImage } from "@/lib/profile-images"
 import { getSupabase } from "@/lib/supabase/client"
@@ -38,7 +38,8 @@ function EditProfile({ onClose }: { onClose: () => void }) {
   const { user, name, avatar, banner, profile, refreshProfile } = useAuth()
   const [username, setUsername] = React.useState(profile?.username ?? name ?? "")
   const [bio, setBio] = React.useState(profile?.bio ?? "")
-  const [effect, setEffect] = React.useState<EffectId | null>(isEffect(profile?.effect) ? profile!.effect as EffectId : null)
+  const [effect, setEffect] = React.useState<EffectId | null>(isEffect(profile?.effect) ? (profile!.effect as EffectId) : null)
+  const [decoration, setDecoration] = React.useState<DecorationId | null>(isDecoration(profile?.decoration) ? (profile!.decoration as DecorationId) : null)
   const [avatarPick, setAvatarPick] = React.useState<Pick>(null)
   const [bannerPick, setBannerPick] = React.useState<Pick>(null)
   const [dropAvatar, setDropAvatar] = React.useState(false)
@@ -107,7 +108,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
       }
       const { error } = await getSupabase()
         .from("profiles")
-        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl, effect }, { onConflict: "id" })
+        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl, effect, decoration }, { onConflict: "id" })
       if (error) throw new Error(error.message)
       await refreshProfile()
       void Promise.all(stale.map(deleteProfileImage))
@@ -150,7 +151,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
               )}
             </div>
             <EffectLayer effect={effect} className="h-[8.5rem] rounded-xl sm:h-[9.5rem]" />
-            <EffectAvatar effect={effect} className="relative z-10 -mt-9 ml-3 size-[4.5rem] sm:size-20">
+            <EffectAvatar effect={effect} decoration={decoration} className="relative z-10 -mt-9 ml-3 size-[4.5rem] sm:size-20">
               <Avatar src={shownAvatar} className="size-full" />
             </EffectAvatar>
           </div>
@@ -204,6 +205,11 @@ function EditProfile({ onClose }: { onClose: () => void }) {
                 )}
               </div>
             </div>
+          </div>
+
+          <div>
+            <span className={label}>Avatar decoration</span>
+            <DecorationPicker value={decoration} onChange={setDecoration} disabled={busy} />
           </div>
 
           <div>
@@ -304,6 +310,7 @@ export function ProfileApp() {
   const [favorites, setFavorites] = React.useState<ListItem[] | null>(null)
   const [editing, setEditing] = React.useState(false)
   const [sharing, setSharing] = React.useState(false)
+  const deco: DecorationId | null = isDecoration(profile?.decoration) ? (profile!.decoration as DecorationId) : null
   const fx: EffectId | null = isEffect(profile?.effect) ? (profile!.effect as EffectId) : null
   const storyHistory = React.useMemo(() => items ?? [], [items])
   const storyFavorites = React.useMemo(() => favorites ?? [], [favorites])
@@ -363,7 +370,7 @@ export function ProfileApp() {
           </div>
 
           <div className="px-4 sm:px-6">
-            <EffectAvatar effect={fx} className="relative z-10 -mt-14 size-28 sm:-mt-16 sm:size-32">
+            <EffectAvatar effect={fx} decoration={deco} className="relative z-10 -mt-14 size-28 sm:-mt-16 sm:size-32">
               <Avatar src={user ? avatar : null} className="size-full" />
             </EffectAvatar>
 
@@ -475,6 +482,7 @@ export function ProfileApp() {
           avatar={avatar}
           banner={banner}
           effect={fx}
+          decoration={deco}
           history={storyHistory}
           favorites={storyFavorites}
           list={storyList}

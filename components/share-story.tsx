@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/spinner"
 import type { HistoryItem, ListItem } from "@/lib/library"
 import { canvasToBlob, FORMAT_LABEL, prepareStory, sizeFor, TAB_LABEL, type StoryFormat, type StoryTab } from "@/lib/story"
 import { canMakeVideo, recordScene, type VideoResult } from "@/lib/story-video"
-import type { EffectId } from "@/lib/effects"
+import type { DecorationId, EffectId } from "@/lib/effects"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -19,6 +19,7 @@ type Props = {
   avatar: string | null
   banner: string | null
   effect: EffectId | null
+  decoration: DecorationId | null
   history: HistoryItem[]
   favorites: ListItem[]
   list: ListItem[]
@@ -74,7 +75,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     }
     // data props change identity every render; the picture only depends on these values
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.history, data.favorites, data.list])
+  }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.decoration, data.history, data.favorites, data.list])
 
   // Live: the picked tab only, GIFs and profile effects keep moving, any length you choose
   React.useEffect(() => {
@@ -101,7 +102,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
       if (made) URL.revokeObjectURL(made)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.history, data.favorites, data.list])
+  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.decoration, data.history, data.favorites, data.list])
 
   const fileName =
     kind !== "image" ? `anibiar-${data.handle ?? "profile"}-${tab}${kind === "live" ? "-live" : ""}.${video?.ext ?? "mp4"}` : `anibiar-${data.handle ?? "profile"}-${tab}-${format}.png`

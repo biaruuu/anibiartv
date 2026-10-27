@@ -51,3 +51,56 @@ export function particlesFor(id: EffectId): Particle[] {
 }
 
 export const conic = (ring: string[], from = 0) => `conic-gradient(from ${from}deg, ${ring.join(", ")})`
+
+/* ------------- avatar decorations: original artwork drawn from SVG paths (page = SVG, picture = canvas) ------------- */
+
+export type DecorationId = "cat" | "bunny" | "halo" | "crown"
+type DecoShape = { d: string; fill?: string; stroke?: string; sw?: number; op?: number; g?: "twL" | "twR" | "float" | "spark"; glow?: string }
+
+/** Drawn on a 100 x 100 box; the avatar (with its ring) is the circle at 50,50 with radius 36. */
+export const DECORATIONS: { id: DecorationId; label: string; shapes: DecoShape[] }[] = [
+  {
+    id: "cat",
+    label: "Cat",
+    shapes: [
+      { d: "M19 36 L20 9 Q21 6 24 8 L45 21 Z", fill: "#f6eff1", stroke: "#a98791", sw: 1.3, g: "twL" },
+      { d: "M24 31 L24.5 14 L38 23 Z", fill: "#ee9cc8", g: "twL" },
+      { d: "M81 36 L80 9 Q79 6 76 8 L55 21 Z", fill: "#f6eff1", stroke: "#a98791", sw: 1.3, g: "twR" },
+      { d: "M76 31 L75.5 14 L62 23 Z", fill: "#ee9cc8", g: "twR" },
+      { d: "M27 60 a6 3.5 0 1 0 12 0 a6 3.5 0 1 0 -12 0", fill: "#ff7ac8", op: 0.45 },
+      { d: "M61 60 a6 3.5 0 1 0 12 0 a6 3.5 0 1 0 -12 0", fill: "#ff7ac8", op: 0.45 },
+      { d: "M31 58 l-1.6 5 M33.5 57.5 l-1.6 5.5 M36 58 l-1.6 5", stroke: "#c0399a", sw: 1 },
+      { d: "M64 58 l-1.6 5 M66.5 57.5 l-1.6 5.5 M69 58 l-1.6 5", stroke: "#c0399a", sw: 1 },
+      { d: "M8 55 L19 58 M7 61 L19 61 M8 67 L19 64 M92 55 L81 58 M93 61 L81 61 M92 67 L81 64", stroke: "#e9e4ec", sw: 1.6 },
+      { d: "M86 22 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 z", fill: "#ffe08a", glow: "#ffd54a", g: "spark" },
+    ],
+  },
+  {
+    id: "bunny",
+    label: "Bunny",
+    shapes: [
+      { d: "M28 26 C21 12 23 1 31 2 C39 3 41 16 38 24 Z", fill: "#fff5f8", stroke: "#b79aa4", sw: 1.3, g: "twL" },
+      { d: "M30 22 C27 14 28 7 31 7 C34 7 35 14 35 21 Z", fill: "#ffb3cf", g: "twL" },
+      { d: "M72 26 C79 12 77 1 69 2 C61 3 59 16 62 24 Z", fill: "#fff5f8", stroke: "#b79aa4", sw: 1.3, g: "twR" },
+      { d: "M70 22 C73 14 72 7 69 7 C66 7 65 14 65 21 Z", fill: "#ffb3cf", g: "twR" },
+    ],
+  },
+  {
+    id: "halo",
+    label: "Halo",
+    shapes: [{ d: "M32 8 a18 5 0 1 0 36 0 a18 5 0 1 0 -36 0", stroke: "#ffd54a", sw: 3, glow: "#ffd54a", g: "float" }],
+  },
+  {
+    id: "crown",
+    label: "Crown",
+    shapes: [
+      { d: "M29 21 L33 4 L41 14 L50 2 L59 14 L67 4 L71 21 Z", fill: "#ffcc33", stroke: "#b8860b", sw: 1.2 },
+      { d: "M50 11 m-2.2 0 a2.2 2.2 0 1 0 4.4 0 a2.2 2.2 0 1 0 -4.4 0", fill: "#ff4d6d", g: "spark" },
+      { d: "M33 9 m-1.6 0 a1.6 1.6 0 1 0 3.2 0 a1.6 1.6 0 1 0 -3.2 0", fill: "#7ae7ff" },
+      { d: "M67 9 m-1.6 0 a1.6 1.6 0 1 0 3.2 0 a1.6 1.6 0 1 0 -3.2 0", fill: "#7ae7ff" },
+    ],
+  },
+]
+
+export const isDecoration = (v: unknown): v is DecorationId => typeof v === "string" && DECORATIONS.some((d) => d.id === v)
+export const decorationOf = (id: DecorationId) => DECORATIONS.find((d) => d.id === id)!

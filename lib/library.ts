@@ -22,7 +22,7 @@ export type ListItem = { animeId: number; title: string; image: string | null; a
 /* ---------------- Upstash-backed bundle (fast reads, real-time versions) ---------------- */
 
 type ListRow = { anime_id: number; title: string; image: string | null; added_at: string }
-export type ProfileRow = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null; handle: string | null; effect?: string | null }
+export type ProfileRow = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null; handle: string | null; effect?: string | null; decoration?: string | null }
 type Bundle = { v: string; profile: ProfileRow | null; history: HistoryRow[]; favorites: ListRow[]; list: ListRow[] }
 
 let lastV: string | null = null

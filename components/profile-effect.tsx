@@ -2,18 +2,52 @@
 
 import * as React from "react"
 
-import { conic, effectOf, EFFECTS, particlesFor, type EffectId } from "@/lib/effects"
+import { conic, DECORATIONS, decorationOf, effectOf, EFFECTS, particlesFor, type DecorationId, type EffectId } from "@/lib/effects"
 import { cn } from "@/lib/utils"
 
 /** Avatar with a solid cut-out ring, and a spinning colour ring when an effect is chosen. */
-export function EffectAvatar({ effect, children, className }: { effect: EffectId | null; children: React.ReactNode; className?: string }) {
+export function EffectAvatar({
+  effect,
+  decoration = null,
+  children,
+  className,
+}: {
+  effect: EffectId | null
+  decoration?: DecorationId | null
+  children: React.ReactNode
+  className?: string
+}) {
   const e = effect ? effectOf(effect) : null
+  const deco = decoration ? decorationOf(decoration) : null
   return (
     <div className={cn("relative", className)}>
       {e && <span aria-hidden className="fx-glow absolute inset-0 rounded-full" style={{ background: conic(e.ring) }} />}
       {e && <span aria-hidden className="fx-ring absolute inset-0 rounded-full" style={{ background: conic(e.ring) }} />}
       <span aria-hidden className={cn("absolute rounded-full bg-black", e ? "inset-[3px]" : "inset-0")} />
       <div className="absolute inset-[6px] overflow-hidden rounded-full">{children}</div>
+      {deco && (
+        <svg
+          aria-hidden
+          viewBox="0 0 100 100"
+          className="pointer-events-none absolute overflow-visible"
+          style={{ width: "138.89%", height: "138.89%", left: "-19.44%", top: "-19.44%" }}
+        >
+          {deco.shapes.map((sh, n) => (
+            <path
+              key={n}
+              d={sh.d}
+              fill={sh.fill ?? "none"}
+              stroke={sh.stroke}
+              strokeWidth={sh.sw}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={sh.op}
+              className={sh.g ? `deco-${sh.g}` : undefined}
+              style={sh.glow ? { filter: `drop-shadow(0 0 2px ${sh.glow})` } : undefined}
+            />
+          ))}
+        </svg>
+      )}
     </div>
   )
 }
@@ -89,6 +123,34 @@ export function EffectPicker({ value, onChange, disabled }: { value: EffectId | 
         >
           <EffectAvatar effect={it.id} className="size-11">
             <span className="block size-full bg-[#141416]" />
+          </EffectAvatar>
+          {it.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Avatar decoration picker (None + 4), separate from the effect. */
+export function DecorationPicker({ value, onChange, disabled }: { value: DecorationId | null; onChange: (v: DecorationId | null) => void; disabled?: boolean }) {
+  const items: { id: DecorationId | null; label: string }[] = [{ id: null, label: "None" }, ...DECORATIONS.map((d) => ({ id: d.id, label: d.label }))]
+  return (
+    <div className="grid grid-cols-5 gap-2" role="radiogroup" aria-label="Avatar decoration">
+      {items.map((it) => (
+        <button
+          key={it.label}
+          type="button"
+          role="radio"
+          aria-checked={value === it.id}
+          disabled={disabled}
+          onClick={() => onChange(it.id)}
+          className={cn(
+            "flex flex-col items-center gap-2 rounded-xl border px-1 pt-4 pb-2.5 text-xs font-semibold transition-colors",
+            value === it.id ? "border-[#5865f2] bg-[#5865f2]/10 text-white" : "border-white/20 text-[#949ba4] hover:text-white"
+          )}
+        >
+          <EffectAvatar effect={null} decoration={it.id} className="size-9">
+            <span className="block size-full bg-[#2b2d31]" />
           </EffectAvatar>
           {it.label}
         </button>
