@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.24.2
+
+- Share picture is now a true copy of the profile screen: same sizes and fonts as the page on a phone, 3 poster cards per row, tab counts, and no footer logo or site name.
+- Defaults to My screen (the shape of the device's own screen); Story 9:16 and Post 4:5 still available. If a shape is too short it enlarges the canvas, then drops Member Since / Bio so at least one full row of cards shows.
+
 ## 1.24.1
 
 - Share picture now looks like the profile page: banner, avatar, name, @username, Bio, Member Since (with the logo), the History / Favorites / Watchlist tab bar with the active underline, and that tab's list.

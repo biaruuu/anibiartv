@@ -25,8 +25,8 @@ type Props = {
 /** Preview of the profile as a 9:16 story picture, with Save and Share. */
 export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
   const [tab, setTab] = React.useState<StoryTab>(startTab)
-  const [format, setFormat] = React.useState<StoryFormat>("story")
-  const [size, setSize] = React.useState({ w: 1080, h: 1920 })
+  const [format, setFormat] = React.useState<StoryFormat>("screen")
+  const [size, setSize] = React.useState(() => sizeFor("screen"))
   const [blob, setBlob] = React.useState<Blob | null>(null)
   const [url, setUrl] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
@@ -184,7 +184,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               </button>
             )}
           </div>
-          <p className="text-center text-[0.7rem] text-white/45">{size.w} × {size.h}px{format === "story" ? ", the size of an Instagram or Facebook story" : format === "post" ? ", a feed post" : ", the shape of this device's screen"}.</p>
+          <p className="text-center text-[0.7rem] text-white/45">{size.w} × {size.h}px{format === "story" ? ", the size of an Instagram or Facebook story" : format === "post" ? ", a feed post" : ", the same shape as this device's screen"}.</p>
         </div>
       </div>
     </div>
