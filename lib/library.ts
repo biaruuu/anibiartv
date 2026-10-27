@@ -19,6 +19,67 @@ export type HistoryItem = {
 }
 export type ListItem = { animeId: number; title: string; image: string | null; addedAt: number }
 
+/* ---------------- Upstash-backed bundle (fast reads, real-time versions) ---------------- */
+
+type ListRow = { anime_id: number; title: string; image: string | null; added_at: string }
+export type ProfileRow = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null; handle: string | null }
+type Bundle = { v: string; profile: ProfileRow | null; history: HistoryRow[]; favorites: ListRow[]; list: ListRow[] }
+
+let lastV: string | null = null
+let cache: { b: Bundle; at: number } | null = null
+let inflight: Promise<Bundle | null> | null = null
+let lastBump = 0
+
+/** One request for profile + History + Favorites + Watchlist, served from Upstash Redis by /api/me/library. */
+export function fetchBundle(): Promise<Bundle | null> {
+  if (cache && Date.now() - cache.at < 3000) return Promise.resolve(cache.b)
+  if (inflight) return inflight
+  inflight = fetch("/api/me/library", { cache: "no-store" })
+    .then(async (r) => {
+      if (!r.ok) return null
+      const j = (await r.json()) as Bundle
+      if (!Array.isArray(j.history)) return null
+      lastV = j.v
+      cache = { b: j, at: Date.now() }
+      return j
+    })
+    .catch(() => null)
+    .finally(() => {
+      inflight = null
+    })
+  return inflight
+}
+
+/** Real time: true when this account's data changed somewhere else (another device) since the last read. */
+export async function pollLibrary(): Promise<boolean> {
+  if (lastV === null) return false
+  try {
+    const r = await fetch(`/api/me/library?v=${encodeURIComponent(lastV)}`, { cache: "no-store" })
+    if (!r.ok) return false
+    const j = (await r.json()) as Bundle & { changed: boolean }
+    if (!j.changed) return false
+    lastV = j.v
+    cache = { b: j, at: Date.now() }
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Tell the server something was written, so its Redis copy is refreshed and other devices update. */
+export function bumpLibrary(throttleMs = 0): Promise<void> {
+  const now = Date.now()
+  if (now - lastBump < throttleMs) return Promise.resolve()
+  lastBump = now
+  cache = null
+  inflight = null
+  return fetch("/api/me/library", { method: "POST", keepalive: true })
+    .then(async (r) => {
+      if (r.ok) lastV = ((await r.json()) as { v: string }).v
+    })
+    .catch(() => {})
+}
+
 const HISTORY_KEY = "anibiar:history"
 const LIST_KEY = "anibiar:mylist"
 
@@ -87,6 +148,7 @@ export async function saveProgress(item: Omit<HistoryItem, "updatedAt">, userId?
   if (!userId) return
   try {
     await getSupabase().from("watch_history").upsert(toRow(userId, full), { onConflict: "user_id,anime_id" })
+    void bumpLibrary(15000)
   } catch {
     /* offline: the local copy is still there */
   }
@@ -97,14 +159,18 @@ export async function loadHistory(userId?: string | null): Promise<HistoryItem[]
   const local = localHistory()
   if (!userId) return local
   try {
-    const { data, error } = await getSupabase()
-      .from("watch_history")
-      .select("*")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
-      .limit(60)
-    if (error || !data) return local
-    const remote = (data as HistoryRow[]).map(fromRow)
+    let rows = (await fetchBundle())?.history
+    if (!rows) {
+      const { data, error } = await getSupabase()
+        .from("watch_history")
+        .select("*")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(60)
+      if (error || !data) return local
+      rows = data as HistoryRow[]
+    }
+    const remote = rows.map(fromRow)
     const byId = new Map(remote.map((h) => [h.animeId, h]))
     const push: HistoryItem[] = []
     for (const h of local) {
@@ -114,7 +180,10 @@ export async function loadHistory(userId?: string | null): Promise<HistoryItem[]
         push.push(h)
       }
     }
-    if (push.length) await getSupabase().from("watch_history").upsert(push.map((h) => toRow(userId, h)), { onConflict: "user_id,anime_id" })
+    if (push.length) {
+      await getSupabase().from("watch_history").upsert(push.map((h) => toRow(userId, h)), { onConflict: "user_id,anime_id" })
+      void bumpLibrary()
+    }
     const merged = [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt)
     write(HISTORY_KEY, merged.slice(0, 60))
     return merged
@@ -128,6 +197,7 @@ export async function removeHistory(animeId: number, userId?: string | null) {
   if (!userId) return
   try {
     await getSupabase().from("watch_history").delete().eq("user_id", userId).eq("anime_id", animeId)
+    void bumpLibrary()
   } catch {}
 }
 
@@ -140,9 +210,14 @@ function collection(table: "my_list" | "favorites", key: string) {
     const mine = local()
     if (!userId) return mine
     try {
-      const { data, error } = await getSupabase().from(table).select("*").eq("user_id", userId).order("added_at", { ascending: false })
-      if (error || !data) return mine
-      const remote = (data as { anime_id: number; title: string; image: string | null; added_at: string }[]).map((r) => ({
+      const bundle = await fetchBundle()
+      let rows: ListRow[] | undefined = bundle ? (table === "favorites" ? bundle.favorites : bundle.list) : undefined
+      if (!rows) {
+        const { data, error } = await getSupabase().from(table).select("*").eq("user_id", userId).order("added_at", { ascending: false })
+        if (error || !data) return mine
+        rows = data as ListRow[]
+      }
+      const remote = rows.map((r) => ({
         animeId: r.anime_id,
         title: r.title,
         image: r.image,
@@ -155,6 +230,7 @@ function collection(table: "my_list" | "favorites", key: string) {
           extra.map((l) => ({ user_id: userId, anime_id: l.animeId, title: l.title, image: l.image, added_at: new Date(l.addedAt).toISOString() })),
           { onConflict: "user_id,anime_id" }
         )
+        void bumpLibrary()
       }
       const merged = [...remote, ...extra].sort((a, b) => b.addedAt - a.addedAt)
       write(key, merged)
@@ -174,6 +250,7 @@ function collection(table: "my_list" | "favorites", key: string) {
         const t = getSupabase().from(table)
         if (has) await t.delete().eq("user_id", userId).eq("anime_id", item.animeId)
         else await t.upsert({ user_id: userId, anime_id: item.animeId, title: item.title, image: item.image }, { onConflict: "user_id,anime_id" })
+        void bumpLibrary()
       } catch {}
     }
     return !has

@@ -5,7 +5,7 @@ import { decodeGif, isGif } from "@/lib/gif"
 import type { HistoryItem, ListItem } from "@/lib/library"
 
 export type StoryTab = "history" | "favorites" | "list"
-export type StoryFormat = "story" | "post" | "screen"
+export type StoryFormat = "story" | "post" | "screen" | "full"
 export type StoryInput = {
   name: string
   handle: string | null
@@ -26,11 +26,11 @@ const BG = "#121113"
 const CARD = "#26242a"
 const FONT = '"Karla Variable", Karla, system-ui, sans-serif'
 
-export const FORMAT_LABEL: Record<StoryFormat, string> = { story: "Story 9:16", post: "Post 4:5", screen: "My screen" }
+export const FORMAT_LABEL: Record<StoryFormat, string> = { story: "Story 9:16", post: "Post 4:5", screen: "My screen", full: "Full page" }
 
 /** Height / width of the picture for each format. "My screen" follows this device's own screen shape. */
 export function ratioFor(format: StoryFormat): number {
-  if (format === "story") return 16 / 9
+  if (format === "story" || format === "full") return 16 / 9
   if (format === "post") return 5 / 4
   if (typeof screen === "undefined" || !screen.width || !screen.height) return 19.5 / 9
   const r = screen.height / screen.width
@@ -178,6 +178,7 @@ type Plan = {
   posterH: number
   rows: { start: number; count: number; top: number; lines: string[][]; textH: number }[]
   fits: boolean
+  contentH: number
 }
 
 const PX = 16 // the page's side padding
@@ -186,7 +187,8 @@ const AV = 112
 const TITLE_LH = 16
 
 /** Lays the picture out in the same CSS pixels the profile page uses on a phone, so it looks like a screenshot. */
-function layout(ctx: Ctx, i: StoryInput, cards: Card[], Wc: number, Hl: number, variant: Variant): Plan {
+/** `scrollMaxH`: lay out every row (the picture is as tall as the content), up to that height. */
+function layout(ctx: Ctx, i: StoryInput, cards: Card[], Wc: number, Hl: number, variant: Variant, scrollMaxH?: number): Plan {
   const landscape = i.tab === "history"
   const inner = Wc - PX * 2
   const cols = landscape ? (Wc >= 480 ? 2 : 1) : 3
@@ -232,7 +234,7 @@ function layout(ctx: Ctx, i: StoryInput, cards: Card[], Wc: number, Hl: number, 
 
   const rows: Plan["rows"] = []
   let top = gridTop
-  const limit = Hl - 12
+  const limit = scrollMaxH ?? Hl - 12
   for (let start = 0; start < cards.length; start += cols) {
     const slice = cards.slice(start, start + cols)
     let lines: string[][]
@@ -250,10 +252,12 @@ function layout(ctx: Ctx, i: StoryInput, cards: Card[], Wc: number, Hl: number, 
     top += posterH + textH + gapY
   }
   const fits = cards.length === 0 || rows.length > 0
-  return { Wc, Hl, variant, bannerH: BANNER, nameY, handleY, bioY, bioLines, memberY, tabsY, gridTop, cols, cw, gapX, gapY, landscape, posterH, rows, fits }
+  const contentH = Math.max(Hl, rows.length ? top - gapY + 20 : gridTop + 80)
+  return { contentH, Wc, Hl, variant, bannerH: BANNER, nameY, handleY, bioY, bioLines, memberY, tabsY, gridTop, cols, cw, gapX, gapY, landscape, posterH, rows, fits }
 }
 
-export type StoryScene = { canvas: HTMLCanvasElement; animated: boolean; loopMs: number; draw: (t: number) => void }
+/** `canvas` may be taller than one screen (`viewH` pixels): the whole page, for scrolling clips and full-page pictures. */
+export type StoryScene = { canvas: HTMLCanvasElement; animated: boolean; loopMs: number; viewH: number; draw: (t: number) => void }
 
 /** The still picture (a GIF banner or avatar shows its first frame). */
 export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
@@ -261,7 +265,8 @@ export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
 }
 
 /** Builds the profile picture and returns a `draw(t)` that advances any moving banner or avatar. */
-export async function prepareStory(i: StoryInput): Promise<StoryScene> {
+export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {}): Promise<StoryScene> {
+  const scroll = !!opts.scroll || i.format === "full"
   try {
     await Promise.all(["400", "500", "600", "700"].map((w) => document.fonts.load(`${w} 16px "Karla Variable"`)))
   } catch {
@@ -281,24 +286,32 @@ export async function prepareStory(i: StoryInput): Promise<StoryScene> {
           left: h.duration > 0 ? `${clock(h.duration - h.position)} left` : undefined,
         }))
       : (i.tab === "favorites" ? i.favorites : i.list).map((l) => ({ image: l.image, title: l.title }))
-  const cards = all.slice(0, 18)
+  const cards = all.slice(0, scroll ? 60 : 18)
 
-  const c = document.createElement("canvas")
-  c.width = W
-  c.height = H
-  const ctx = c.getContext("2d")!
+  const measure = document.createElement("canvas").getContext("2d")!
+  const ctx0 = measure
 
   // Try the phone-sized layout first; if this shape is too short, make the pieces a bit smaller, then drop the extras.
   let plan: Plan | null = null
-  search: for (const variant of [0, 1, 2] as Variant[]) {
-    for (let Wc = 390; Wc <= 620; Wc += 5) {
-      const p = layout(ctx, i, cards, Wc, Wc * ratio, variant)
-      plan = p
-      if (p.fits) break search
+  if (scroll) {
+    // everything is laid out in full at phone size; a canvas can only be so tall, so very long lists stop there
+    plan = layout(ctx0, i, cards, 390, 390 * ratio, 0, 14000 / (W / 390))
+  } else {
+    search: for (const variant of [0, 1, 2] as Variant[]) {
+      for (let Wc = 390; Wc <= 620; Wc += 5) {
+        const p = layout(ctx0, i, cards, Wc, Wc * ratio, variant)
+        plan = p
+        if (p.fits) break search
+      }
     }
   }
   const p = plan!
   const s = W / p.Wc
+  const pageH = scroll ? Math.round(p.contentH * s) : H
+  const c = document.createElement("canvas")
+  c.width = W
+  c.height = pageH
+  const ctx = c.getContext("2d")!
   ctx.setTransform(s, 0, 0, s, 0, 0)
 
   const [avatar, banner, logo, ...covers] = await Promise.all([
@@ -309,9 +322,8 @@ export async function prepareStory(i: StoryInput): Promise<StoryScene> {
   ])
 
   const Wc = p.Wc
-  const Hl = p.Hl
   ctx.fillStyle = BG
-  ctx.fillRect(0, 0, Wc, Hl)
+  ctx.fillRect(0, 0, Wc, pageH / s)
 
   // banner and avatar are redrawn on their own for every frame of a moving picture
   const ax = PX
@@ -496,6 +508,7 @@ export async function prepareStory(i: StoryInput): Promise<StoryScene> {
     canvas: c,
     animated,
     loopMs: Math.max(banner?.loopMs ?? 0, avatar?.loopMs ?? 0),
+    viewH: H,
     draw: (t: number) => {
       if (!animated) return
       drawBanner(t)

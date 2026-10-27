@@ -7,6 +7,7 @@ import { Camera, ImagePlus, Pencil, Share2, Trash2, User, X } from "lucide-react
 
 import { useAuth } from "@/components/auth-provider"
 import { HistoryCard, useHistory } from "@/components/continue-watching"
+import { useLibrarySync } from "@/lib/use-library-sync"
 import { ShareStory } from "@/components/share-story"
 import { Spinner } from "@/components/ui/spinner"
 import { loadFavorites, loadList, toggleFavorite, toggleList, type ListItem } from "@/lib/library"
@@ -294,6 +295,7 @@ export function ProfileApp() {
   const storyFavorites = React.useMemo(() => favorites ?? [], [favorites])
   const storyList = React.useMemo(() => list ?? [], [list])
 
+  const [tick, setTick] = React.useState(0)
   React.useEffect(() => {
     if (!ready) return
     let alive = true
@@ -302,7 +304,8 @@ export function ProfileApp() {
     return () => {
       alive = false
     }
-  }, [user?.id, ready])
+  }, [user?.id, ready, tick])
+  useLibrarySync(user?.id, () => setTick((n) => n + 1))
 
   const unlist = (it: ListItem) => {
     setList((l) => l?.filter((x) => x.animeId !== it.animeId) ?? null)

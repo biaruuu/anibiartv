@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { ChevronRight, Play, X } from "lucide-react"
 
+import { useLibrarySync } from "@/lib/use-library-sync"
 import { useAuth } from "@/components/auth-provider"
 import { isFinished, loadHistory, removeHistory, type HistoryItem } from "@/lib/library"
 import { cn } from "@/lib/utils"
@@ -20,6 +21,7 @@ const clock = (s: number) => {
 export function useHistory() {
   const { user, ready } = useAuth()
   const [items, setItems] = React.useState<HistoryItem[] | null>(null)
+  const [tick, setTick] = React.useState(0)
   React.useEffect(() => {
     if (!ready) return
     let alive = true
@@ -27,7 +29,8 @@ export function useHistory() {
     return () => {
       alive = false
     }
-  }, [user?.id, ready])
+  }, [user?.id, ready, tick])
+  useLibrarySync(user?.id, () => setTick((n) => n + 1))
   const remove = (animeId: number) => {
     setItems((list) => list?.filter((h) => h.animeId !== animeId) ?? null)
     void removeHistory(animeId, user?.id)

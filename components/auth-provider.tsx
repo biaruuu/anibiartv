@@ -3,6 +3,7 @@
 import * as React from "react"
 import type { User } from "@supabase/supabase-js"
 
+import { bumpLibrary, fetchBundle } from "@/lib/library"
 import { getSupabase } from "@/lib/supabase/client"
 
 export type Profile = { username: string | null; avatar_url: string | null; banner_url: string | null; bio: string | null; handle: string | null }
@@ -67,20 +68,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const userId = user?.id ?? null
-  const refreshProfile = React.useCallback(async () => {
+  const empty: Profile = { username: null, avatar_url: null, banner_url: null, bio: null, handle: null }
+  /** The profile comes from Upstash Redis through /api/me/library (fast); Supabase is the fallback. */
+  const loadProfile = React.useCallback(async () => {
     if (!userId) return setProfile(null)
     try {
+      const bundle = await fetchBundle()
+      if (bundle) return setProfile((bundle.profile as Profile | null) ?? empty)
       const { data } = await getSupabase().from("profiles").select("username, avatar_url, banner_url, bio, handle").eq("id", userId).maybeSingle()
-      setProfile((data as Profile | null) ?? { username: null, avatar_url: null, banner_url: null, bio: null, handle: null })
+      setProfile((data as Profile | null) ?? empty)
     } catch {
       /* offline: fall back to what the sign-in provider gave */
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
+
+  /** Called after the profile was saved: refreshes the Redis copy first so every device sees the change. */
+  const refreshProfile = React.useCallback(async () => {
+    await bumpLibrary()
+    await loadProfile()
+  }, [loadProfile])
 
   React.useEffect(() => {
     setProfile(null)
-    void refreshProfile()
-  }, [refreshProfile])
+    void loadProfile()
+  }, [loadProfile])
 
   const value = React.useMemo<AuthState>(() => {
     const m = (user?.user_metadata ?? {}) as Record<string, unknown>

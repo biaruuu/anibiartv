@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { Download, Image as ImageIcon, Share2, Video, X, Zap } from "lucide-react"
+import { Download, Image as ImageIcon, Share2, X, Zap } from "lucide-react"
 
 import { Spinner } from "@/components/ui/spinner"
 import type { HistoryItem, ListItem } from "@/lib/library"
 import { canvasToBlob, FORMAT_LABEL, prepareStory, sizeFor, TAB_LABEL, type StoryFormat, type StoryTab } from "@/lib/story"
-import { canMakeVideo, canRecordScreen, recordScene, startScreenRecording, type VideoResult } from "@/lib/story-video"
+import { canMakeVideo, recordScene, type VideoResult } from "@/lib/story-video"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -32,15 +32,13 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
   const [url, setUrl] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [note, setNote] = React.useState<string | null>(null)
-  const [kind, setKind] = React.useState<"image" | "live" | "video">("image")
+  const [kind, setKind] = React.useState<"image" | "live">("image")
+  const [seconds, setSeconds] = React.useState(20)
   const [moving, setMoving] = React.useState(false)
   const [video, setVideo] = React.useState<VideoResult | null>(null)
   const [videoUrl, setVideoUrl] = React.useState<string | null>(null)
   const [progress, setProgress] = React.useState(0)
-  const [recording, setRecording] = React.useState(false)
-  const stopRef = React.useRef<null | (() => void)>(null)
   const videoOk = React.useMemo(() => canMakeVideo(), [])
-  const screenOk = React.useMemo(() => canRecordScreen(), [])
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -57,7 +55,10 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     setError(null)
     setSize(sizeFor(format))
     prepareStory({ ...data, tab, format, host: window.location.host })
-      .then((scene) => canvasToBlob(scene.canvas))
+      .then((scene) => {
+        if (alive) setSize({ w: scene.canvas.width, h: scene.canvas.height })
+        return canvasToBlob(scene.canvas)
+      })
       .then((b) => {
         if (!alive) return
         made = URL.createObjectURL(b)
@@ -73,10 +74,9 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.history, data.favorites, data.list])
 
-  // Live (a few seconds, loops) and Video (longer): the picked tab only, GIFs keep moving
-  const isClip = kind === "live" || kind === "video"
+  // Live: the picked tab only, every item (a long list scrolls), GIFs keep moving, any length you choose
   React.useEffect(() => {
-    if (!isClip || recording) return
+    if (kind !== "live") return
     const signal = { cancelled: false }
     let made: string | null = null
     setVideo(null)
@@ -84,44 +84,22 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     setError(null)
     setProgress(0)
     ;(async () => {
-      const scene = await prepareStory({ ...data, tab, format, host: window.location.host })
+      const scene = await prepareStory({ ...data, tab, format: format === "full" ? "screen" : format, host: window.location.host }, { scroll: true })
       if (signal.cancelled) return
       setMoving(scene.animated)
-      const result = await recordScene(scene, kind === "live" ? 3000 : 8000, (p) => !signal.cancelled && setProgress(p), signal)
+      setSize({ w: 1080, h: scene.viewH })
+      const result = await recordScene(scene, seconds * 1000, (p) => !signal.cancelled && setProgress(p), signal)
       if (signal.cancelled) return
       made = URL.createObjectURL(result.blob)
       setVideo(result)
       setVideoUrl(made)
-    })().catch((e) => !signal.cancelled && setError(e?.message === "cancelled" ? null : "Could not make the video on this browser. Use the screenshot instead."))
+    })().catch((e) => !signal.cancelled && setError(e?.message === "cancelled" ? null : "Could not make the live photo on this browser. Use the screenshot instead."))
     return () => {
       signal.cancelled = true
       if (made) URL.revokeObjectURL(made)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, recording, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.history, data.favorites, data.list])
-
-  const record = async () => {
-    setError(null)
-    setNote(null)
-    try {
-      stopRef.current = await startScreenRecording(
-        (r) => {
-          setRecording(false)
-          setKind("video")
-          setProgress(1)
-          setVideo(r)
-          setVideoUrl(URL.createObjectURL(r.blob))
-        },
-        () => {
-          setRecording(false)
-          setError("The screen recording did not work. Try again.")
-        }
-      )
-      setRecording(true)
-    } catch {
-      setError("Screen recording was cancelled or is not allowed here.")
-    }
-  }
+  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.history, data.favorites, data.list])
 
   const fileName =
     kind !== "image" ? `anibiar-${data.handle ?? "profile"}-${tab}${kind === "live" ? "-live" : ""}.${video?.ext ?? "mp4"}` : `anibiar-${data.handle ?? "profile"}-${tab}-${format}.png`
@@ -163,21 +141,6 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     }
   }
 
-  // while the screen is being recorded only a small stop button stays on top of the page
-  if (recording)
-    return (
-      <div className="fixed top-3 left-1/2 z-50 -translate-x-1/2">
-        <button
-          type="button"
-          onClick={() => stopRef.current?.()}
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-red-600 px-5 text-sm font-semibold text-white shadow-lg hover:bg-red-500"
-        >
-          <span className="size-2.5 animate-pulse rounded-full bg-white" />
-          Stop recording
-        </button>
-      </div>
-    )
-
   return (
     <div className="fixed inset-0 z-50 grid place-items-end bg-black/80 sm:place-items-center sm:p-6" onClick={onClose}>
       <div
@@ -199,7 +162,6 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
             [
               { id: "image", label: "Screenshot", icon: ImageIcon },
               { id: "live", label: "Live", icon: Zap },
-              { id: "video", label: "Video", icon: Video },
             ] as const
           ).map(({ id, label, icon: Icon }) => (
             <button
@@ -207,10 +169,11 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               type="button"
               role="tab"
               aria-selected={kind === id}
-              disabled={id !== "image" && !videoOk && !screenOk}
+              disabled={id === "live" && !videoOk}
               onClick={() => {
                 setNote(null)
                 setKind(id)
+                if (id === "live" && format === "full") setFormat("screen")
               }}
               className={cn(
                 "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-40",
@@ -242,7 +205,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
         </div>
 
         <div role="tablist" aria-label="Picture size" className="mx-4 mt-2 flex gap-1.5 sm:mx-5">
-          {(Object.keys(FORMAT_LABEL) as StoryFormat[]).map((f) => (
+          {(Object.keys(FORMAT_LABEL) as StoryFormat[]).filter((f) => kind === "image" || f !== "full").map((f) => (
             <button
               key={f}
               type="button"
@@ -259,6 +222,27 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
           ))}
         </div>
 
+        {kind === "live" && (
+          <div role="tablist" aria-label="Length" className="mx-4 mt-2 flex items-center gap-1.5 sm:mx-5">
+            <span className="mr-1 text-xs text-white/60">Length</span>
+            {[5, 10, 20, 30, 60].map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="tab"
+                aria-selected={seconds === n}
+                onClick={() => setSeconds(n)}
+                className={cn(
+                  "flex-1 rounded-full border px-2 py-1 text-xs font-semibold transition-colors",
+                  seconds === n ? "border-white bg-white/15 text-white" : "border-white/20 text-white/60 hover:text-white"
+                )}
+              >
+                {n}s
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* preview in the chosen shape, as tall as the screen allows */}
         <div className="grid min-h-0 flex-1 place-items-center px-4 py-4 sm:px-5">
           <div
@@ -267,7 +251,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
           >
             {kind !== "image" && videoUrl ? (
               <>
-                <video key={videoUrl} src={videoUrl} autoPlay loop muted playsInline controls={kind === "video"} className="size-full object-contain" />
+                <video key={videoUrl} src={videoUrl} autoPlay loop muted playsInline className="size-full object-contain" />
                 {kind === "live" && (
                   <span className="pointer-events-none absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-white">
                     <Zap className="size-3 fill-current" />
@@ -285,7 +269,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
                 ) : kind !== "image" ? (
                   <div className="w-full">
                     <Spinner className="mx-auto size-6" />
-                    <p className="mt-3">Recording your {TAB_LABEL[tab]} {kind === "live" ? "live photo" : "video"}… {Math.round(progress * 100)}%</p>
+                    <p className="mt-3">Recording your {TAB_LABEL[tab]} live photo… {Math.round(progress * 100)}%</p>
                     <p className="mt-1 text-xs text-white/45">Keep this screen open for a few seconds.</p>
                   </div>
                 ) : (
@@ -306,7 +290,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-black transition-colors hover:bg-white/90 disabled:opacity-50"
             >
               <Download className="size-4" />
-              {kind === "video" ? "Save video" : kind === "live" ? "Save live photo" : "Save image"}
+              {kind === "live" ? "Save live photo" : "Save image"}
             </button>
             {shareable && (
               <button
@@ -320,24 +304,10 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               </button>
             )}
           </div>
-          {screenOk && (
-            <button
-              type="button"
-              onClick={record}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-white/25 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              <span className="size-2.5 rounded-full bg-red-500" />
-              Record my screen instead
-            </button>
-          )}
           <p className="text-center text-[0.7rem] text-white/45">
             {kind === "live"
-              ? moving
-                ? "A 3 second looping clip of this tab. Your GIF keeps moving."
-                : "A 3 second looping clip of this tab. Set a GIF banner or avatar in Edit profile to make it move."
-              : kind === "video"
-              ? `An 8 second video of the ${TAB_LABEL[tab]} tab${moving ? ", your GIF keeps moving" : ""}, no sound.`
-              : `${size.w} × ${size.h}px${format === "story" ? ", the size of an Instagram or Facebook story" : format === "post" ? ", a feed post" : ", the same shape as this device's screen"}.`}
+              ? `${seconds} second looping clip of the ${TAB_LABEL[tab]} tab, scrolling through everything${moving ? ", your GIF keeps moving" : ". Set a GIF banner or avatar in Edit profile to make it move"}.`
+              : `${size.w} × ${size.h}px${format === "story" ? ", the size of an Instagram or Facebook story" : format === "post" ? ", a feed post" : format === "full" ? ", every item on one tall picture" : ", the same shape as this device's screen"}.`}
           </p>
         </div>
       </div>

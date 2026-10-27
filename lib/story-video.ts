@@ -1,6 +1,6 @@
 "use client"
 
-/** Records the profile picture as a short vertical video, or records this screen, all in the browser. */
+/** Records the profile as a short vertical clip in the browser (a long list scrolls down, GIFs keep moving). */
 
 export type VideoResult = { blob: Blob; mime: string; ext: "mp4" | "webm" }
 
@@ -13,9 +13,6 @@ export function pickVideoMime(): string {
 export const canMakeVideo = () =>
   typeof MediaRecorder !== "undefined" && typeof HTMLCanvasElement !== "undefined" && typeof HTMLCanvasElement.prototype.captureStream === "function"
 
-export const canRecordScreen = () =>
-  typeof navigator !== "undefined" && !!navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === "function" && typeof MediaRecorder !== "undefined"
-
 const finish = (chunks: Blob[], mime: string): VideoResult => {
   const type = (mime || chunks[0]?.type || "video/webm").split(";")[0]
   return { blob: new Blob(chunks, { type }), mime: type, ext: type.includes("mp4") ? "mp4" : "webm" }
@@ -23,7 +20,7 @@ const finish = (chunks: Blob[], mime: string): VideoResult => {
 
 /** Records one profile picture for `durationMs`. A moving (GIF) banner or avatar keeps moving in the video. */
 export function recordScene(
-  scene: { canvas: HTMLCanvasElement; draw: (t: number) => void },
+  scene: { canvas: HTMLCanvasElement; viewH: number; draw: (t: number) => void },
   durationMs: number,
   onProgress: (p: number) => void,
   signal: { cancelled: boolean }
@@ -31,7 +28,7 @@ export function recordScene(
   return new Promise((resolve, reject) => {
     const src = scene.canvas
     const W = 720
-    const H = Math.round((W * src.height) / src.width / 2) * 2
+    const H = Math.round((W * scene.viewH) / src.width / 2) * 2
     const c = document.createElement("canvas")
     c.width = W
     c.height = H
@@ -48,9 +45,18 @@ export function recordScene(
     rec.onerror = () => reject(new Error("Recording failed."))
     rec.onstop = () => (signal.cancelled ? reject(new Error("cancelled")) : resolve(finish(chunks, mime)))
 
+    // The page scrolls like a screen recording: rest at the top, glide down through everything, rest at the end.
+    const maxScroll = Math.max(0, src.height - scene.viewH)
+    const rest = Math.min(1500, durationMs / 5)
+    const scrollY = (t: number) => {
+      if (!maxScroll) return 0
+      const k = Math.min(1, Math.max(0, (t - rest) / Math.max(1, durationMs - rest * 2)))
+      const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2
+      return Math.round(e * maxScroll)
+    }
     const paint = (t: number) => {
       scene.draw(t)
-      ctx.drawImage(src, 0, 0, W, H)
+      ctx.drawImage(src, 0, scrollY(t), src.width, scene.viewH, 0, 0, W, H)
     }
     paint(0)
     rec.start(250)
@@ -65,22 +71,4 @@ export function recordScene(
     }
     tick()
   })
-}
-
-/** Records the screen with the browser's own screen-capture picker (desktop browsers). */
-export async function startScreenRecording(onEnded: (r: VideoResult) => void, onFail: () => void) {
-  const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false })
-  const mime = pickVideoMime()
-  const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
-  const chunks: Blob[] = []
-  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data)
-  rec.onerror = onFail
-  rec.onstop = () => {
-    stream.getTracks().forEach((t) => t.stop())
-    if (chunks.length) onEnded(finish(chunks, mime))
-    else onFail()
-  }
-  stream.getVideoTracks()[0]?.addEventListener("ended", () => rec.state !== "inactive" && rec.stop())
-  rec.start(500)
-  return () => rec.state !== "inactive" && rec.stop()
 }

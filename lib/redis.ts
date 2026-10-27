@@ -17,7 +17,7 @@ const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TO
 
 export const redisEnabled = Boolean(URL_ && TOKEN)
 
-async function command(args: (string | number)[]): Promise<unknown> {
+export async function command(args: (string | number)[]): Promise<unknown> {
   const res = await fetch(URL_!, {
     method: "POST",
     headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
@@ -117,4 +117,44 @@ export async function redisHealth() {
   } catch (e) {
     return { configured: true, ok: false, ms: Date.now() - started, error: e instanceof Error ? e.message : "failed" }
   }
+}
+
+/* Small helpers for per-user data (never throw: Redis is an accelerator, Supabase stays the source of truth). */
+export async function redisGetJson<T>(key: string): Promise<T | null> {
+  if (!redisEnabled) return null
+  try {
+    const raw = await command(["GET", key])
+    return typeof raw === "string" ? (JSON.parse(raw) as T) : null
+  } catch {
+    return null
+  }
+}
+export async function redisGetText(key: string): Promise<string | null> {
+  if (!redisEnabled) return null
+  try {
+    const raw = await command(["GET", key])
+    return typeof raw === "string" ? raw : null
+  } catch {
+    return null
+  }
+}
+export async function redisSetJson(key: string, value: unknown, seconds: number) {
+  if (!redisEnabled) return
+  try {
+    await command(["SET", key, JSON.stringify(value), "EX", seconds])
+  } catch {
+    /* ignore */
+  }
+}
+/** Marks a user's data as changed: drops the cached copy and moves the version so other devices notice. */
+export async function redisBump(uid: string): Promise<string> {
+  const v = `${Date.now()}`
+  if (!redisEnabled) return v
+  try {
+    await command(["SET", `libv:${uid}`, v, "EX", 60 * 60 * 24 * 30])
+    await command(["DEL", `lib:${uid}`])
+  } catch {
+    /* ignore */
+  }
+  return v
 }

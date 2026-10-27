@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.27.0
+
+- Share: Video and Record my screen are removed. Modes are Screenshot and Live.
+- Live now includes every item (it scrolls down through the whole list like a screen recording, so 4 favorites show all 4), keeps GIFs moving, and you pick the length: 5, 10, 20 (default), 30 or 60 seconds.
+- Screenshot has a new Full page size that puts every item on one tall picture.
+- Upstash Redis now backs the account data: `/api/me/library` returns the profile, History, Favorites and Watchlist from Redis (rebuilt from Supabase when missing), writes refresh the cache and move a per-account version, and open pages check that version every 6 seconds (and on focus) so changes from another device appear without a reload. Without Redis it falls back to Supabase directly.
+
 ## 1.26.0
 
 - Share video is now a plain recording of only the tab you picked (no tab switching, zoom or fades). GIF banners and avatars now keep moving in the video (GIFs are decoded frame by frame in `lib/gif.ts`).
