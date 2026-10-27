@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.31.0
+
+- Avatar decorations now use real animated artwork instead of SVG shapes. Your supplied animated cat-ears file (60-frame APNG) is the "Cat ears" decoration, fitted the way Discord does it: drawn 1.2x the avatar picture, centred on it and on top of it. Five more were rendered with Python + headless Chromium (`scripts/gen_decorations.py`): Bunny, Halo, Crown, Flames, Frost.
+- The list lives in Supabase (`avatar_decorations`, public read; `profiles.decoration` references it), is served by `/api/decorations` and cached in Upstash Redis, with a built-in copy as a fallback.
+- Page: animated PNG. Share picture / Live clip: a sprite sheet of the same frames, so the decoration moves in the Live clip too. The name is redrawn each frame so big decorations never smear it.
+
 ## 1.30.0
 
 - Avatar decorations, separate from the profile effect: Cat, Bunny, Halo and Crown. They are drawn from SVG paths (original artwork, animated: ears twitch, halo floats, jewels sparkle), pickable in Edit profile (new `profiles.decoration` column), shown on the profile, and included in the Share picture and Live clip.

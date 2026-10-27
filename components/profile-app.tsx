@@ -11,7 +11,8 @@ import { useLibrarySync } from "@/lib/use-library-sync"
 import { ShareStory } from "@/components/share-story"
 import { DecorationPicker, EffectAvatar, EffectLayer, EffectPicker } from "@/components/profile-effect"
 import { Spinner } from "@/components/ui/spinner"
-import { isDecoration, isEffect, type DecorationId, type EffectId } from "@/lib/effects"
+import type { DecorationId } from "@/lib/decorations"
+import { isEffect, type EffectId } from "@/lib/effects"
 import { loadFavorites, loadList, toggleFavorite, toggleList, type ListItem } from "@/lib/library"
 import { ACCEPT, deleteProfileImage, MAX_BYTES, uploadProfileImage } from "@/lib/profile-images"
 import { getSupabase } from "@/lib/supabase/client"
@@ -39,7 +40,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
   const [username, setUsername] = React.useState(profile?.username ?? name ?? "")
   const [bio, setBio] = React.useState(profile?.bio ?? "")
   const [effect, setEffect] = React.useState<EffectId | null>(isEffect(profile?.effect) ? (profile!.effect as EffectId) : null)
-  const [decoration, setDecoration] = React.useState<DecorationId | null>(isDecoration(profile?.decoration) ? (profile!.decoration as DecorationId) : null)
+  const [decoration, setDecoration] = React.useState<DecorationId | null>(profile?.decoration ?? null)
   const [avatarPick, setAvatarPick] = React.useState<Pick>(null)
   const [bannerPick, setBannerPick] = React.useState<Pick>(null)
   const [dropAvatar, setDropAvatar] = React.useState(false)
@@ -310,7 +311,7 @@ export function ProfileApp() {
   const [favorites, setFavorites] = React.useState<ListItem[] | null>(null)
   const [editing, setEditing] = React.useState(false)
   const [sharing, setSharing] = React.useState(false)
-  const deco: DecorationId | null = isDecoration(profile?.decoration) ? (profile!.decoration as DecorationId) : null
+  const deco: DecorationId | null = profile?.decoration ?? null
   const fx: EffectId | null = isEffect(profile?.effect) ? (profile!.effect as EffectId) : null
   const storyHistory = React.useMemo(() => items ?? [], [items])
   const storyFavorites = React.useMemo(() => favorites ?? [], [favorites])

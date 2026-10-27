@@ -1,0 +1,68 @@
+[
+ {
+  "id": "cozy-cat",
+  "label": "Cat ears",
+  "apng": "/decorations/cozy-cat.png",
+  "sheet": "/decorations/cozy-cat.sheet.png",
+  "frames": 60,
+  "cols": 10,
+  "frame_size": 288,
+  "fps": 12.0,
+  "scale": 1.2
+ },
+ {
+  "id": "bunny",
+  "label": "Bunny",
+  "apng": "/decorations/bunny.png",
+  "sheet": "/decorations/bunny.sheet.png",
+  "frames": 24,
+  "cols": 10,
+  "frame_size": 256,
+  "fps": 12.05,
+  "scale": 1.5
+ },
+ {
+  "id": "halo",
+  "label": "Halo",
+  "apng": "/decorations/halo.png",
+  "sheet": "/decorations/halo.sheet.png",
+  "frames": 24,
+  "cols": 10,
+  "frame_size": 256,
+  "fps": 12.05,
+  "scale": 1.5
+ },
+ {
+  "id": "crown",
+  "label": "Crown",
+  "apng": "/decorations/crown.png",
+  "sheet": "/decorations/crown.sheet.png",
+  "frames": 24,
+  "cols": 10,
+  "frame_size": 256,
+  "fps": 12.05,
+  "scale": 1.5
+ },
+ {
+  "id": "flames",
+  "label": "Flames",
+  "apng": "/decorations/flames.png",
+  "sheet": "/decorations/flames.sheet.png",
+  "frames": 24,
+  "cols": 10,
+  "frame_size": 256,
+  "fps": 12.05,
+  "scale": 1.5
+ },
+ {
+  "id": "frost",
+  "label": "Frost",
+  "apng": "/decorations/frost.png",
+  "sheet": "/decorations/frost.sheet.png",
+  "frames": 24,
+  "cols": 10,
+  "frame_size": 256,
+  "fps": 12.05,
+  "scale": 1.5
+ }
+]

@@ -2,7 +2,8 @@
 
 import * as React from "react"
 
-import { conic, DECORATIONS, decorationOf, effectOf, EFFECTS, particlesFor, type DecorationId, type EffectId } from "@/lib/effects"
+import { findDecoration, useDecorations, type DecorationId } from "@/lib/decorations"
+import { conic, effectOf, EFFECTS, particlesFor, type EffectId } from "@/lib/effects"
 import { cn } from "@/lib/utils"
 
 /** Avatar with a solid cut-out ring, and a spinning colour ring when an effect is chosen. */
@@ -18,7 +19,8 @@ export function EffectAvatar({
   className?: string
 }) {
   const e = effect ? effectOf(effect) : null
-  const deco = decoration ? decorationOf(decoration) : null
+  const catalog = useDecorations()
+  const deco = findDecoration(decoration, catalog)
   return (
     <div className={cn("relative", className)}>
       {e && <span aria-hidden className="fx-glow absolute inset-0 rounded-full" style={{ background: conic(e.ring) }} />}
@@ -26,27 +28,15 @@ export function EffectAvatar({
       <span aria-hidden className={cn("absolute rounded-full bg-black", e ? "inset-[3px]" : "inset-0")} />
       <div className="absolute inset-[6px] overflow-hidden rounded-full">{children}</div>
       {deco && (
-        <svg
-          aria-hidden
-          viewBox="0 0 100 100"
-          className="pointer-events-none absolute overflow-visible"
-          style={{ width: "138.89%", height: "138.89%", left: "-19.44%", top: "-19.44%" }}
-        >
-          {deco.shapes.map((sh, n) => (
-            <path
-              key={n}
-              d={sh.d}
-              fill={sh.fill ?? "none"}
-              stroke={sh.stroke}
-              strokeWidth={sh.sw}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={sh.op}
-              className={sh.g ? `deco-${sh.g}` : undefined}
-              style={sh.glow ? { filter: `drop-shadow(0 0 2px ${sh.glow})` } : undefined}
-            />
-          ))}
-        </svg>
+        // Discord-style fit: the decoration is drawn `scale` (1.2) times the avatar picture, centred on it, on top of it.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={deco.apng}
+          alt=""
+          draggable={false}
+          className="pointer-events-none absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 select-none"
+          style={{ width: `calc((100% - 12px) * ${deco.scale})`, height: `calc((100% - 12px) * ${deco.scale})` }}
+        />
       )}
     </div>
   )
@@ -131,11 +121,12 @@ export function EffectPicker({ value, onChange, disabled }: { value: EffectId | 
   )
 }
 
-/** Avatar decoration picker (None + 4), separate from the effect. */
+/** Avatar decoration picker: None plus everything in the catalog (Supabase). */
 export function DecorationPicker({ value, onChange, disabled }: { value: DecorationId | null; onChange: (v: DecorationId | null) => void; disabled?: boolean }) {
-  const items: { id: DecorationId | null; label: string }[] = [{ id: null, label: "None" }, ...DECORATIONS.map((d) => ({ id: d.id, label: d.label }))]
+  const catalog = useDecorations()
+  const items: { id: DecorationId | null; label: string }[] = [{ id: null, label: "None" }, ...catalog.map((d) => ({ id: d.id, label: d.label }))]
   return (
-    <div className="grid grid-cols-5 gap-2" role="radiogroup" aria-label="Avatar decoration">
+    <div className="grid grid-cols-4 gap-2 sm:grid-cols-5" role="radiogroup" aria-label="Avatar decoration">
       {items.map((it) => (
         <button
           key={it.label}
@@ -145,11 +136,11 @@ export function DecorationPicker({ value, onChange, disabled }: { value: Decorat
           disabled={disabled}
           onClick={() => onChange(it.id)}
           className={cn(
-            "flex flex-col items-center gap-2 rounded-xl border px-1 pt-4 pb-2.5 text-xs font-semibold transition-colors",
+            "flex flex-col items-center gap-2 rounded-xl border px-1 pt-3.5 pb-2.5 text-xs font-semibold transition-colors",
             value === it.id ? "border-[#5865f2] bg-[#5865f2]/10 text-white" : "border-white/20 text-[#949ba4] hover:text-white"
           )}
         >
-          <EffectAvatar effect={null} decoration={it.id} className="size-9">
+          <EffectAvatar effect={null} decoration={it.id} className="size-12">
             <span className="block size-full bg-[#2b2d31]" />
           </EffectAvatar>
           {it.label}

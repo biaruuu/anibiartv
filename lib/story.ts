@@ -1,7 +1,8 @@
 "use client"
 
 /** Draws the viewer's profile page as a picture (a clean "screenshot") for Instagram / Facebook stories and posts. */
-import { decorationOf, effectOf, particlesFor, type DecorationId, type EffectId } from "@/lib/effects"
+import { findDecoration, loadDecorations, type DecorationId } from "@/lib/decorations"
+import { effectOf, particlesFor, type EffectId } from "@/lib/effects"
 import { decodeGif, isGif } from "@/lib/gif"
 import type { HistoryItem, ListItem } from "@/lib/library"
 
@@ -318,10 +319,13 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
   const ctx = c.getContext("2d")!
   ctx.setTransform(s, 0, 0, s, 0, 0)
 
-  const [avatar, banner, logo, ...covers] = await Promise.all([
+  const decos = await loadDecorations()
+  const deco = findDecoration(i.decoration, decos)
+  const [avatar, banner, logo, decoSheet, ...covers] = await Promise.all([
     loadMedia(i.avatar, 360),
     loadMedia(i.banner, 800),
     loadImage("/logo-mark.svg"),
+    loadImage(deco?.sheet),
     ...cards.map((card) => loadImage(card.image)),
   ])
 
@@ -480,55 +484,23 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     }
     ctx.restore()
   }
-  /** Original avatar decoration (SVG paths), animated like the page: ears twitch, halo floats, jewels sparkle. */
-  const deco = i.decoration ? decorationOf(i.decoration) : null
+  /** The decoration (animated sprite sheet) drawn on top of the avatar, Discord style: `scale` x the avatar picture, centred. */
   const drawDecoration = (t: number) => {
-    if (!deco) return
-    const k = AV / 72
-    const ox = ax + AV / 2 - 50 * k
-    const oy = ay + AV / 2 - 50 * k
-    const sec = t / 1000
-    for (const sh of deco.shapes) {
-      ctx.save()
-      ctx.translate(ox, oy)
-      ctx.scale(k, k)
-      let alpha = sh.op ?? 1
-      if (sh.g === "twL" || sh.g === "twR") {
-        const ph = ((sec / 3.4) % 1 + (sh.g === "twR" ? -0.044 : 0) + 1) % 1
-        const kf = [[0.7, 0], [0.78, -7], [0.86, 3], [0.93, -2], [1, 0]]
-        let deg = 0
-        for (let n = 1; n < kf.length; n++) {
-          if (ph <= kf[n][0] && ph >= kf[n - 1][0]) deg = kf[n - 1][1] + ((ph - kf[n - 1][0]) / (kf[n][0] - kf[n - 1][0])) * (kf[n][1] - kf[n - 1][1])
-        }
-        const cx = sh.g === "twL" ? 32 : 68
-        ctx.translate(cx, 30)
-        ctx.rotate(((sh.g === "twL" ? deg : -deg) * Math.PI) / 180)
-        ctx.translate(-cx, -30)
-      } else if (sh.g === "float") {
-        ctx.translate(0, -1.25 + 1.25 * Math.cos((sec / 2.6) * Math.PI * 2))
-      } else if (sh.g === "spark") {
-        const kk = 0.5 - 0.5 * Math.cos((sec / 2) * Math.PI * 2)
-        alpha *= 0.35 + 0.65 * kk
-      }
-      ctx.globalAlpha = alpha
-      if (sh.glow) {
-        ctx.shadowColor = sh.glow
-        ctx.shadowBlur = 6
-      }
-      const path = new Path2D(sh.d)
-      if (sh.fill) {
-        ctx.fillStyle = sh.fill
-        ctx.fill(path)
-      }
-      if (sh.stroke) {
-        ctx.strokeStyle = sh.stroke
-        ctx.lineWidth = sh.sw ?? 1
-        ctx.lineCap = "round"
-        ctx.lineJoin = "round"
-        ctx.stroke(path)
-      }
-      ctx.restore()
-    }
+    if (!deco || !decoSheet) return
+    const box = deco.scale * D
+    const idx = Math.floor((t / 1000) * deco.fps) % deco.frames
+    const fs = deco.frame_size
+    ctx.drawImage(
+      decoSheet,
+      (idx % deco.cols) * fs,
+      Math.floor(idx / deco.cols) * fs,
+      fs,
+      fs,
+      ax + AV / 2 - box / 2,
+      ay + AV / 2 - box / 2,
+      box,
+      box
+    )
   }
   const drawAvatar = (t: number) => {
     ctx.fillStyle = BG
@@ -573,23 +545,27 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     ctx.textAlign = "left"
     ctx.textBaseline = "alphabetic"
   }
-  /** One frame of the header: banner, particles, then the avatar on top. */
+  const drawName = () => {
+    ctx.textAlign = "left"
+    ctx.textBaseline = "alphabetic"
+    ctx.fillStyle = "#ffffff"
+    ctx.font = `700 30px ${FONT}`
+    ctx.fillText(fit(ctx, i.name, Wc - PX * 2), PX, p.nameY)
+  }
+  /** One frame of the header: banner, particles, the name, then the avatar and its decoration on top. */
   const drawHeader = (t: number) => {
     drawBanner(t)
     ctx.fillStyle = BG
-    ctx.fillRect(0, p.bannerH, Wc, AV / 2 + 4)
+    ctx.fillRect(0, p.bannerH, Wc, AV / 2 + 30)
     drawParticles(t)
+    drawName()
     drawAvatar(t)
   }
   drawHeader(0)
 
-  // name and username
-  ctx.textAlign = "left"
-  ctx.textBaseline = "alphabetic"
-  ctx.fillStyle = "#ffffff"
-  ctx.font = `700 30px ${FONT}`
-  ctx.fillText(fit(ctx, i.name, Wc - PX * 2), PX, p.nameY)
+  // username
   if (i.handle && p.handleY !== null) {
+    ctx.textAlign = "left"
     ctx.fillStyle = "rgba(255,255,255,.7)"
     ctx.font = `400 16px ${FONT}`
     ctx.fillText(i.handle, PX, p.handleY)
@@ -691,7 +667,7 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     }
   }
 
-  const animated = !!(banner?.animated || avatar?.animated || fx || deco)
+  const animated = !!(banner?.animated || avatar?.animated || fx || (deco && deco.frames > 1))
   return {
     canvas: c,
     animated,

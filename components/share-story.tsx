@@ -7,7 +7,8 @@ import { Spinner } from "@/components/ui/spinner"
 import type { HistoryItem, ListItem } from "@/lib/library"
 import { canvasToBlob, FORMAT_LABEL, prepareStory, sizeFor, TAB_LABEL, type StoryFormat, type StoryTab } from "@/lib/story"
 import { canMakeVideo, recordScene, type VideoResult } from "@/lib/story-video"
-import type { DecorationId, EffectId } from "@/lib/effects"
+import type { DecorationId } from "@/lib/decorations"
+import type { EffectId } from "@/lib/effects"
 import { cn } from "@/lib/utils"
 
 type Props = {
