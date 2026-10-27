@@ -34,6 +34,83 @@ export const DECORATION_FALLBACK: Decoration[] = [
     "scale": 1.2
   },
   {
+    "id": "violet-flame",
+    "label": "Violet flames",
+    "apng": "/decorations/violet-flame.png",
+    "sheet": "/decorations/violet-flame.sheet.png",
+    "frames": 65,
+    "cols": 10,
+    "frame_size": 288,
+    "fps": 12.0,
+    "scale": 1.2
+  },
+  {
+    "id": "neon-ring",
+    "label": "Neon ring",
+    "apng": "/decorations/neon-ring.png",
+    "sheet": "/decorations/neon-ring.sheet.png",
+    "frames": 60,
+    "cols": 10,
+    "frame_size": 288,
+    "fps": 12.0,
+    "scale": 1.2
+  },
+  {
+    "id": "butterflies",
+    "label": "Butterflies",
+    "apng": "/decorations/butterflies.png",
+    "sheet": "/decorations/butterflies.sheet.png",
+    "frames": 40,
+    "cols": 10,
+    "frame_size": 288,
+    "fps": 6.0,
+    "scale": 1.2
+  },
+  {
+    "id": "sunburst",
+    "label": "Sunburst",
+    "apng": "/decorations/sunburst.png",
+    "sheet": "/decorations/sunburst.sheet.png",
+    "frames": 60,
+    "cols": 10,
+    "frame_size": 288,
+    "fps": 12.0,
+    "scale": 1.2
+  },
+  {
+    "id": "droplets",
+    "label": "Droplets",
+    "apng": "/decorations/droplets.png",
+    "sheet": "/decorations/droplets.sheet.png",
+    "frames": 60,
+    "cols": 10,
+    "frame_size": 288,
+    "fps": 12.0,
+    "scale": 1.2
+  },
+  {
+    "id": "storm",
+    "label": "Lightning",
+    "apng": "/decorations/storm.png",
+    "sheet": "/decorations/storm.sheet.png",
+    "frames": 60,
+    "cols": 10,
+    "frame_size": 288,
+    "fps": 12.0,
+    "scale": 1.2
+  },
+  {
+    "id": "hearts",
+    "label": "Hearts",
+    "apng": "/decorations/hearts.png",
+    "sheet": "/decorations/hearts.sheet.png",
+    "frames": 60,
+    "cols": 10,
+    "frame_size": 288,
+    "fps": 12.0,
+    "scale": 1.2
+  },
+  {
     "id": "bunny",
     "label": "Bunny",
     "apng": "/decorations/bunny.png",

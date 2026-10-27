@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.32.0
+
+- 7 more animated avatar decorations from your files: Violet flames, Neon ring, Butterflies, Sunburst, Droplets, Lightning and Hearts (13 in total with Cat ears, Bunny, Halo, Crown, Flames, Frost). Same Discord fit (1.2x the avatar picture), same Supabase list (`avatar_decorations`) and Redis cache.
+- The picker uses a small still preview of each decoration (`*.thumb.png`) so opening Edit profile does not download every animation. The share sprite sheets are 256-colour PNGs (about 14 MB of decoration files in total instead of 25 MB).
+
 ## 1.31.0
 
 - Avatar decorations now use real animated artwork instead of SVG shapes. Your supplied animated cat-ears file (60-frame APNG) is the "Cat ears" decoration, fitted the way Discord does it: drawn 1.2x the avatar picture, centred on it and on top of it. Five more were rendered with Python + headless Chromium (`scripts/gen_decorations.py`): Bunny, Halo, Crown, Flames, Frost.

@@ -10,11 +10,14 @@ import { cn } from "@/lib/utils"
 export function EffectAvatar({
   effect,
   decoration = null,
+  still = false,
   children,
   className,
 }: {
   effect: EffectId | null
   decoration?: DecorationId | null
+  /** Use the small still preview instead of the animation (for pickers). */
+  still?: boolean
   children: React.ReactNode
   className?: string
 }) {
@@ -31,7 +34,7 @@ export function EffectAvatar({
         // Discord-style fit: the decoration is drawn `scale` (1.2) times the avatar picture, centred on it, on top of it.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={deco.apng}
+          src={still ? deco.apng.replace(/\.png$/, ".thumb.png") : deco.apng}
           alt=""
           draggable={false}
           className="pointer-events-none absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 select-none"
@@ -140,7 +143,7 @@ export function DecorationPicker({ value, onChange, disabled }: { value: Decorat
             value === it.id ? "border-[#5865f2] bg-[#5865f2]/10 text-white" : "border-white/20 text-[#949ba4] hover:text-white"
           )}
         >
-          <EffectAvatar effect={null} decoration={it.id} className="size-12">
+          <EffectAvatar effect={null} decoration={it.id} still className="size-12">
             <span className="block size-full bg-[#2b2d31]" />
           </EffectAvatar>
           {it.label}

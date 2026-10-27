@@ -246,6 +246,13 @@ COLS = 10
 # label, art scale (decoration box / avatar picture width), fps
 META = {
     "cozy-cat": ("Cat ears", 1.2, None),
+    "violet-flame": ("Violet flames", 1.2, None),
+    "neon-ring": ("Neon ring", 1.2, None),
+    "butterflies": ("Butterflies", 1.2, None),
+    "sunburst": ("Sunburst", 1.2, None),
+    "droplets": ("Droplets", 1.2, None),
+    "storm": ("Lightning", 1.2, None),
+    "hearts": ("Hearts", 1.2, None),
     "bunny": ("Bunny", 1.5, FPS),
     "halo": ("Halo", 1.5, FPS),
     "crown": ("Crown", 1.5, FPS),
@@ -254,15 +261,23 @@ META = {
 }
 
 
-def save(name, frames, duration_ms):
+def save(name, frames, duration_ms, apng=True):
     """frames: list of RGBA images of equal size -> animated PNG for the page + a grid sheet for canvas."""
     fw, fh = frames[0].size
-    frames[0].save(OUT / f"{name}.png", save_all=True, append_images=frames[1:], duration=duration_ms, loop=0, disposal=1, blend=0, optimize=True)
+    if apng:
+        frames[0].save(OUT / f"{name}.png", save_all=True, append_images=frames[1:], duration=duration_ms, loop=0, disposal=1, blend=0, optimize=True)
+    # small still preview for the picker (so opening Edit profile does not download every animation)
+    th = frames[0].resize((96, 96), Image.LANCZOS)
+    th.save(OUT / f"{name}.thumb.png", optimize=True)
+    if len(frames) > 70:  # very long loops: the sprite sheet keeps every 2nd frame (the page still plays the original)
+        frames = frames[::2]
+        duration_ms *= 2
     rows = -(-len(frames) // COLS)
     sheet = Image.new("RGBA", (fw * COLS, fh * rows), (0, 0, 0, 0))
     for i, f in enumerate(frames):
         sheet.paste(f, ((i % COLS) * fw, (i // COLS) * fh))
-    sheet.save(OUT / f"{name}.sheet.png", optimize=True)
+    # 256 colours with transparency keeps the sheets small (the artwork is palette based anyway)
+    sheet.quantize(256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).save(OUT / f"{name}.sheet.png", optimize=True)
     label, scale, _ = META[name]
     return {"id": name, "label": label, "apng": f"/decorations/{name}.png", "sheet": f"/decorations/{name}.sheet.png", "frames": len(frames), "cols": COLS, "frame_size": fw, "fps": round(1000 / duration_ms, 2), "scale": scale}
 
@@ -271,13 +286,15 @@ if __name__ == "__main__":
     from PIL import ImageSequence
     OUT.mkdir(parents=True, exist_ok=True)
     catalog = []
-    # the supplied animated decoration (APNG): every frame composited, timing kept
-    src = Image.open(Path(__file__).resolve().parent / "source" / "cozy-cat.apng.png")
-    dur = src.info.get("duration", 83)
-    frames = [f.convert("RGBA").copy() for f in ImageSequence.Iterator(src)]
-    catalog.append(save("cozy-cat", frames, dur))
+    # supplied animated decorations (APNG files in scripts/source): every frame composited, timing kept
     import shutil
-    shutil.copyfile(Path(__file__).resolve().parent / "source" / "cozy-cat.apng.png", OUT / "cozy-cat.png")  # keep the original (smaller) animated file for the page
+    for srcfile in sorted((Path(__file__).resolve().parent / "source").glob("*.apng.png")):
+        name = srcfile.name.removesuffix(".apng.png")
+        src = Image.open(srcfile)
+        dur = src.info.get("duration", 83)
+        frames = [f.convert("RGBA").copy() for f in ImageSequence.Iterator(src)]
+        catalog.append(save(name, frames, dur, apng=False))
+        shutil.copyfile(srcfile, OUT / f"{name}.png")  # keep the original (smaller) animated file for the page
     only = sys.argv[1:] or list(ART)
     with sync_playwright() as pw:
         b = pw.chromium.launch()
