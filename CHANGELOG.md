@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.25.0
+
+- Share now lets you choose Screenshot or Video. Video is made automatically in the browser: your profile tabs play one after another (slow zoom and crossfade) as a vertical MP4 (WebM where MP4 is not supported), with a progress bar, preview, Save video and native Share.
+- "Record my screen instead" on browsers that support screen capture (desktop): records the screen with a floating Stop button, then previews and saves it.
+
 ## 1.24.2
 
 - Share picture is now a true copy of the profile screen: same sizes and fonts as the page on a phone, 3 poster cards per row, tab counts, and no footer logo or site name.
