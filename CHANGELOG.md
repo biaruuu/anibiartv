@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.26.0
+
+- Share video is now a plain recording of only the tab you picked (no tab switching, zoom or fades). GIF banners and avatars now keep moving in the video (GIFs are decoded frame by frame in `lib/gif.ts`).
+- New Live mode, like an iPhone Live Photo: a 3 second looping clip with a LIVE badge, saved as a short video. Share modes are Screenshot, Live and Video (8 seconds).
+
 ## 1.25.0
 
 - Share now lets you choose Screenshot or Video. Video is made automatically in the browser: your profile tabs play one after another (slow zoom and crossfade) as a vertical MP4 (WebM where MP4 is not supported), with a progress bar, preview, Save video and native Share.

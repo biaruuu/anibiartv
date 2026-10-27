@@ -1,12 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { Download, Image as ImageIcon, Share2, Video, X } from "lucide-react"
+import { Download, Image as ImageIcon, Share2, Video, X, Zap } from "lucide-react"
 
 import { Spinner } from "@/components/ui/spinner"
 import type { HistoryItem, ListItem } from "@/lib/library"
-import { canvasToBlob, FORMAT_LABEL, renderStory, sizeFor, TAB_LABEL, type StoryFormat, type StoryTab } from "@/lib/story"
-import { canMakeVideo, canRecordScreen, makeSlideVideo, startScreenRecording, type VideoResult } from "@/lib/story-video"
+import { canvasToBlob, FORMAT_LABEL, prepareStory, sizeFor, TAB_LABEL, type StoryFormat, type StoryTab } from "@/lib/story"
+import { canMakeVideo, canRecordScreen, recordScene, startScreenRecording, type VideoResult } from "@/lib/story-video"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -32,7 +32,8 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
   const [url, setUrl] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [note, setNote] = React.useState<string | null>(null)
-  const [kind, setKind] = React.useState<"image" | "video">("image")
+  const [kind, setKind] = React.useState<"image" | "live" | "video">("image")
+  const [moving, setMoving] = React.useState(false)
   const [video, setVideo] = React.useState<VideoResult | null>(null)
   const [videoUrl, setVideoUrl] = React.useState<string | null>(null)
   const [progress, setProgress] = React.useState(0)
@@ -55,8 +56,8 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     setUrl(null)
     setError(null)
     setSize(sizeFor(format))
-    renderStory({ ...data, tab, format, host: window.location.host })
-      .then(canvasToBlob)
+    prepareStory({ ...data, tab, format, host: window.location.host })
+      .then((scene) => canvasToBlob(scene.canvas))
       .then((b) => {
         if (!alive) return
         made = URL.createObjectURL(b)
@@ -72,9 +73,10 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.history, data.favorites, data.list])
 
-  // auto-made video: the profile tabs one after another, like a screen recording
+  // Live (a few seconds, loops) and Video (longer): the picked tab only, GIFs keep moving
+  const isClip = kind === "live" || kind === "video"
   React.useEffect(() => {
-    if (kind !== "video" || recording) return
+    if (!isClip || recording) return
     const signal = { cancelled: false }
     let made: string | null = null
     setVideo(null)
@@ -82,11 +84,10 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     setError(null)
     setProgress(0)
     ;(async () => {
-      const order: StoryTab[] = [tab, ...(["history", "favorites", "list"] as StoryTab[]).filter((t) => t !== tab && data[t].length > 0)]
-      const frames: HTMLCanvasElement[] = []
-      for (const t of order) frames.push(await renderStory({ ...data, tab: t, format, host: window.location.host }))
+      const scene = await prepareStory({ ...data, tab, format, host: window.location.host })
       if (signal.cancelled) return
-      const result = await makeSlideVideo(frames, (p) => !signal.cancelled && setProgress(p), signal)
+      setMoving(scene.animated)
+      const result = await recordScene(scene, kind === "live" ? 3000 : 8000, (p) => !signal.cancelled && setProgress(p), signal)
       if (signal.cancelled) return
       made = URL.createObjectURL(result.blob)
       setVideo(result)
@@ -123,11 +124,11 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
   }
 
   const fileName =
-    kind === "video" ? `anibiar-${data.handle ?? "profile"}-${tab}.${video?.ext ?? "mp4"}` : `anibiar-${data.handle ?? "profile"}-${tab}-${format}.png`
+    kind !== "image" ? `anibiar-${data.handle ?? "profile"}-${tab}${kind === "live" ? "-live" : ""}.${video?.ext ?? "mp4"}` : `anibiar-${data.handle ?? "profile"}-${tab}-${format}.png`
 
-  const fileUrl = kind === "video" ? videoUrl : url
-  const fileBlob = kind === "video" ? video?.blob ?? null : blob
-  const fileType = kind === "video" ? video?.mime ?? "video/mp4" : "image/png"
+  const fileUrl = kind !== "image" ? videoUrl : url
+  const fileBlob = kind !== "image" ? video?.blob ?? null : blob
+  const fileType = kind !== "image" ? video?.mime ?? "video/mp4" : "image/png"
 
   const save = () => {
     if (!fileUrl) return
@@ -138,7 +139,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     a.click()
     a.remove()
     setNote(
-      kind === "video" && video?.ext === "webm"
+      kind !== "image" && video?.ext === "webm"
         ? "Saved as a WebM video. If Instagram does not accept it, use the screenshot instead."
         : "Saved! Now add it to your Instagram or Facebook story."
     )
@@ -193,10 +194,11 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
           </button>
         </div>
 
-        <div role="tablist" aria-label="Screenshot or video" className="mx-4 mt-3 flex gap-1.5 sm:mx-5">
+        <div role="tablist" aria-label="Screenshot, live or video" className="mx-4 mt-3 flex gap-1.5 sm:mx-5">
           {(
             [
               { id: "image", label: "Screenshot", icon: ImageIcon },
+              { id: "live", label: "Live", icon: Zap },
               { id: "video", label: "Video", icon: Video },
             ] as const
           ).map(({ id, label, icon: Icon }) => (
@@ -205,7 +207,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               type="button"
               role="tab"
               aria-selected={kind === id}
-              disabled={id === "video" && !videoOk && !screenOk}
+              disabled={id !== "image" && !videoOk && !screenOk}
               onClick={() => {
                 setNote(null)
                 setKind(id)
@@ -263,8 +265,16 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
             style={{ aspectRatio: `${size.w} / ${size.h}` }}
             className="relative h-full max-h-[min(54svh,36rem)] max-w-full overflow-hidden rounded-xl border border-white/15 bg-white/[0.04]"
           >
-            {kind === "video" && videoUrl ? (
-              <video key={videoUrl} src={videoUrl} autoPlay loop muted playsInline controls className="size-full object-contain" />
+            {kind !== "image" && videoUrl ? (
+              <>
+                <video key={videoUrl} src={videoUrl} autoPlay loop muted playsInline controls={kind === "video"} className="size-full object-contain" />
+                {kind === "live" && (
+                  <span className="pointer-events-none absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-white">
+                    <Zap className="size-3 fill-current" />
+                    LIVE
+                  </span>
+                )}
+              </>
             ) : kind === "image" && url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={url} alt="Preview of your profile picture for stories" className="size-full object-contain" />
@@ -272,10 +282,10 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               <div className="grid size-full place-items-center px-6 text-center text-sm text-white/60">
                 {error ? (
                   <p>{error}</p>
-                ) : kind === "video" ? (
+                ) : kind !== "image" ? (
                   <div className="w-full">
                     <Spinner className="mx-auto size-6" />
-                    <p className="mt-3">Making your video… {Math.round(progress * 100)}%</p>
+                    <p className="mt-3">Recording your {TAB_LABEL[tab]} {kind === "live" ? "live photo" : "video"}… {Math.round(progress * 100)}%</p>
                     <p className="mt-1 text-xs text-white/45">Keep this screen open for a few seconds.</p>
                   </div>
                 ) : (
@@ -296,7 +306,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-black transition-colors hover:bg-white/90 disabled:opacity-50"
             >
               <Download className="size-4" />
-              {kind === "video" ? "Save video" : "Save image"}
+              {kind === "video" ? "Save video" : kind === "live" ? "Save live photo" : "Save image"}
             </button>
             {shareable && (
               <button
@@ -321,8 +331,12 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
             </button>
           )}
           <p className="text-center text-[0.7rem] text-white/45">
-            {kind === "video"
-              ? "Vertical video of your profile tabs, a few seconds, no sound."
+            {kind === "live"
+              ? moving
+                ? "A 3 second looping clip of this tab. Your GIF keeps moving."
+                : "A 3 second looping clip of this tab. Set a GIF banner or avatar in Edit profile to make it move."
+              : kind === "video"
+              ? `An 8 second video of the ${TAB_LABEL[tab]} tab${moving ? ", your GIF keeps moving" : ""}, no sound.`
               : `${size.w} × ${size.h}px${format === "story" ? ", the size of an Instagram or Facebook story" : format === "post" ? ", a feed post" : ", the same shape as this device's screen"}.`}
           </p>
         </div>

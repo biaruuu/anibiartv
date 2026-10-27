@@ -1,6 +1,7 @@
 "use client"
 
 /** Draws the viewer's profile page as a picture (a clean "screenshot") for Instagram / Facebook stories and posts. */
+import { decodeGif, isGif } from "@/lib/gif"
 import type { HistoryItem, ListItem } from "@/lib/library"
 
 export type StoryTab = "history" | "favorites" | "list"
@@ -56,6 +57,59 @@ function loadImage(src: string | null | undefined): Promise<HTMLImageElement | n
   })
 }
 
+/** A picture that may move: `at(t)` gives what to draw `t` milliseconds into the clip. */
+export type Media = { w: number; h: number; animated: boolean; loopMs: number; at: (t: number) => CanvasImageSource }
+
+/** Loads a picture; GIFs are decoded into frames so they keep moving. */
+async function loadMedia(src: string | null | undefined, maxW: number): Promise<Media | null> {
+  if (!src) return null
+  try {
+    const res = await fetch(viaProxy(src))
+    if (!res.ok) throw new Error("bad")
+    const buf = new Uint8Array(await res.arrayBuffer())
+    if (isGif(buf)) {
+      const g = decodeGif(buf, maxW)
+      if (g && g.frames.length > 1) {
+        const starts: number[] = []
+        let acc = 0
+        for (const f of g.frames) {
+          starts.push(acc)
+          acc += f.delay
+        }
+        return {
+          w: g.width,
+          h: g.height,
+          animated: true,
+          loopMs: g.total,
+          at: (t) => {
+            const m = t % g.total
+            let lo = 0
+            for (let n = starts.length - 1; n >= 0; n--) {
+              if (starts[n] <= m) {
+                lo = n
+                break
+              }
+            }
+            return g.frames[lo].canvas
+          },
+        }
+      }
+    }
+    const url = URL.createObjectURL(new Blob([buf], { type: res.headers.get("content-type") ?? "image/png" }))
+    const img = await new Promise<HTMLImageElement | null>((resolve) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = () => resolve(null)
+      el.src = url
+    })
+    if (!img) return loadImage(src).then((i) => (i ? { w: i.naturalWidth, h: i.naturalHeight, animated: false, loopMs: 0, at: () => i } : null))
+    return { w: img.naturalWidth, h: img.naturalHeight, animated: false, loopMs: 0, at: () => img }
+  } catch {
+    const i = await loadImage(src)
+    return i ? { w: i.naturalWidth, h: i.naturalHeight, animated: false, loopMs: 0, at: () => i } : null
+  }
+}
+
 type Ctx = CanvasRenderingContext2D
 
 function rr(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
@@ -67,22 +121,6 @@ function rr(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
   ctx.arcTo(x, y + h, x, y, k)
   ctx.arcTo(x, y, x + w, y, k)
   ctx.closePath()
-}
-
-function cover(ctx: Ctx, img: HTMLImageElement | null, x: number, y: number, w: number, h: number, r = 0) {
-  ctx.save()
-  rr(ctx, x, y, w, h, r)
-  ctx.clip()
-  if (img) {
-    const s = Math.max(w / img.naturalWidth, h / img.naturalHeight)
-    const dw = img.naturalWidth * s
-    const dh = img.naturalHeight * s
-    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
-  } else {
-    ctx.fillStyle = CARD
-    ctx.fillRect(x, y, w, h)
-  }
-  ctx.restore()
 }
 
 function fit(ctx: Ctx, text: string, maxW: number) {
@@ -215,7 +253,15 @@ function layout(ctx: Ctx, i: StoryInput, cards: Card[], Wc: number, Hl: number, 
   return { Wc, Hl, variant, bannerH: BANNER, nameY, handleY, bioY, bioLines, memberY, tabsY, gridTop, cols, cw, gapX, gapY, landscape, posterH, rows, fits }
 }
 
+export type StoryScene = { canvas: HTMLCanvasElement; animated: boolean; loopMs: number; draw: (t: number) => void }
+
+/** The still picture (a GIF banner or avatar shows its first frame). */
 export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
+  return (await prepareStory(i)).canvas
+}
+
+/** Builds the profile picture and returns a `draw(t)` that advances any moving banner or avatar. */
+export async function prepareStory(i: StoryInput): Promise<StoryScene> {
   try {
     await Promise.all(["400", "500", "600", "700"].map((w) => document.fonts.load(`${w} 16px "Karla Variable"`)))
   } catch {
@@ -256,8 +302,8 @@ export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
   ctx.setTransform(s, 0, 0, s, 0, 0)
 
   const [avatar, banner, logo, ...covers] = await Promise.all([
-    loadImage(i.avatar),
-    loadImage(i.banner),
+    loadMedia(i.avatar, 360),
+    loadMedia(i.banner, 800),
     loadImage("/logo-mark.svg"),
     ...cards.map((card) => loadImage(card.image)),
   ])
@@ -267,41 +313,59 @@ export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
   ctx.fillStyle = BG
   ctx.fillRect(0, 0, Wc, Hl)
 
-  // banner
-  if (banner) cover(ctx, banner, 0, 0, Wc, p.bannerH)
-  else {
-    ctx.fillStyle = "rgba(255,255,255,.08)"
-    ctx.fillRect(0, 0, Wc, p.bannerH)
-  }
-
-  // avatar with a solid ring
+  // banner and avatar are redrawn on their own for every frame of a moving picture
   const ax = PX
   const ay = p.bannerH - AV / 2
-  ctx.fillStyle = BG
-  ctx.beginPath()
-  ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2, 0, Math.PI * 2)
-  ctx.fill()
   const inset = 6
-  ctx.save()
-  ctx.beginPath()
-  ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2 - inset, 0, Math.PI * 2)
-  ctx.clip()
   const D = AV - inset * 2
-  if (avatar) {
-    const k = Math.max(D / avatar.naturalWidth, D / avatar.naturalHeight)
-    const dw = avatar.naturalWidth * k
-    const dh = avatar.naturalHeight * k
-    ctx.drawImage(avatar, ax + inset + (D - dw) / 2, ay + inset + (D - dh) / 2, dw, dh)
-  } else {
-    ctx.fillStyle = "#2a282d"
-    ctx.fillRect(ax, ay, AV, AV)
-    ctx.fillStyle = "rgba(255,255,255,.6)"
-    ctx.font = `700 44px ${FONT}`
-    ctx.textAlign = "center"
-    ctx.textBaseline = "middle"
-    ctx.fillText((i.name.trim()[0] ?? "?").toUpperCase(), ax + AV / 2, ay + AV / 2 + 2)
+  const drawBanner = (t: number) => {
+    if (banner) {
+      const src = banner.at(t)
+      const k = Math.max(Wc / banner.w, p.bannerH / banner.h)
+      const dw = banner.w * k
+      const dh = banner.h * k
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(0, 0, Wc, p.bannerH)
+      ctx.clip()
+      ctx.drawImage(src, (Wc - dw) / 2, (p.bannerH - dh) / 2, dw, dh)
+      ctx.restore()
+    } else {
+      ctx.fillStyle = BG
+      ctx.fillRect(0, 0, Wc, p.bannerH)
+      ctx.fillStyle = "rgba(255,255,255,.08)"
+      ctx.fillRect(0, 0, Wc, p.bannerH)
+    }
   }
-  ctx.restore()
+  const drawAvatar = (t: number) => {
+    ctx.fillStyle = BG
+    ctx.beginPath()
+    ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2 - inset, 0, Math.PI * 2)
+    ctx.clip()
+    if (avatar) {
+      const k = Math.max(D / avatar.w, D / avatar.h)
+      const dw = avatar.w * k
+      const dh = avatar.h * k
+      ctx.drawImage(avatar.at(t), ax + inset + (D - dw) / 2, ay + inset + (D - dh) / 2, dw, dh)
+    } else {
+      ctx.fillStyle = "#2a282d"
+      ctx.fillRect(ax, ay, AV, AV)
+      ctx.fillStyle = "rgba(255,255,255,.6)"
+      ctx.font = `700 44px ${FONT}`
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText((i.name.trim()[0] ?? "?").toUpperCase(), ax + AV / 2, ay + AV / 2 + 2)
+    }
+    ctx.restore()
+    ctx.textAlign = "left"
+    ctx.textBaseline = "alphabetic"
+  }
+  drawBanner(0)
+  drawAvatar(0)
 
   // name and username
   ctx.textAlign = "left"
@@ -427,7 +491,17 @@ export async function renderStory(i: StoryInput): Promise<HTMLCanvasElement> {
     }
   }
 
-  return c
+  const animated = !!(banner?.animated || avatar?.animated)
+  return {
+    canvas: c,
+    animated,
+    loopMs: Math.max(banner?.loopMs ?? 0, avatar?.loopMs ?? 0),
+    draw: (t: number) => {
+      if (!animated) return
+      drawBanner(t)
+      drawAvatar(t)
+    },
+  }
 }
 
 export const canvasToBlob = (c: HTMLCanvasElement) =>
