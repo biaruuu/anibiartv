@@ -163,7 +163,7 @@ export const DECORATION_FALLBACK: Decoration[] = [
     "cols": 10,
     "frame_size": 256,
     "fps": 12.05,
-    "scale": 1.5
+    "scale": 1.37
   },
   {
     "id": "reiatsu",
@@ -174,7 +174,7 @@ export const DECORATION_FALLBACK: Decoration[] = [
     "cols": 10,
     "frame_size": 256,
     "fps": 12.05,
-    "scale": 1.5
+    "scale": 1.45
   }
 ]
 

@@ -9,10 +9,9 @@ import { useAuth } from "@/components/auth-provider"
 import { HistoryCard, useHistory } from "@/components/continue-watching"
 import { useLibrarySync } from "@/lib/use-library-sync"
 import { ShareStory } from "@/components/share-story"
-import { ArtPicker, DecorationPicker, EffectAvatar, EffectLayer, EffectPicker, FrameBorder, IntroLayer } from "@/components/profile-effect"
+import { DecoratedAvatar, DecorationPicker } from "@/components/avatar-decoration"
 import { Spinner } from "@/components/ui/spinner"
 import type { DecorationId } from "@/lib/decorations"
-import { isEffect, type EffectId } from "@/lib/effects"
 import { loadFavorites, loadList, toggleFavorite, toggleList, type ListItem } from "@/lib/library"
 import { ACCEPT, deleteProfileImage, MAX_BYTES, uploadProfileImage } from "@/lib/profile-images"
 import { getSupabase } from "@/lib/supabase/client"
@@ -39,10 +38,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
   const { user, name, avatar, banner, profile, refreshProfile } = useAuth()
   const [username, setUsername] = React.useState(profile?.username ?? name ?? "")
   const [bio, setBio] = React.useState(profile?.bio ?? "")
-  const [effect, setEffect] = React.useState<EffectId | null>(isEffect(profile?.effect) ? (profile!.effect as EffectId) : null)
   const [decoration, setDecoration] = React.useState<DecorationId | null>(profile?.decoration ?? null)
-  const [intro, setIntro] = React.useState<string | null>(profile?.intro ?? null)
-  const [frame, setFrame] = React.useState<string | null>(profile?.frame ?? null)
   const [avatarPick, setAvatarPick] = React.useState<Pick>(null)
   const [bannerPick, setBannerPick] = React.useState<Pick>(null)
   const [dropAvatar, setDropAvatar] = React.useState(false)
@@ -111,7 +107,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
       }
       const { error } = await getSupabase()
         .from("profiles")
-        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl, effect, decoration, intro, frame }, { onConflict: "id" })
+        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl, decoration }, { onConflict: "id" })
       if (error) throw new Error(error.message)
       await refreshProfile()
       void Promise.all(stale.map(deleteProfileImage))
@@ -147,18 +143,15 @@ function EditProfile({ onClose }: { onClose: () => void }) {
         {/* live preview, laid out like the real profile */}
         <div className="mt-3 px-4 sm:px-6">
           <div className="relative">
-            <IntroLayer intro={intro} className="h-[11rem] rounded-xl sm:h-[12rem]" />
             <div className="relative h-24 overflow-hidden rounded-xl bg-white/[0.08] sm:h-28">
               {shownBanner && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={shownBanner} alt="" className="size-full object-cover" />
               )}
-              <FrameBorder frame={frame} className="[--fb:15px]" />
             </div>
-            <EffectLayer effect={effect} className="h-[8.5rem] rounded-xl sm:h-[9.5rem]" />
-            <EffectAvatar effect={effect} decoration={decoration} className="relative z-10 -mt-9 ml-3 size-[4.5rem] sm:size-20">
+            <DecoratedAvatar decoration={decoration} className="relative z-10 -mt-9 ml-3 size-[4.5rem] sm:size-20">
               <Avatar src={shownAvatar} className="size-full" />
-            </EffectAvatar>
+            </DecoratedAvatar>
           </div>
         </div>
 
@@ -215,21 +208,6 @@ function EditProfile({ onClose }: { onClose: () => void }) {
           <div>
             <span className={label}>Avatar decoration</span>
             <DecorationPicker value={decoration} onChange={setDecoration} disabled={busy} />
-          </div>
-
-          <div>
-            <span className={label}>Profile effect</span>
-            <EffectPicker value={effect} onChange={setEffect} disabled={busy} />
-          </div>
-
-          <div>
-            <span className={label}>Profile effect intro · exclusive</span>
-            <ArtPicker kind="intro" value={intro} onChange={setIntro} disabled={busy} />
-          </div>
-
-          <div>
-            <span className={label}>Profile frame · exclusive</span>
-            <ArtPicker kind="frame" value={frame} onChange={setFrame} disabled={busy} />
           </div>
 
           <label className="block">
@@ -326,9 +304,6 @@ export function ProfileApp() {
   const [editing, setEditing] = React.useState(false)
   const [sharing, setSharing] = React.useState(false)
   const deco: DecorationId | null = profile?.decoration ?? null
-  const intro: string | null = profile?.intro ?? null
-  const frm: string | null = profile?.frame ?? null
-  const fx: EffectId | null = isEffect(profile?.effect) ? (profile!.effect as EffectId) : null
   const storyHistory = React.useMemo(() => items ?? [], [items])
   const storyFavorites = React.useMemo(() => favorites ?? [], [favorites])
   const storyList = React.useMemo(() => list ?? [], [list])
@@ -369,15 +344,12 @@ export function ProfileApp() {
     <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
       <main className="mx-auto w-full max-w-4xl pb-10 sm:px-8 sm:py-10">
         <div className="relative overflow-hidden bg-[#000000] sm:rounded-2xl sm:border sm:border-white/20">
-          <EffectLayer effect={fx} className="h-[12.5rem] sm:h-[17rem]" />
-          <IntroLayer intro={intro} className="h-[27rem] sm:h-[28rem]" />
           {/* banner, plain and fully visible (no header on this page) */}
           <div className="relative h-36 bg-white/[0.08] sm:h-52">
             {banner && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={banner} alt="" className="size-full object-cover" />
             )}
-            <FrameBorder frame={frm} className="[--fb:22px] sm:[--fb:34px]" />
             <button
               type="button"
               aria-label="Close profile"
@@ -389,9 +361,9 @@ export function ProfileApp() {
           </div>
 
           <div className="px-4 sm:px-6">
-            <EffectAvatar effect={fx} decoration={deco} className="relative z-10 -mt-12 size-24 sm:-mt-14 sm:size-28">
+            <DecoratedAvatar decoration={deco} className="relative z-10 -mt-12 size-24 sm:-mt-14 sm:size-28">
               <Avatar src={user ? avatar : null} className="size-full" />
-            </EffectAvatar>
+            </DecoratedAvatar>
 
             <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -500,9 +472,7 @@ export function ProfileApp() {
           joined={joined}
           avatar={avatar}
           banner={banner}
-          effect={fx}
           decoration={deco}
-          intro={intro}
           history={storyHistory}
           favorites={storyFavorites}
           list={storyList}

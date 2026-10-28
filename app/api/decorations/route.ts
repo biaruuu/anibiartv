@@ -9,7 +9,7 @@ type Row = { id: string; label: string; apng: string; sheet: string; frames: num
 export async function GET() {
   try {
     const decorations = await cached(
-      "decorations:v3",
+      "decorations:v4",
       300,
       async () => {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/avatar_decorations?select=*&active=eq.true&order=sort.asc`, {

@@ -11,6 +11,7 @@ import "@fontsource/open-sans/700.css"
 import "./globals.css"
 import { AuthProvider } from "@/components/auth-provider"
 import { BottomNav } from "@/components/bottom-nav"
+import { DesktopGate } from "@/components/desktop-gate"
 import { DesktopSiteNotice } from "@/components/desktop-site-notice"
 import { ThemeProvider } from "@/components/theme-provider"
 
@@ -54,8 +55,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
-            <BottomNav />
+            <DesktopGate>
+              {children}
+              <BottomNav />
+            </DesktopGate>
           </AuthProvider>
           <DesktopSiteNotice />
         </ThemeProvider>

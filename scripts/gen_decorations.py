@@ -326,12 +326,12 @@ META = {
     "droplets": ("Droplets", 1.2, None),
     "storm": ("Lightning", 1.2, None),
     "hearts": ("Hearts", 1.2, None),
-    "reiatsu": ("Reiatsu", 1.5, FPS),
+    "reiatsu": ("Reiatsu", 1.45, FPS),
     "bunny": ("Bunny", 1.5, FPS),
     "halo": ("Halo", 1.5, FPS),
     "crown": ("Crown", 1.5, FPS),
     "flames": ("Flames", 1.5, FPS),
-    "frost": ("Frost", 1.5, FPS),
+    "frost": ("Frost", 1.37, FPS),
 }
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.36.0
+
+- Removed the exclusive Blood War profile frame, the profile effect intro and the profile effects (ring and particles). Only avatar decorations are left; the avatar is the crisp 96px picture with a thin ring.
+- Every decoration is fitted to the avatar: the ring-style ones (Frost, Reiatsu) now hug the avatar picture instead of floating around it; the Discord-style ones stay at 1.2x.
+- New floating liquid-glass bottom bar (blurred glass pill, glass bubble on the current or pressed tab, centre Search button). Tabs: Home, Saved, Search, Settings, Profile.
+- Phone only for now: on a PC / desktop browser (wide screen with a mouse) the site shows "AniBiar TV is mobile only for now, desktop coming soon". Phones, including ones asking for the desktop site, are not blocked.
+- Live photo length, fixed properly: the clip is now encoded frame by frame with WebCodecs and written as a real MP4 (`lib/mp4.ts`) whose length is exactly the length you pick (checked: 48 frames at 24 fps = 2.000000 s), so the gallery shows 20 s, not 3 s. It is also faster than real time. Browsers without WebCodecs fall back to live recording.
+
 ## 1.35.0
 
 - **Live photo length fixed**: the clip is now recorded frame by frame (`requestFrame`), so a picture that does not move is recorded for the full 5-60 seconds instead of ending after about 3 seconds, and a refresh of your lists no longer restarts the recording.

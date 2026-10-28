@@ -8,7 +8,6 @@ import type { HistoryItem, ListItem } from "@/lib/library"
 import { canvasToBlob, FORMAT_LABEL, prepareStory, sizeFor, TAB_LABEL, type StoryFormat, type StoryTab } from "@/lib/story"
 import { canMakeVideo, recordScene, type VideoResult } from "@/lib/story-video"
 import type { DecorationId } from "@/lib/decorations"
-import type { EffectId } from "@/lib/effects"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -19,9 +18,7 @@ type Props = {
   joined: string | null
   avatar: string | null
   banner: string | null
-  effect: EffectId | null
   decoration: DecorationId | null
-  intro?: string | null
   history: HistoryItem[]
   favorites: ListItem[]
   list: ListItem[]
@@ -80,9 +77,9 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     }
     // data props change identity every render; the picture only depends on these values
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.decoration, data.intro, listKey(data.history), listKey(data.favorites), listKey(data.list)])
+  }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.decoration, listKey(data.history), listKey(data.favorites), listKey(data.list)])
 
-  // Live: the picked tab only, GIFs and profile effects keep moving, any length you choose
+  // Live: the picked tab only, GIFs and decorations keep moving, any length you choose
   React.useEffect(() => {
     if (kind !== "live") return
     const signal = { cancelled: false }
@@ -107,7 +104,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
       if (made) URL.revokeObjectURL(made)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.decoration, data.intro, listKey(data.history), listKey(data.favorites), listKey(data.list)])
+  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.decoration, listKey(data.history), listKey(data.favorites), listKey(data.list)])
 
   const fileName =
     kind !== "image" ? `anibiar-${data.handle ?? "profile"}-${tab}${kind === "live" ? "-live" : ""}.${video?.ext ?? "mp4"}` : `anibiar-${data.handle ?? "profile"}-${tab}-${format}.png`
