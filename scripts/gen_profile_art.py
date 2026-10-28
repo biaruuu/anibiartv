@@ -51,91 +51,114 @@ def tongue(x, y, L, w, lean):
 
 
 # ----------------------------------------------------------------------------------------------------------------- intro
-W, H = 160, 90  # 16:9 drawing area, rasterised at 3.5x (560 x 315)
-_r = random.Random(11)
-CRACKS = []
-for _ in range(11):
-    x, y = 80 + _r.uniform(-14, 14), 84
-    a = math.radians(_r.uniform(-165, -15))
-    pts = [(x, y)]
-    for _ in range(7):
-        a += math.radians(_r.uniform(-28, 28))
-        n = _r.uniform(7, 13)
-        x, y = x + math.cos(a) * n, y + math.sin(a) * n
-        pts.append((x, y))
-    CRACKS.append(pts)
-PLUMES = [(12 + k * 19.5 + _r.uniform(-4, 4), _r.uniform(46, 82), _r.uniform(11, 17), _r.uniform(0, TAU)) for k in range(8)]
+# A cracked blood-red sky: a dense web of glowing fractures grows across the whole profile from two impact points,
+# black ink creeps in from the edges, glossy blood droplets bead in the cells. Drawn per pixel with numpy (640 x 480).
+import numpy as np
+from scipy.ndimage import gaussian_filter
+from scipy.spatial import cKDTree
+
+W, H = 640, 480
+_np = np.random.default_rng(7)
 
 
-def intro(p):
-    body = ""
-    # impact flash and blood glow
-    flash = math.exp(-((p - 0.14) / 0.05) ** 2) * 0.32
-    glow = seg(p, 0.0, 0.3) * (1 - seg(p, 0.62, 0.95))
-    body += f'<rect width="{W}" height="{H}" fill="{CR}" opacity="{flash:.3f}"/>'
-    body += f'<ellipse cx="80" cy="96" rx="110" ry="60" fill="url(#blood)" opacity="{glow:.3f}"/>'
-    # white cracks of light
-    cr = seg(p, 0.06, 0.34)
-    ca = (1 - seg(p, 0.46, 0.82)) * (1 if p > 0.05 else 0)
-    for pts in CRACKS:
-        d = "M" + " L".join(f"{x:.1f} {y:.1f}" for x, y in pts)
-        body += (f'<path d="{d}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="{1-cr:.3f}" fill="none" stroke="{CR}" stroke-width="2.2" '
-                 f'stroke-linecap="round" stroke-linejoin="round" opacity="{ca*.85:.3f}" filter="url(#soft)"/>')
-        body += (f'<path d="{d}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="{1-cr:.3f}" fill="none" stroke="{WH}" stroke-width=".7" '
-                 f'stroke-linecap="round" stroke-linejoin="round" opacity="{ca:.3f}"/>')
-    # black ink plumes rising from the bottom, then dissolving upwards
-    rise = seg(p, 0.02, 0.5)
-    dis = seg(p, 0.58, 0.97)
-    ink = ""
-    for k, (cx, hh, ww, ph) in enumerate(PLUMES):
-        L = hh * rise * (1 + 0.12 * math.sin(TAU * p * 2 + ph))
-        lean = math.sin(TAU * p + ph) * 5
-        tip = H + 6 - L - dis * 30
-        y0 = H + 10
-        d = (f"M{cx-ww:.1f} {y0} C{cx-ww*1.2:.1f} {y0-L*.4:.1f} {cx+lean*.4-ww*.5:.1f} {tip+L*.35:.1f} {cx+lean:.1f} {tip:.1f} "
-             f"C{cx+lean*.4+ww*.7:.1f} {tip+L*.3:.1f} {cx+ww*1.2:.1f} {y0-L*.45:.1f} {cx+ww:.1f} {y0} Z")
-        ink += f'<path d="{d}" fill="url(#plume)" stroke="{CR}" stroke-width=".7" stroke-opacity=".85"/>'
-    body += f'<g filter="url(#ink)" opacity="{(1-dis):.3f}">{ink}</g>'
-    # a black crescent slash with a white edge sweeping across
-    s = seg(p, 0.36, 0.7)
-    if 0 < s < 1:
-        cx = -30 + s * 220
-        cy = 70 - s * 52
-        a = 1 - seg(s, 0.7, 1)
-        outer = f"M{cx-36:.1f} {cy+14:.1f} Q{cx-2:.1f} {cy-34:.1f} {cx+40:.1f} {cy-2:.1f} Q{cx+2:.1f} {cy-16:.1f} {cx-36:.1f} {cy+14:.1f} Z"
-        body += f'<path d="{outer}" fill="{CR}" opacity="{a*.7:.3f}" filter="url(#soft)" transform="rotate(-20 {cx:.1f} {cy:.1f})"/>'
-        body += f'<path d="{outer}" fill="{BLK}" stroke="{WH}" stroke-width=".8" opacity="{a:.3f}" transform="rotate(-20 {cx:.1f} {cy:.1f})"/>'
-    return svg(W, H, body)
+def _noise(sigma, seed):
+    r = np.random.default_rng(seed).standard_normal((H, W)).astype(np.float32)
+    r = gaussian_filter(r, sigma)
+    return r / (np.abs(r).max() + 1e-6)
 
 
-# ------------------------------------------------------------------------------------------------------------------ idle
-_r = random.Random(5)
-ASH = [(_r.random(), _r.random(), _r.choice([1, 1, 2]), _r.uniform(.5, 1.6), _r.uniform(0, TAU), _r.choice(["ash", "ash", "ember", "ember", "spirit"])) for _ in range(30)]
-FLAMES = [(i / 15 * W + _r.uniform(-2, 2), _r.uniform(11, 24), _r.uniform(3, 5.2), _r.uniform(0, TAU)) for i in range(16)]
+_yy, _xx = np.mgrid[0:H, 0:W].astype(np.float32)
+_pts = np.array([((i + .5 + _np.uniform(-.4, .4)) * W / 9, (j + .5 + _np.uniform(-.4, .4)) * H / 7) for j in range(7) for i in range(9)])
+_wx, _wy = _noise(26, 1) * 16, _noise(26, 2) * 16
+_d, _i = cKDTree(_pts).query(np.stack([(_xx + _wx).ravel(), (_yy + _wy).ravel()], 1), k=2)
+_d1, _d2 = _d[:, 0].reshape(H, W), _d[:, 1].reshape(H, W)
+_gap = _d2 - _d1
+_width = 2.4 + 2.8 * (_noise(50, 3) * .5 + .5)
+CRACK = np.clip(1 - _gap / _width, 0, 1) ** 1.4
+CORE = np.clip(1 - _gap / (_width * .32), 0, 1)
+SHADE = np.clip(_d1 / (_d2 + 1e-3), 0, 1) ** 3
+_O1, _O2 = (W * .12, H * .95), (W * .9, H * .12)
+DIST = np.minimum(np.hypot(_xx - _O1[0], _yy - _O1[1]), np.hypot(_xx - _O2[0], _yy - _O2[1]) * 1.1) + _noise(40, 4) * 46
+MAXR = float(DIST.max())
+_bd = np.minimum(np.minimum(_xx, W - _xx), np.minimum(_yy, H - _yy))
+BORDER = _bd - _noise(18, 5) * 26
+_pulse_n = _noise(90, 6)
+BUBBLES = [(*_pts[k] + _np.uniform(-10, 10, 2), _np.uniform(16, 36), _np.uniform(0, TAU)) for k in np.random.default_rng(9).choice(len(_pts), 24, replace=False)]
+DROPS = [(np.random.default_rng(i).uniform(), np.random.default_rng(i + 99).uniform(), int(np.random.default_rng(i + 7).choice([1, 1, 2])), np.random.default_rng(i + 50).uniform(2.2, 4.4), np.random.default_rng(i + 80).uniform(0, TAU)) for i in range(26)]
 
 
-def idle(p):
-    body = ""
-    pulse = .55 + .15 * math.sin(TAU * p)
-    body += f'<ellipse cx="80" cy="98" rx="105" ry="46" fill="url(#blood)" opacity="{pulse:.3f}"/>'
-    flames = ""
-    for x, L, w, ph in FLAMES:
-        L *= 1 + .22 * math.sin(TAU * p + ph)
-        lean = 4 * math.sin(TAU * p + ph * 2)
-        flames += f'<path d="{tongue(x, H + 2, L, w, lean)}" fill="{BLK}" stroke="{CR}" stroke-width=".55" stroke-opacity=".9"/>'
-    body += f'<g filter="url(#ink)">{flames}</g>'
-    for x0, y0, cyc, size, ph, kind in ASH:
-        y = (y0 - p * cyc) % 1.0
-        x = (x0 + .03 * math.sin(TAU * p * cyc + ph)) % 1.0
-        px, py = x * W, y * (H + 8) - 4
-        fade = math.sin(math.pi * y) ** .6
-        if kind == "ash":
-            body += f'<g transform="translate({px:.1f} {py:.1f}) rotate({math.degrees(TAU*p*cyc+ph):.0f})" opacity="{.95*fade:.2f}"><rect x="{-size:.2f}" y="{-size*.6:.2f}" width="{size*2:.2f}" height="{size*1.2:.2f}" rx=".4" fill="{BLK}" stroke="{CR}" stroke-width=".35"/></g>'
-        elif kind == "ember":
-            body += f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{size*.55:.2f}" fill="#ff5a4d" opacity="{fade:.2f}" filter="url(#glow)"/>'
-        else:
-            body += f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{size*.4:.2f}" fill="{WH}" opacity="{.85*fade:.2f}" filter="url(#glow)"/>'
-    return svg(W, H, body)
+def _over(rgb, a, c, alpha):
+    """Premultiplied 'over': rgb (H,W,3), a (H,W); c colour (3,) or (H,W,3); alpha (H,W)."""
+    c = np.asarray(c, np.float32)
+    if c.ndim == 1:
+        c = c[None, None, :]
+    rgb[:] = c * alpha[..., None] + rgb * (1 - alpha[..., None])
+    a[:] = alpha + a * (1 - alpha)
+
+
+def _disc(rgb, a, cx, cy, r, alpha, hi=True):
+    """A glossy blood bead."""
+    x0, x1, y0, y1 = int(max(0, cx - r - 2)), int(min(W, cx + r + 3)), int(max(0, cy - r - 2)), int(min(H, cy + r + 3))
+    if x1 <= x0 or y1 <= y0:
+        return
+    gx, gy = np.meshgrid(np.arange(x0, x1, dtype=np.float32), np.arange(y0, y1, dtype=np.float32))
+    d = np.hypot(gx - cx, gy - cy) / r
+    m = np.clip((1 - d) * r / 1.5, 0, 1) * alpha
+    rim = np.clip(d, 0, 1)[..., None]
+    col = np.array([95, 0, 18], np.float32) * (1 - rim) + np.array([255, 44, 70], np.float32) * rim
+    sub_rgb, sub_a = rgb[y0:y1, x0:x1], a[y0:y1, x0:x1]
+    _over(sub_rgb, sub_a, col, m)
+    if hi:
+        hd = np.hypot((gx - (cx - r * .35)) / (r * .32), (gy - (cy - r * .4)) / (r * .2))
+        _over(sub_rgb, sub_a, (255, 235, 238), np.clip(1 - hd, 0, 1) * .9 * alpha)
+
+
+def web_frame(reveal_p, idle_p, flash=0.0, creep=1.0):
+    """reveal_p: 0..1 growth of the web. idle_p: 0..1 phase of the looping shimmer (pulses, beads, droplets)."""
+    r = _ease(reveal_p) * (MAXR + 90)
+    rev = np.clip((r - DIST) / 46, 0, 1)
+    front = np.exp(-(((r - DIST) / 12) ** 2)) * (1 if reveal_p < 1 else 0)
+    rgb = np.zeros((H, W, 3), np.float32)
+    a = np.zeros((H, W), np.float32)
+    # dark red cells, black near the fractures
+    _over(rgb, a, (120, 0, 22), rev * (.24 + .22 * (1 - SHADE)))
+    _over(rgb, a, (8, 0, 6), rev * SHADE * .8)
+    # ink creeping in from the edges
+    ink = np.clip((creep * 64 - BORDER) / 24, 0, 1) * .9
+    _over(rgb, a, (5, 0, 5), ink)
+    # glossy beads
+    for k, (bx, by, br, ph) in enumerate(BUBBLES):
+        pulse = 1 + .07 * math.sin(TAU * idle_p + ph)
+        vis = float(np.clip((r - math.hypot(bx - _O1[0], by - _O1[1]) * .9) / 60, 0, 1))
+        if vis > 0:
+            _disc(rgb, a, bx, by, br * pulse * (.4 + .6 * vis), .78 * vis)
+    # fractures: wide red bloom, bright core, white-hot growth front
+    wave = .72 + .28 * np.sin(TAU * (DIST / 340 - idle_p) + _pulse_n * 2)
+    cr = CRACK * rev
+    glow = np.clip(gaussian_filter(cr, 5) * 2.4, 0, 1) * wave
+    _over(rgb, a, (255, 24, 52), glow * .85)
+    _over(rgb, a, (255, 70, 82), np.clip(cr * 1.25, 0, 1) * (.75 + .25 * wave))
+    hot = np.clip(CORE * rev * (.55 + .45 * wave) + front * CRACK * 1.5, 0, 1)
+    _over(rgb, a, (255, 236, 236), hot * .95)
+    # beads of blood sliding down + black ash drifting, looping every cycle
+    for x0, y0, cyc, sz, ph in DROPS:
+        y = ((y0 + idle_p * cyc) % 1.0) * (H + 30) - 15
+        x = (x0 * W + 6 * math.sin(TAU * idle_p * cyc + ph)) % W
+        fade = math.sin(math.pi * ((y + 15) / (H + 30))) ** .5 * float(rev[int(np.clip(y, 0, H - 1)), int(x)])
+        if fade > .02:
+            _disc(rgb, a, x, y, sz, .9 * fade)
+    if flash > 0:
+        fl = np.exp(-(np.minimum(np.hypot(_xx - _O1[0], _yy - _O1[1]), np.hypot(_xx - _O2[0], _yy - _O2[1])) / 170) ** 2) * flash
+        _over(rgb, a, (255, 96, 110), np.clip(fl, 0, 1) * .6)
+    out = np.zeros((H, W, 4), np.uint8)
+    nz = a > 1e-4
+    out[..., :3] = np.where(nz[..., None], np.clip(rgb / np.maximum(a[..., None], 1e-4), 0, 255), 0).astype(np.uint8)
+    out[..., 3] = np.clip(a * 255, 0, 255).astype(np.uint8)
+    return Image.fromarray(out, "RGBA")
+
+
+def _ease(x):
+    return ease(x)
 
 
 # ----------------------------------------------------------------------------------------------------------------- frame
@@ -203,6 +226,10 @@ def apng(frames, name, ms, loop):
     frames[0].save(OUT / name, save_all=True, append_images=frames[1:], duration=ms, loop=loop, disposal=1, blend=0, optimize=True)
 
 
+def webp(frames, name, ms, loop):
+    frames[0].save(OUT / name, save_all=True, append_images=frames[1:], duration=ms, loop=loop, quality=68, method=5, alpha_quality=80, minimize_size=False)
+
+
 def sheet(frames, name, cols=10):
     fw, fh = frames[0].size
     rows = -(-len(frames) // cols)
@@ -217,21 +244,22 @@ if __name__ == "__main__":
     catalog = []
     with sync_playwright() as pw:
         b = pw.chromium.launch()
-        # ---- intro + idle
-        page = b.new_page(viewport={"width": W, "height": H}, device_scale_factor=3.5)
-        n_in, n_id = 36, 40
-        intro_f = [shoot(page, intro(i / (n_in - 1)), (W, H)) for i in range(n_in)]
-        idle_f = [shoot(page, idle(i / n_id), (W, H)) for i in range(n_id)]
-        apng(intro_f, "tybw-intro.png", 50, 1)  # plays once
-        apng(idle_f, "tybw-intro.idle.png", 75, 0)
-        small = [f.resize((280, 158), Image.LANCZOS) for f in idle_f]
+        # ---- intro (plays once) + idle (loop). Animated WebP: far smaller than APNG and it keeps the alpha.
+        n_in, n_id = 40, 30
+        intro_f = []
+        for i in range(n_in):
+            q = i / (n_in - 1)
+            intro_f.append(web_frame(min(1, q / .8), 0.0, flash=math.exp(-((q - .04) / .05) ** 2), creep=min(1, q / .8)))
+        idle_f = [web_frame(1.0, i / n_id) for i in range(n_id)]
+        webp(intro_f, "tybw-intro.webp", 50, 1)  # plays once
+        webp(idle_f, "tybw-intro.idle.webp", 100, 0)
+        small = [f.resize((320, 240), Image.LANCZOS) for f in idle_f]
         sheet(small, "tybw-intro.sheet.png")
-        thumb = Image.new("RGBA", (560, 315), (17, 17, 20, 255))
-        thumb.alpha_composite(intro_f[17])
-        thumb.alpha_composite(idle_f[10])
-        thumb.convert("RGB").resize((200, 112), Image.LANCZOS).save(OUT / "tybw-intro.thumb.png", optimize=True)
-        catalog.append({"id": "tybw-intro", "kind": "intro", "label": "Blood War", "apng": "/profile-art/tybw-intro.png", "idle": "/profile-art/tybw-intro.idle.png",
-                        "sheet": "/profile-art/tybw-intro.sheet.png", "frames": len(small), "cols": 10, "frame_w": 280, "frame_h": 158, "fps": round(1000 / 75, 2),
+        thumb = Image.new("RGBA", (W, H), (17, 17, 20, 255))
+        thumb.alpha_composite(idle_f[0])
+        thumb.convert("RGB").resize((200, 150), Image.LANCZOS).save(OUT / "tybw-intro.thumb.png", optimize=True)
+        catalog.append({"id": "tybw-intro", "kind": "intro", "label": "Blood War", "apng": "/profile-art/tybw-intro.webp", "idle": "/profile-art/tybw-intro.idle.webp",
+                        "sheet": "/profile-art/tybw-intro.sheet.png", "frames": len(small), "cols": 10, "frame_w": 320, "frame_h": 240, "fps": 10.0,
                         "intro_ms": n_in * 50})
         # ---- frame (9-slice, 300 x 300, corners 100 px)
         page = b.new_page(viewport={"width": FS, "height": FS}, device_scale_factor=2.5)
@@ -254,10 +282,10 @@ if __name__ == "__main__":
             F.alpha_composite(c.transpose(Image.ROTATE_180), (200, 200))
             F.alpha_composite(c.transpose(Image.FLIP_TOP_BOTTOM), (0, 200))
             fr.append(F)
-        apng(fr, "tybw-frame.png", 83, 0)
+        webp(fr, "tybw-frame.webp", 83, 0)
         fr[0].resize((96, 96), Image.LANCZOS).save(OUT / "tybw-frame.thumb.png", optimize=True)
         sheet([f.resize((150, 150), Image.LANCZOS) for f in fr], "tybw-frame.sheet.png")
-        catalog.append({"id": "tybw-frame", "kind": "frame", "label": "Blood War", "apng": "/profile-art/tybw-frame.png", "idle": None,
+        catalog.append({"id": "tybw-frame", "kind": "frame", "label": "Blood War", "apng": "/profile-art/tybw-frame.webp", "idle": None,
                         "sheet": "/profile-art/tybw-frame.sheet.png", "frames": n_fr, "cols": 10, "frame_w": 150, "frame_h": 150, "fps": round(1000 / 83, 2), "intro_ms": 0})
         b.close()
     (OUT / "catalog.json").write_text(json.dumps(catalog, indent=1))

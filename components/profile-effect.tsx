@@ -155,47 +155,60 @@ export function DecorationPicker({ value, onChange, disabled }: { value: Decorat
   )
 }
 
+/** Seconds between replays of the intro (a cooldown, like Discord's effects that come back every so often). */
+const INTRO_COOLDOWN_MS = 14000
+
 /**
- * Full-profile "intro" effect (like Discord's): the one-shot animation plays when the profile opens,
- * then a soft loop stays on top. Put it inside a `relative overflow-hidden` card.
+ * Full-profile "intro" effect (like Discord's): the one-shot animation plays when the profile opens, melts into
+ * a soft loop that stays on top, and plays again after a cooldown. Put it inside a `relative overflow-hidden` card.
  */
 export function IntroLayer({ intro, className }: { intro: string | null; className?: string }) {
   const art = findArt(intro, "intro", useProfileArt())
-  const [playing, setPlaying] = React.useState(true)
+  const [cycle, setCycle] = React.useState(0)
+  const [phase, setPhase] = React.useState<"intro" | "blend" | "idle">("intro")
   const [reduced, setReduced] = React.useState(false)
   React.useEffect(() => {
-    setPlaying(true)
-    setReduced(typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches)
     if (!art) return
-    const t = window.setTimeout(() => setPlaying(false), art.intro_ms + 300)
-    return () => window.clearTimeout(t)
+    setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+    const timers: number[] = []
+    const run = () => {
+      setCycle((c) => c + 1)
+      setPhase("intro")
+      timers.push(window.setTimeout(() => setPhase("blend"), Math.max(200, art.intro_ms - 450)))
+      timers.push(window.setTimeout(() => setPhase("idle"), art.intro_ms + 100))
+    }
+    run()
+    const every = window.setInterval(run, art.intro_ms + INTRO_COOLDOWN_MS)
+    return () => {
+      window.clearInterval(every)
+      timers.forEach((t) => window.clearTimeout(t))
+    }
   }, [art?.id, art?.intro_ms]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!art) return null
-  const fit = "absolute inset-0 size-full max-w-none object-cover object-bottom select-none"
+  const fit = "absolute inset-0 size-full max-w-none object-cover select-none"
   return (
     <div
       aria-hidden
       className={cn("pointer-events-none absolute inset-x-0 top-0 z-[30] overflow-hidden", className)}
-      style={{ maskImage: "linear-gradient(to bottom, #000 72%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 72%, transparent)" }}
+      style={{ maskImage: "linear-gradient(to bottom, #000 70%, transparent)", WebkitMaskImage: "linear-gradient(to bottom, #000 70%, transparent)" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {art.idle && !reduced && <img src={art.idle} alt="" draggable={false} className={fit} />}
+      {art.idle && !reduced && phase !== "intro" && <img src={art.idle} alt="" draggable={false} className={cn(fit, phase === "blend" && "fx-fadein")} />}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {playing && !reduced && <img key={art.id} src={art.apng} alt="" draggable={false} className={fit} />}
+      {!reduced && phase !== "idle" && <img key={cycle} src={art.apng} alt="" draggable={false} className={fit} />}
     </div>
   )
 }
 
-/** Animated profile frame: a 9-slice border drawn around the card (corners stay, edges repeat). */
+/** Animated profile frame: a 9-slice border drawn on top of the banner's edges (corners stay, edges repeat). */
 export function FrameBorder({ frame, className }: { frame: string | null; className?: string }) {
   const art = findArt(frame, "frame", useProfileArt())
   if (!art) return null
   return (
     <div
       aria-hidden
-      className={cn("pointer-events-none absolute z-40", className)}
+      className={cn("pointer-events-none absolute inset-0 z-[15]", className)}
       style={{
-        inset: "calc(var(--fb) * -1)",
         borderStyle: "solid",
         borderColor: "transparent",
         borderWidth: "var(--fb)",

@@ -35,8 +35,13 @@ export function recordScene(
     const ctx = c.getContext("2d")!
     const mime = pickVideoMime()
     let rec: MediaRecorder
+    // Frames are pushed by hand (requestFrame) so a still picture is recorded for the whole length too:
+    // a canvas that does not change would otherwise give the recorder no frames and the clip ends after a few seconds.
+    const stream = c.captureStream(0)
+    const track = stream.getVideoTracks()[0] as (MediaStreamTrack & { requestFrame?: () => void }) | undefined
+    const manual = typeof track?.requestFrame === "function"
     try {
-      rec = new MediaRecorder(c.captureStream(30), { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 5_000_000 })
+      rec = new MediaRecorder(manual ? stream : c.captureStream(30), { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 4_000_000 })
     } catch (e) {
       return reject(e)
     }
@@ -54,19 +59,28 @@ export function recordScene(
       const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2
       return Math.round(e * maxScroll)
     }
+    let n = 0
     const paint = (t: number) => {
       scene.draw(t)
       ctx.drawImage(src, 0, scrollY(t), src.width, scene.viewH, 0, 0, W, H)
+      // one almost invisible pixel that changes every frame, so every frame counts as new
+      ctx.fillStyle = n++ % 2 ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"
+      ctx.fillRect(W - 2, H - 2, 2, 2)
+      if (manual) track!.requestFrame!()
     }
     paint(0)
-    rec.start(250)
+    rec.start(1000)
     const t0 = performance.now()
     const tick = () => {
       if (signal.cancelled) return rec.state !== "inactive" ? rec.stop() : undefined
       const t = performance.now() - t0
       paint(Math.min(t, durationMs))
       onProgress(Math.min(1, t / durationMs))
-      if (t >= durationMs) return rec.stop()
+      if (t >= durationMs) {
+        // hold the last frame a moment so the clip really lasts the full length
+        paint(durationMs)
+        return void setTimeout(() => rec.state !== "inactive" && rec.stop(), 150)
+      }
       setTimeout(tick, 33)
     }
     tick()

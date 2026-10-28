@@ -22,7 +22,7 @@ type Row = {
 export async function GET() {
   try {
     const art = await cached(
-      "profile-art:v1",
+      "profile-art:v2",
       300,
       async () => {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/profile_art?select=*&active=eq.true&order=sort.asc`, {

@@ -28,6 +28,9 @@ type Props = {
   onClose: () => void
 }
 
+/** A stable key for a list, so a refresh that returns the same items does not restart the recording. */
+const listKey = (l: { animeId: number | string }[]) => l.map((x) => x.animeId).join(",")
+
 /** Preview of the profile as a 9:16 story picture, with Save and Share. */
 export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
   const [tab, setTab] = React.useState<StoryTab>(startTab)
@@ -77,7 +80,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
     }
     // data props change identity every render; the picture only depends on these values
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.decoration, data.intro, data.history, data.favorites, data.list])
+  }, [kind, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.decoration, data.intro, listKey(data.history), listKey(data.favorites), listKey(data.list)])
 
   // Live: the picked tab only, GIFs and profile effects keep moving, any length you choose
   React.useEffect(() => {
@@ -104,7 +107,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
       if (made) URL.revokeObjectURL(made)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.decoration, data.intro, data.history, data.favorites, data.list])
+  }, [kind, seconds, tab, format, data.name, data.handle, data.bio, data.joined, data.avatar, data.banner, data.effect, data.decoration, data.intro, listKey(data.history), listKey(data.favorites), listKey(data.list)])
 
   const fileName =
     kind !== "image" ? `anibiar-${data.handle ?? "profile"}-${tab}${kind === "live" ? "-live" : ""}.${video?.ext ?? "mp4"}` : `anibiar-${data.handle ?? "profile"}-${tab}-${format}.png`

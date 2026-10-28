@@ -28,8 +28,8 @@ export type ProfileArt = {
 }
 
 export const ART_FALLBACK: ProfileArt[] = [
-  { id: "tybw-intro", kind: "intro", label: "Blood War", apng: "/profile-art/tybw-intro.png", idle: "/profile-art/tybw-intro.idle.png", sheet: "/profile-art/tybw-intro.sheet.png", frames: 40, cols: 10, frame_w: 280, frame_h: 158, fps: 13.33, intro_ms: 1800 },
-  { id: "tybw-frame", kind: "frame", label: "Blood War", apng: "/profile-art/tybw-frame.png", idle: null, sheet: "/profile-art/tybw-frame.sheet.png", frames: 24, cols: 10, frame_w: 150, frame_h: 150, fps: 12.05, intro_ms: 0 },
+  { id: "tybw-intro", kind: "intro", label: "Blood War", apng: "/profile-art/tybw-intro.webp", idle: "/profile-art/tybw-intro.idle.webp", sheet: "/profile-art/tybw-intro.sheet.png", frames: 30, cols: 10, frame_w: 320, frame_h: 240, fps: 10, intro_ms: 2000 },
+  { id: "tybw-frame", kind: "frame", label: "Blood War", apng: "/profile-art/tybw-frame.webp", idle: null, sheet: "/profile-art/tybw-frame.sheet.png", frames: 24, cols: 10, frame_w: 150, frame_h: 150, fps: 12.05, intro_ms: 0 },
 ]
 
 let list: ProfileArt[] = ART_FALLBACK
@@ -48,7 +48,7 @@ export function loadProfileArt(): Promise<ProfileArt[]> {
 }
 
 export const findArt = (id: string | null | undefined, kind: ArtKind, from: ProfileArt[] = list) => (id ? from.find((a) => a.id === id && a.kind === kind) ?? null : null)
-export const thumbOf = (a: ProfileArt) => a.apng.replace(/\.png$/, ".thumb.png")
+export const thumbOf = (a: ProfileArt) => a.apng.replace(/\.(png|webp)$/, ".thumb.png")
 
 export function useProfileArt(): ProfileArt[] {
   const [items, setItems] = React.useState(list)

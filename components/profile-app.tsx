@@ -146,14 +146,14 @@ function EditProfile({ onClose }: { onClose: () => void }) {
 
         {/* live preview, laid out like the real profile */}
         <div className="mt-3 px-4 sm:px-6">
-          <div className={cn("relative [--fb:14px]", frame && "m-[14px]")}>
-            <FrameBorder frame={frame} />
-            <IntroLayer key={intro ?? "none"} intro={intro} className="h-[8.5rem] rounded-xl sm:h-[9.5rem]" />
+          <div className="relative">
+            <IntroLayer intro={intro} className="h-[11rem] rounded-xl sm:h-[12rem]" />
             <div className="relative h-24 overflow-hidden rounded-xl bg-white/[0.08] sm:h-28">
               {shownBanner && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={shownBanner} alt="" className="size-full object-cover" />
               )}
+              <FrameBorder frame={frame} className="[--fb:15px]" />
             </div>
             <EffectLayer effect={effect} className="h-[8.5rem] rounded-xl sm:h-[9.5rem]" />
             <EffectAvatar effect={effect} decoration={decoration} className="relative z-10 -mt-9 ml-3 size-[4.5rem] sm:size-20">
@@ -367,18 +367,17 @@ export function ProfileApp() {
 
   return (
     <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
-      <main className={cn("mx-auto w-full max-w-4xl pb-10 [--fb:26px] sm:px-8 sm:py-10 sm:[--fb:46px]", frm && "px-[calc(var(--fb)+4px)] pt-[calc(var(--fb)+4px)] sm:px-[calc(var(--fb)+16px)] sm:py-[calc(var(--fb)+16px)]")}>
-       <div className="relative">
-        <FrameBorder frame={frm} />
-        <div className={cn("relative overflow-hidden bg-[#000000] sm:rounded-2xl sm:border sm:border-white/20", frm && "rounded-lg border border-white/20")}>
+      <main className="mx-auto w-full max-w-4xl pb-10 sm:px-8 sm:py-10">
+        <div className="relative overflow-hidden bg-[#000000] sm:rounded-2xl sm:border sm:border-white/20">
           <EffectLayer effect={fx} className="h-[12.5rem] sm:h-[17rem]" />
-          <IntroLayer key={intro ?? "none"} intro={intro} className="h-[21rem] sm:h-[22rem]" />
+          <IntroLayer intro={intro} className="h-[27rem] sm:h-[28rem]" />
           {/* banner, plain and fully visible (no header on this page) */}
           <div className="relative h-36 bg-white/[0.08] sm:h-52">
             {banner && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={banner} alt="" className="size-full object-cover" />
             )}
+            <FrameBorder frame={frm} className="[--fb:22px] sm:[--fb:34px]" />
             <button
               type="button"
               aria-label="Close profile"
@@ -490,7 +489,6 @@ export function ProfileApp() {
             {tab === "list" && <PosterGrid items={list} onRemove={unlist} empty="Your watchlist is empty. Tap the + on a watch page to add anime." />}
           </div>
         </div>
-       </div>
       </main>
       {editing && user && <EditProfile onClose={() => setEditing(false)} />}
       {sharing && user && (

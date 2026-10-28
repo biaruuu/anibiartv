@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.35.0
+
+- **Live photo length fixed**: the clip is now recorded frame by frame (`requestFrame`), so a picture that does not move is recorded for the full 5-60 seconds instead of ending after about 3 seconds, and a refresh of your lists no longer restarts the recording.
+- **Profile effect intro redone**, much closer to Discord's: a full-profile blood-red web of glowing cracks grows across the whole profile from two points, glossy blood beads form in the cells and black ink creeps in from the edges. It plays when the profile opens, melts into a soft shimmering loop, and plays again every 14 seconds. Animated WebP (smaller than APNG, keeps transparency); also in the Share picture and Live clip.
+- **Profile frame** now sits on top of the banner only and no longer changes the page layout.
+
 ## 1.34.0
 
 - Exclusive "Blood War" profile art (original Bleach: Thousand-Year Blood War-inspired artwork, rendered with Python + headless Chromium in `scripts/gen_profile_art.py`):
