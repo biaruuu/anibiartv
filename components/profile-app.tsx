@@ -9,7 +9,7 @@ import { useAuth } from "@/components/auth-provider"
 import { HistoryCard, useHistory } from "@/components/continue-watching"
 import { useLibrarySync } from "@/lib/use-library-sync"
 import { ShareStory } from "@/components/share-story"
-import { DecorationPicker, EffectAvatar, EffectLayer, EffectPicker } from "@/components/profile-effect"
+import { ArtPicker, DecorationPicker, EffectAvatar, EffectLayer, EffectPicker, FrameBorder, IntroLayer } from "@/components/profile-effect"
 import { Spinner } from "@/components/ui/spinner"
 import type { DecorationId } from "@/lib/decorations"
 import { isEffect, type EffectId } from "@/lib/effects"
@@ -41,6 +41,8 @@ function EditProfile({ onClose }: { onClose: () => void }) {
   const [bio, setBio] = React.useState(profile?.bio ?? "")
   const [effect, setEffect] = React.useState<EffectId | null>(isEffect(profile?.effect) ? (profile!.effect as EffectId) : null)
   const [decoration, setDecoration] = React.useState<DecorationId | null>(profile?.decoration ?? null)
+  const [intro, setIntro] = React.useState<string | null>(profile?.intro ?? null)
+  const [frame, setFrame] = React.useState<string | null>(profile?.frame ?? null)
   const [avatarPick, setAvatarPick] = React.useState<Pick>(null)
   const [bannerPick, setBannerPick] = React.useState<Pick>(null)
   const [dropAvatar, setDropAvatar] = React.useState(false)
@@ -109,7 +111,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
       }
       const { error } = await getSupabase()
         .from("profiles")
-        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl, effect, decoration }, { onConflict: "id" })
+        .upsert({ id: user.id, username: clean, bio: bio.trim() || null, avatar_url: avatarUrl, banner_url: bannerUrl, effect, decoration, intro, frame }, { onConflict: "id" })
       if (error) throw new Error(error.message)
       await refreshProfile()
       void Promise.all(stale.map(deleteProfileImage))
@@ -144,7 +146,9 @@ function EditProfile({ onClose }: { onClose: () => void }) {
 
         {/* live preview, laid out like the real profile */}
         <div className="mt-3 px-4 sm:px-6">
-          <div className="relative">
+          <div className={cn("relative [--fb:14px]", frame && "m-[14px]")}>
+            <FrameBorder frame={frame} />
+            <IntroLayer key={intro ?? "none"} intro={intro} className="h-[8.5rem] rounded-xl sm:h-[9.5rem]" />
             <div className="relative h-24 overflow-hidden rounded-xl bg-white/[0.08] sm:h-28">
               {shownBanner && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -216,6 +220,16 @@ function EditProfile({ onClose }: { onClose: () => void }) {
           <div>
             <span className={label}>Profile effect</span>
             <EffectPicker value={effect} onChange={setEffect} disabled={busy} />
+          </div>
+
+          <div>
+            <span className={label}>Profile effect intro · exclusive</span>
+            <ArtPicker kind="intro" value={intro} onChange={setIntro} disabled={busy} />
+          </div>
+
+          <div>
+            <span className={label}>Profile frame · exclusive</span>
+            <ArtPicker kind="frame" value={frame} onChange={setFrame} disabled={busy} />
           </div>
 
           <label className="block">
@@ -312,6 +326,8 @@ export function ProfileApp() {
   const [editing, setEditing] = React.useState(false)
   const [sharing, setSharing] = React.useState(false)
   const deco: DecorationId | null = profile?.decoration ?? null
+  const intro: string | null = profile?.intro ?? null
+  const frm: string | null = profile?.frame ?? null
   const fx: EffectId | null = isEffect(profile?.effect) ? (profile!.effect as EffectId) : null
   const storyHistory = React.useMemo(() => items ?? [], [items])
   const storyFavorites = React.useMemo(() => favorites ?? [], [favorites])
@@ -351,9 +367,12 @@ export function ProfileApp() {
 
   return (
     <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
-      <main className="mx-auto w-full max-w-4xl pb-10 sm:px-8 sm:py-10">
-        <div className="relative overflow-hidden bg-[#000000] sm:rounded-2xl sm:border sm:border-white/20">
+      <main className={cn("mx-auto w-full max-w-4xl pb-10 [--fb:26px] sm:px-8 sm:py-10 sm:[--fb:46px]", frm && "px-[calc(var(--fb)+4px)] pt-[calc(var(--fb)+4px)] sm:px-[calc(var(--fb)+16px)] sm:py-[calc(var(--fb)+16px)]")}>
+       <div className="relative">
+        <FrameBorder frame={frm} />
+        <div className={cn("relative overflow-hidden bg-[#000000] sm:rounded-2xl sm:border sm:border-white/20", frm && "rounded-lg border border-white/20")}>
           <EffectLayer effect={fx} className="h-[12.5rem] sm:h-[17rem]" />
+          <IntroLayer key={intro ?? "none"} intro={intro} className="h-[21rem] sm:h-[22rem]" />
           {/* banner, plain and fully visible (no header on this page) */}
           <div className="relative h-36 bg-white/[0.08] sm:h-52">
             {banner && (
@@ -371,7 +390,7 @@ export function ProfileApp() {
           </div>
 
           <div className="px-4 sm:px-6">
-            <EffectAvatar effect={fx} decoration={deco} className="relative z-10 -mt-14 size-28 sm:-mt-16 sm:size-32">
+            <EffectAvatar effect={fx} decoration={deco} className="relative z-10 -mt-12 size-24 sm:-mt-14 sm:size-28">
               <Avatar src={user ? avatar : null} className="size-full" />
             </EffectAvatar>
 
@@ -471,6 +490,7 @@ export function ProfileApp() {
             {tab === "list" && <PosterGrid items={list} onRemove={unlist} empty="Your watchlist is empty. Tap the + on a watch page to add anime." />}
           </div>
         </div>
+       </div>
       </main>
       {editing && user && <EditProfile onClose={() => setEditing(false)} />}
       {sharing && user && (
@@ -484,6 +504,7 @@ export function ProfileApp() {
           banner={banner}
           effect={fx}
           decoration={deco}
+          intro={intro}
           history={storyHistory}
           favorites={storyFavorites}
           list={storyList}

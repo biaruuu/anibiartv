@@ -3,6 +3,7 @@
 /** Draws the viewer's profile page as a picture (a clean "screenshot") for Instagram / Facebook stories and posts. */
 import { findDecoration, loadDecorations, type DecorationId } from "@/lib/decorations"
 import { effectOf, particlesFor, type EffectId } from "@/lib/effects"
+import { findArt, loadProfileArt } from "@/lib/profile-art"
 import { decodeGif, isGif } from "@/lib/gif"
 import type { HistoryItem, ListItem } from "@/lib/library"
 
@@ -17,6 +18,7 @@ export type StoryInput = {
   banner: string | null
   effect?: EffectId | null
   decoration?: DecorationId | null
+  intro?: string | null
   tab: StoryTab
   history: HistoryItem[]
   favorites: ListItem[]
@@ -188,7 +190,7 @@ type Plan = {
 
 const PX = 16 // the page's side padding
 const BANNER = 144
-const AV = 112
+const AV = 96
 const TITLE_LH = 16
 
 /** Lays the picture out in the same CSS pixels the profile page uses on a phone, so it looks like a screenshot. */
@@ -318,14 +320,18 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
   c.height = pageH
   const ctx = c.getContext("2d")!
   ctx.setTransform(s, 0, 0, s, 0, 0)
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = "high"
 
   const decos = await loadDecorations()
   const deco = findDecoration(i.decoration, decos)
-  const [avatar, banner, logo, decoSheet, ...covers] = await Promise.all([
+  const introArt = findArt(i.intro, "intro", await loadProfileArt())
+  const [avatar, banner, logo, decoSheet, introSheet, ...covers] = await Promise.all([
     loadMedia(i.avatar, 360),
     loadMedia(i.banner, 800),
     loadImage("/logo-mark.svg"),
     loadImage(deco?.sheet),
+    loadImage(introArt?.sheet),
     ...cards.map((card) => loadImage(card.image)),
   ])
 
@@ -336,7 +342,7 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
   // banner and avatar are redrawn on their own for every frame of a moving picture
   const ax = PX
   const ay = p.bannerH - AV / 2
-  const inset = 6
+  const inset = 4
   const D = AV - inset * 2
   const drawBanner = (t: number) => {
     if (banner) {
@@ -515,10 +521,10 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
       ctx.save()
       ctx.strokeStyle = g
       ctx.shadowColor = fx.ring[1]
-      ctx.shadowBlur = 10
-      ctx.lineWidth = 3
+      ctx.shadowBlur = 6
+      ctx.lineWidth = 2
       ctx.beginPath()
-      ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2 - 1.5, 0, Math.PI * 2)
+      ctx.arc(ax + AV / 2, ay + AV / 2, AV / 2 - 1, 0, Math.PI * 2)
       ctx.stroke()
       ctx.restore()
     }
@@ -552,6 +558,24 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     ctx.font = `700 30px ${FONT}`
     ctx.fillText(fit(ctx, i.name, Wc - PX * 2), PX, p.nameY)
   }
+  /** The profile intro's soft loop over the header (same crop as the page: cover, anchored to the bottom). */
+  const drawIntro = (t: number) => {
+    if (!introArt || !introSheet) return
+    const h = p.bannerH + AV / 2 + 96
+    const idx = Math.floor((t / 1000) * introArt.fps) % introArt.frames
+    const fw = introArt.frame_w
+    const fh = introArt.frame_h
+    const k = Math.max(Wc / fw, h / fh)
+    const dw = fw * k
+    const dh = fh * k
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, Wc, h)
+    ctx.clip()
+    ctx.globalAlpha = 0.9
+    ctx.drawImage(introSheet, (idx % introArt.cols) * fw, Math.floor(idx / introArt.cols) * fh, fw, fh, (Wc - dw) / 2, h - dh, dw, dh)
+    ctx.restore()
+  }
   /** One frame of the header: banner, particles, the name, then the avatar and its decoration on top. */
   const drawHeader = (t: number) => {
     drawBanner(t)
@@ -560,6 +584,7 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     drawParticles(t)
     drawName()
     drawAvatar(t)
+    drawIntro(t)
   }
   drawHeader(0)
 
@@ -667,7 +692,7 @@ export async function prepareStory(i: StoryInput, opts: { scroll?: boolean } = {
     }
   }
 
-  const animated = !!(banner?.animated || avatar?.animated || fx || (deco && deco.frames > 1))
+  const animated = !!(banner?.animated || avatar?.animated || fx || introSheet || (deco && deco.frames > 1))
   return {
     canvas: c,
     animated,

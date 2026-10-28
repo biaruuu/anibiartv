@@ -171,7 +171,7 @@ html {
   animation: fx-spin 3s linear infinite;
 }
 .fx-glow {
-  filter: blur(7px);
+  filter: blur(4px);
   animation:
     fx-spin 3s linear infinite,
     fx-glow 2.4s ease-in-out infinite;

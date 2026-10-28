@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.34.0
+
+- Exclusive "Blood War" profile art (original Bleach: Thousand-Year Blood War-inspired artwork, rendered with Python + headless Chromium in `scripts/gen_profile_art.py`):
+  - **Profile effect intro**: a full-profile animation that plays when the profile opens (black ink surge, red cracks of light, a crescent slash), then a soft loop of ash, embers and black flames stays on top. Shown on the profile, the Edit profile preview, the Share picture and the Live clip.
+  - **Profile frame**: an animated thorn-and-blood-moon frame drawn around the profile card (9-slice, so it fits every screen size).
+  - Both are pickable in Edit profile. They live in Supabase (`profile_art`; `profiles.intro` and `profiles.frame`), are served by `/api/profile-art` and cached in Upstash Redis.
+- Sharper, smaller avatar: 96px (was 112px) on phones, a thin 4px ring around the picture like Discord, a crisper effect ring, high-quality scaling in the share picture. Decorations keep the same fit.
+
 ## 1.33.0
 
 - New exclusive avatar decoration, "Reiatsu": an original Bleach: Thousand-Year Blood War-inspired spirit-pressure aura. A crimson ring with black flame tongues, a sweeping black-and-white crescent slash, moth-like spirit butterflies and drifting reishi motes. Original artwork (no characters, logos or anime frames), rendered with Python + headless Chromium like the other generated decorations, and shown on the profile, Edit profile preview, Share picture and Live clip.
