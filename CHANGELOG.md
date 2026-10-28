@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.36.1
+
+- Smaller bottom bar (52px tall, like the reference) with four tabs only: Home, Search, Profile, Settings. The coloured Search button and Saved are gone; every tab uses the same dark glass style, and the bar scales to the screen width.
+
 ## 1.36.0
 
 - Removed the exclusive Blood War profile frame, the profile effect intro and the profile effects (ring and particles). Only avatar decorations are left; the avatar is the crisp 96px picture with a thin ring.
