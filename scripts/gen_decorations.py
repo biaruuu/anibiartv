@@ -240,7 +240,80 @@ def frost(p):
     return wrap(defs, body)
 
 
-ART = {"bunny": bunny, "halo": halo, "crown": crown, "flames": flames, "frost": frost}
+def reiatsu(p):
+    """Black spirit pressure with a crimson edge, sweeping crescent slashes, hell-butterfly-like moths and reishi motes.
+    Original artwork inspired by the look of a dark soul-reaper aura (no characters, logos or copied art)."""
+    th = 2 * math.pi * p
+    dx, dy = 8 * math.cos(th), 8 * math.sin(th)
+    defs = f"""
+<filter id="fl" filterUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="140">
+  <feTurbulence type="fractalNoise" baseFrequency="0.045 0.08" numOctaves="3" seed="12" result="n"/>
+  <feOffset in="n" dx="{dx:.2f}" dy="{dy:.2f}" result="no"/>
+  <feDisplacementMap in="SourceGraphic" in2="no" scale="12" xChannelSelector="R" yChannelSelector="G"/>
+</filter>
+<filter id="fl2" filterUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="140">
+  <feTurbulence type="fractalNoise" baseFrequency="0.06 0.1" numOctaves="3" seed="31" result="n"/>
+  <feOffset in="n" dx="{-dx:.2f}" dy="{dy:.2f}" result="no"/>
+  <feDisplacementMap in="SourceGraphic" in2="no" scale="10" xChannelSelector="G" yChannelSelector="R"/>
+</filter>
+<filter id="gl" filterUnits="userSpaceOnUse" x="-20" y="-20" width="140" height="140"><feGaussianBlur stdDeviation="3.2"/></filter>
+<filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<linearGradient id="cres" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff2a3d"/><stop offset=".5" stop-color="#1a0007"/><stop offset="1" stop-color="#050005"/></linearGradient>
+"""
+    body = '<circle cx="50" cy="50" r="42" fill="none" stroke="#c2001f" stroke-width="9" opacity=".6" filter="url(#gl)"/>'
+    body += '<g filter="url(#fl)"><circle cx="50" cy="50" r="42.5" fill="none" stroke="#ff2a3d" stroke-width="6.5"/></g>'
+    body += '<g filter="url(#fl2)"><circle cx="50" cy="50" r="41" fill="none" stroke="#08000a" stroke-width="5.2"/></g>'
+    # black flame tongues licking off the ring (curved, each swaying on its own beat)
+    rng = random.Random(23)
+    n = 14
+    for i in range(n):
+        a = 2 * math.pi * i / n + rng.uniform(-.1, .1)
+        L = rng.uniform(9, 17) * (0.7 + 0.3 * math.sin(2 * math.pi * (p * 2 + rng.random())))
+        lean = math.sin(2 * math.pi * (p + rng.random())) * 4.5
+        w = rng.uniform(2.2, 3.6)
+        deg = math.degrees(a) + 90
+        body += (f'<g transform="translate(50 50) rotate({deg:.1f}) translate(0 -42)">'
+                 f'<path d="M{-w:.2f} 1.5 C{-w*1.1:.2f} {-L*0.3:.2f} {lean*0.5-w*0.4:.2f} {-L*0.62:.2f} {lean:.2f} {-L:.2f} C{lean*0.5+w*0.9:.2f} {-L*0.55:.2f} {w*1.2:.2f} {-L*0.25:.2f} {w:.2f} 1.5 Z" fill="#08000a" stroke="#ff2a3d" stroke-width=".4" stroke-opacity=".8"/></g>')
+    # crescent slashes (two, opposite) with a fading trail
+    def crescent(ang, op, trail=False):
+        a0, a1 = math.radians(ang - 44), math.radians(ang + 44)
+        R1, R2 = 47, 58
+        x0, y0 = 50 + R1 * math.cos(a0), 50 + R1 * math.sin(a0)
+        x1, y1 = 50 + R1 * math.cos(a1), 50 + R1 * math.sin(a1)
+        d = f"M{x0:.2f} {y0:.2f} A{R1} {R1} 0 0 1 {x1:.2f} {y1:.2f} A{R2} {R2} 0 0 0 {x0:.2f} {y0:.2f} Z"
+        if trail:
+            return f'<path d="{d}" fill="#ff2a3d" opacity="{op:.2f}"/>'
+        return (f'<path d="{d}" fill="#050005" stroke="#ff2a3d" stroke-width=".9" opacity="{op:.2f}"/>'
+                f'<path d="M{x0:.2f} {y0:.2f} A{R1} {R1} 0 0 1 {x1:.2f} {y1:.2f}" fill="none" stroke="#ffd0d6" stroke-width=".5" opacity="{op*.8:.2f}"/>')
+    ang = 360 * p - 90
+    for t, o in ((40, .08), (28, .14), (16, .22), (7, .32)):
+        body += crescent(ang - t, o, True)
+    body += crescent(ang, 1)
+    # moths orbiting the other way
+    for k in range(3):
+        a = -2 * math.pi * p + k * 2 * math.pi / 3 + 0.6
+        r = 49 + 2.5 * math.sin(2 * math.pi * (p * 2 + k / 3))
+        x, y = 50 + r * math.cos(a), 50 + r * math.sin(a)
+        flap = abs(math.cos(2 * math.pi * (p * 4 + k * 0.3)))
+        rot = math.degrees(a) + 90
+        wing = "M0 0 C-1.6 -3.8 -6.4 -4.4 -6.6 -1 C-6.8 2.4 -3 3.4 0 .8 Z"
+        body += (f'<g transform="translate({x:.1f} {y:.1f}) rotate({rot:.1f}) scale(1.7)" filter="url(#glow)">'
+                 f'<g transform="scale({0.25+0.75*flap:.2f} 1)"><path d="{wing}" fill="#0b1224" stroke="#bfe6ff" stroke-width=".5"/><path d="M0 .6 C-2 -1 -4 -1.6 -5.6 -1.2" stroke="#7fb8e8" stroke-width=".25" fill="none"/>'
+                 f'<path d="{wing}" fill="#0b1224" stroke="#bfe6ff" stroke-width=".5" transform="scale(-1 1)"/><path d="M0 .6 C2 -1 4 -1.6 5.6 -1.2" stroke="#7fb8e8" stroke-width=".25" fill="none"/></g>'
+                 f'<ellipse cx="0" cy="0" rx=".7" ry="2" fill="#dff3ff"/></g>')
+    # reishi motes
+    rng = random.Random(77)
+    for i in range(18):
+        a0 = rng.uniform(0, 2 * math.pi)
+        ph = (p + rng.random()) % 1
+        rr = 44 + ph * rng.uniform(6, 14)
+        x, y = 50 + rr * math.cos(a0 + ph * .5), 50 + rr * math.sin(a0 + ph * .5)
+        col = "#ff4d5e" if i % 5 == 0 else ("#ffffff" if i % 2 else "#bfe6ff")
+        body += f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{(1.25-ph*.7)*rng.uniform(.7,1.2):.2f}" fill="{col}" opacity="{max(0,1-ph)**1.2:.2f}" filter="url(#glow)"/>'
+    return wrap(defs, body)
+
+
+ART = {"reiatsu": reiatsu, "bunny": bunny, "halo": halo, "crown": crown, "flames": flames, "frost": frost}
 
 COLS = 10
 # label, art scale (decoration box / avatar picture width), fps
@@ -253,6 +326,7 @@ META = {
     "droplets": ("Droplets", 1.2, None),
     "storm": ("Lightning", 1.2, None),
     "hearts": ("Hearts", 1.2, None),
+    "reiatsu": ("Reiatsu", 1.5, FPS),
     "bunny": ("Bunny", 1.5, FPS),
     "halo": ("Halo", 1.5, FPS),
     "crown": ("Crown", 1.5, FPS),
@@ -301,8 +375,9 @@ if __name__ == "__main__":
         page = b.new_page(viewport={"width": 100, "height": 100}, device_scale_factor=SIZE / 100)
         for name in only:
             fr = []
-            for f in range(FRAMES):
-                page.set_content(f'<html><body style="margin:0;background:transparent;overflow:hidden">{ART[name](f / FRAMES)}</body></html>')
+            nf = {"reiatsu": 36}.get(name, FRAMES)
+            for f in range(nf):
+                page.set_content(f'<html><body style="margin:0;background:transparent;overflow:hidden">{ART[name](f / nf)}</body></html>')
                 page.screenshot(path="/tmp/_deco_frame.png", omit_background=True, clip={"x": 0, "y": 0, "width": 100, "height": 100})
                 fr.append(Image.open("/tmp/_deco_frame.png").convert("RGBA").copy())
             catalog.append(save(name, fr, round(1000 / FPS)))

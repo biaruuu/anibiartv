@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.33.0
+
+- New exclusive avatar decoration, "Reiatsu": an original Bleach: Thousand-Year Blood War-inspired spirit-pressure aura. A crimson ring with black flame tongues, a sweeping black-and-white crescent slash, moth-like spirit butterflies and drifting reishi motes. Original artwork (no characters, logos or anime frames), rendered with Python + headless Chromium like the other generated decorations, and shown on the profile, Edit profile preview, Share picture and Live clip.
+
 ## 1.32.0
 
 - 7 more animated avatar decorations from your files: Violet flames, Neon ring, Butterflies, Sunburst, Droplets, Lightning and Hearts (13 in total with Cat ears, Bunny, Halo, Crown, Flames, Frost). Same Discord fit (1.2x the avatar picture), same Supabase list (`avatar_decorations`) and Redis cache.

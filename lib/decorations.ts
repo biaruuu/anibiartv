@@ -164,6 +164,17 @@ export const DECORATION_FALLBACK: Decoration[] = [
     "frame_size": 256,
     "fps": 12.05,
     "scale": 1.5
+  },
+  {
+    "id": "reiatsu",
+    "label": "Reiatsu",
+    "apng": "/decorations/reiatsu.png",
+    "sheet": "/decorations/reiatsu.sheet.png",
+    "frames": 36,
+    "cols": 10,
+    "frame_size": 256,
+    "fps": 12.05,
+    "scale": 1.5
   }
 ]
 
