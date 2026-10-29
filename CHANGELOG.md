@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.36.2
+
+- New glass switch (`components/glass-switch.tsx`): a dark glass track with a white glass bubble that slides to the chosen option, same look as the bottom bar. Used for Sub / Dub on the home page, Screenshot / Live, the tab, size and length pickers in Share, and Log in / Sign up.
+
 ## 1.36.1
 
 - Smaller bottom bar (52px tall, like the reference) with four tabs only: Home, Search, Profile, Settings. The coloured Search button and Saved are gone; every tab uses the same dark glass style, and the bar scales to the screen width.

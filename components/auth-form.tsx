@@ -1,5 +1,6 @@
 "use client"
 
+import { GlassSwitch } from "@/components/glass-switch"
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -125,23 +126,16 @@ export function AuthForm() {
             {mode === "login" ? "Log in to continue watching." : "Save your progress and your list on every device."}
           </p>
 
-          <div role="tablist" aria-label="Log in or sign up" className="mt-5 flex rounded-full border border-white/20 p-0.5">
-            {(["login", "signup"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={mode === m}
-                onClick={() => switchMode(m)}
-                className={cn(
-                  "flex-1 rounded-full py-1.5 text-sm font-semibold transition-colors",
-                  mode === m ? "bg-white text-black" : "text-white/70 hover:text-white"
-                )}
-              >
-                {m === "login" ? "Log in" : "Sign up"}
-              </button>
-            ))}
-          </div>
+          <GlassSwitch
+            label="Log in or sign up"
+            value={mode}
+            onChange={switchMode}
+            options={[
+              { id: "login", label: "Log in" },
+              { id: "signup", label: "Sign up" },
+            ]}
+            className="mt-5"
+          />
 
           <div className="mt-5 space-y-2.5">
             <button type="button" className={social} disabled={!!busy} onClick={() => direct("google")}>

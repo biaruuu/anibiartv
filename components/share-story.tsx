@@ -1,5 +1,6 @@
 "use client"
 
+import { GlassSwitch } from "@/components/glass-switch"
 import * as React from "react"
 import { Download, Image as ImageIcon, Share2, X, Zap } from "lucide-react"
 
@@ -162,90 +163,44 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
           </button>
         </div>
 
-        <div role="tablist" aria-label="Screenshot, live or video" className="mx-4 mt-3 flex gap-1.5 sm:mx-5">
-          {(
-            [
-              { id: "image", label: "Screenshot", icon: ImageIcon },
-              { id: "live", label: "Live", icon: Zap },
-            ] as const
-          ).map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={kind === id}
-              disabled={id === "live" && !videoOk}
-              onClick={() => {
-                setNote(null)
-                setKind(id)
-              }}
-              className={cn(
-                "inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors disabled:opacity-40",
-                kind === id ? "border-white bg-white text-black" : "border-white/20 text-white/70 hover:text-white"
-              )}
-            >
-              <Icon className="size-4" />
-              {label}
-            </button>
-          ))}
+        <div className="mx-4 mt-3 grid gap-2 sm:mx-5">
+          <GlassSwitch
+            label="Screenshot or live"
+            value={kind}
+            onChange={(k) => {
+              setNote(null)
+              setKind(k)
+            }}
+            options={[
+              { id: "image", label: "Screenshot", icon: <ImageIcon className="size-4" /> },
+              { id: "live", label: "Live", icon: <Zap className="size-4" />, disabled: !videoOk },
+            ]}
+          />
+          <GlassSwitch
+            label="Show on the picture"
+            value={tab}
+            onChange={setTab}
+            options={(Object.keys(TAB_LABEL) as StoryTab[]).map((t) => ({ id: t, label: TAB_LABEL[t] }))}
+          />
+          <GlassSwitch
+            label="Picture size"
+            value={format}
+            onChange={setFormat}
+            options={(Object.keys(FORMAT_LABEL) as StoryFormat[]).map((f) => ({ id: f, label: FORMAT_LABEL[f] }))}
+          />
+          {kind === "live" && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/60">Length</span>
+              <GlassSwitch
+                label="Length"
+                value={String(seconds)}
+                onChange={(v) => setSeconds(Number(v))}
+                options={[5, 10, 20, 30, 60].map((n) => ({ id: String(n), label: `${n}s` }))}
+                className="min-w-0 flex-1"
+              />
+            </div>
+          )}
         </div>
-
-        <div role="tablist" aria-label="Show on the picture" className="mx-4 mt-2 flex rounded-full border border-white/20 p-0.5 sm:mx-5">
-          {(Object.keys(TAB_LABEL) as StoryTab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => setTab(t)}
-              className={cn(
-                "flex-1 rounded-full py-1.5 text-sm font-semibold transition-colors",
-                tab === t ? "bg-white text-black" : "text-white/70 hover:text-white"
-              )}
-            >
-              {TAB_LABEL[t]}
-            </button>
-          ))}
-        </div>
-
-        <div role="tablist" aria-label="Picture size" className="mx-4 mt-2 flex gap-1.5 sm:mx-5">
-          {(Object.keys(FORMAT_LABEL) as StoryFormat[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              role="tab"
-              aria-selected={format === f}
-              onClick={() => setFormat(f)}
-              className={cn(
-                "flex-1 rounded-full border px-2 py-1.5 text-xs font-semibold transition-colors",
-                format === f ? "border-white bg-white/15 text-white" : "border-white/20 text-white/60 hover:text-white"
-              )}
-            >
-              {FORMAT_LABEL[f]}
-            </button>
-          ))}
-        </div>
-
-        {kind === "live" && (
-          <div role="tablist" aria-label="Length" className="mx-4 mt-2 flex items-center gap-1.5 sm:mx-5">
-            <span className="mr-1 text-xs text-white/60">Length</span>
-            {[5, 10, 20, 30, 60].map((n) => (
-              <button
-                key={n}
-                type="button"
-                role="tab"
-                aria-selected={seconds === n}
-                onClick={() => setSeconds(n)}
-                className={cn(
-                  "flex-1 rounded-full border px-2 py-1 text-xs font-semibold transition-colors",
-                  seconds === n ? "border-white bg-white/15 text-white" : "border-white/20 text-white/60 hover:text-white"
-                )}
-              >
-                {n}s
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* preview in the chosen shape, as tall as the screen allows */}
         <div className="grid min-h-0 flex-1 place-items-center px-4 py-4 sm:px-5">

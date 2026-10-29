@@ -1,5 +1,6 @@
 "use client"
 
+import { GlassSwitch } from "@/components/glass-switch"
 import * as React from "react"
 import Link from "next/link"
 import {
@@ -320,27 +321,16 @@ function LatestEpisodes() {
           Latest Episodes
         </h2>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-          <div
-            role="tablist"
-            aria-label="Audio"
-            className="flex rounded-full border border-white/20 p-0.5"
-          >
-            {(["sub", "dub"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={mode === m}
-                onClick={() => setMode(m)}
-                className={cn(
-                  "rounded-full px-3.5 py-1 text-xs font-semibold capitalize transition-colors sm:px-5 sm:py-1.5 sm:text-sm",
-                  mode === m ? "bg-white text-black" : "text-white/70 hover:text-white"
-                )}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+          <GlassSwitch
+            label="Audio"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { id: "sub", label: "Sub" },
+              { id: "dub", label: "Dub" },
+            ]}
+            className="w-28 sm:w-36"
+          />
           <div className="flex items-center rounded-full border border-white/20 p-0.5">
             <button
               type="button"
