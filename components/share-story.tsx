@@ -212,7 +212,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               <>
                 <video key={videoUrl} src={videoUrl} autoPlay loop muted playsInline className="size-full object-contain" />
                 {kind === "live" && (
-                  <span className="pointer-events-none absolute top-2 left-2 inline-flex items-center gap-1 rounded-full glass-chip px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-white">
+                  <span className="pointer-events-none absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[0.65rem] font-bold tracking-wide text-white">
                     <Zap className="size-3 fill-current" />
                     LIVE
                   </span>

@@ -1,6 +1,6 @@
 {
   "name": "videoplayer",
-  "version": "1.36.5",
+  "version": "1.36.4",
   "private": true,
   "engines": {
     "node": ">=20.9.0"

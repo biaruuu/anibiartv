@@ -118,7 +118,7 @@ export function AuthForm() {
       <SiteHeader />
 
       <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center px-4 pt-20 pb-10 sm:pt-24">
-        <div className="rounded-2xl glass-card p-5 sm:p-7">
+        <div className="rounded-2xl border border-white/20 p-5 sm:p-7">
           <h1 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
             {mode === "login" ? "Welcome back" : "Create your account"}
           </h1>

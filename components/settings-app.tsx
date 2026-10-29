@@ -154,7 +154,7 @@ export function SettingsApp() {
 
       <main className="mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
         {ready && !user ? (
-          <div className="rounded-2xl glass-card p-6 text-center">
+          <div className="rounded-2xl border border-white/20 p-6 text-center">
             <p className="text-white/80">Log in to manage your account.</p>
             <Link href="/login?next=/settings" className="mt-4 inline-flex h-11 items-center rounded-full glass-white px-6 text-sm font-semibold text-black">
               Log in / Sign up
@@ -163,7 +163,7 @@ export function SettingsApp() {
         ) : (
           <section>
             <h2 className="mb-3 text-base text-white/60">Account Information</h2>
-            <ul className="overflow-hidden rounded-2xl glass-card">
+            <ul className="overflow-hidden rounded-2xl border border-white/20">
               {rows.map((r, i) => (
                 <li key={r.field} className={cn(i > 0 && "border-t border-white/15")}>
                   <button

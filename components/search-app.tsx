@@ -66,7 +66,7 @@ export function SearchApp() {
         </h1>
 
         {error && !items?.length ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl glass-card p-10 text-center">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
             <CircleAlert className="size-8 text-red-400" />
             <p className="text-white/80">{error}</p>
           </div>

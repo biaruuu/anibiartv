@@ -132,7 +132,7 @@ function Menu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-11 w-full items-center justify-between gap-2 rounded-xl glass-btn px-3.5 text-sm text-[#f2f3f5] transition-colors hover:bg-white/[0.07] sm:h-12"
+        className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-white/20 bg-white/[0.03] px-3.5 text-sm text-[#f2f3f5] transition-colors hover:bg-white/[0.07] sm:h-12"
       >
         {trigger(open)}
       </button>
@@ -268,7 +268,7 @@ function Seasons({ items }: { items: SeasonCard[] }) {
               />
               <span className="absolute inset-0 bg-black/45" />
               {s.current && (
-                <span className="absolute top-1.5 left-2 rounded-full glass-chip px-2 py-0.5 text-[0.65rem] font-semibold">
+                <span className="absolute top-1.5 left-2 rounded-md bg-black/70 px-2 py-0.5 text-[0.65rem] font-semibold">
                   Current
                 </span>
               )}
@@ -402,7 +402,7 @@ function EpisodePanel({
                       active ? "border-white/60 bg-white/10" : "border-white/15 hover:border-white/35 hover:bg-white/[0.04]"
                     )}
                   >
-                    <span className="relative aspect-[1.55] w-32 shrink-0 overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/15 sm:w-36">
+                    <span className="relative aspect-[1.55] w-32 shrink-0 overflow-hidden rounded-xl bg-white/5 sm:w-36">
                       {image && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={image} alt="" loading="lazy" className="size-full object-cover" />
@@ -412,7 +412,7 @@ function EpisodePanel({
                           <Play className="size-8 fill-white text-white" />
                         </span>
                       )}
-                      <span className="absolute bottom-1.5 left-1.5 rounded-full glass-chip px-2 py-0.5 text-[0.7rem] font-bold">
+                      <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[0.7rem] font-bold">
                         EP {e.number}
                       </span>
                     </span>
@@ -874,7 +874,7 @@ export function WatchApp({ id }: { id: number }) {
               </div>
 
               {/* Previous / Episodes / Next */}
-              <div className="grid h-11 grid-cols-[1fr_auto_1fr] overflow-hidden rounded-xl glass-card sm:h-12">
+              <div className="grid h-11 grid-cols-[1fr_auto_1fr] overflow-hidden rounded-xl border border-white/20 sm:h-12">
                 <button
                   type="button"
                   disabled={!prev}
@@ -911,7 +911,7 @@ export function WatchApp({ id }: { id: number }) {
                 <div className="flex gap-3.5 sm:gap-5">
                   <Link
                     href={infoHref({ id })}
-                    className="relative aspect-[2/3] w-[4.8rem] shrink-0 overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/15 sm:w-28"
+                    className="relative aspect-[2/3] w-[4.8rem] shrink-0 overflow-hidden rounded-xl bg-white/5 sm:w-28"
                   >
                     {anime && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -946,7 +946,7 @@ export function WatchApp({ id }: { id: number }) {
                     onClick={toggleLoved}
                     aria-label={loved ? "Remove from favorites" : "Add to favorites"}
                     aria-pressed={loved}
-                    className="grid size-11 shrink-0 place-items-center rounded-xl glass-btn transition-colors sm:size-12"
+                    className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/25 bg-white/[0.06] transition-colors hover:bg-white/15 sm:size-12"
                   >
                     <Heart className={cn("size-5", loved && "fill-red-500 text-red-500")} />
                   </button>
@@ -955,7 +955,7 @@ export function WatchApp({ id }: { id: number }) {
                     onClick={toggleSaved}
                     aria-label={saved ? "Remove from watchlist" : "Add to watchlist"}
                     aria-pressed={saved}
-                    className="grid size-11 shrink-0 place-items-center rounded-xl glass-btn transition-colors sm:size-12"
+                    className="grid size-11 shrink-0 place-items-center rounded-xl border border-white/25 bg-white/[0.06] transition-colors hover:bg-white/15 sm:size-12"
                   >
                     {saved ? <Check className="size-5" /> : <Plus className="size-5" />}
                   </button>
@@ -1004,7 +1004,7 @@ export function WatchApp({ id }: { id: number }) {
               {eps ? (
                 <EpisodePanel {...panelProps} className="max-h-[calc(100svh-6.5rem)]" />
               ) : epsError ? (
-                <div className="rounded-3xl glass-card p-6 text-center">
+                <div className="rounded-3xl border border-white/10 bg-[#0b0b0d] p-6 text-center">
                   <CircleAlert className="mx-auto mb-2 size-6 text-white/70" />
                   <p className="text-sm font-semibold">Episodes unavailable</p>
                   <p className="mt-1 text-xs text-[#949ba4]">{epsError}</p>
@@ -1018,7 +1018,7 @@ export function WatchApp({ id }: { id: number }) {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2 rounded-3xl glass-card p-3">
+                <div className="space-y-2 rounded-3xl border border-white/10 bg-[#0b0b0d] p-3">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <Skeleton key={i} className="h-24 w-full rounded-2xl" />
                   ))}
@@ -1030,7 +1030,7 @@ export function WatchApp({ id }: { id: number }) {
 
         {/* Not enough room on a phone for the drawer to show errors, so show them inline */}
         {!isDesktop && epsError && (
-          <p className="mx-3.5 mt-4 flex items-center gap-2 rounded-xl glass-card p-3 text-xs text-[#949ba4]">
+          <p className="mx-3.5 mt-4 flex items-center gap-2 rounded-xl border border-white/15 p-3 text-xs text-[#949ba4]">
             <X className="size-4 shrink-0" />
             {epsError}
           </p>

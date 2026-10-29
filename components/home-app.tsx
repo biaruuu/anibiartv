@@ -200,7 +200,7 @@ function EpisodeCard({ item, dub }: { item: LatestEpisode; dub?: boolean }) {
   const meta = a.format === "TV_SHORT" ? "TV" : (a.format ?? "TV").replace("_", " ")
   return (
     <Link href={dub ? `/watch/${a.id}?ep=${item.episode}&audio=dub` : infoHref(a)} className="group block min-w-0">
-      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/15">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={a.coverImage.extraLarge ?? a.coverImage.large ?? ""}
@@ -211,7 +211,7 @@ function EpisodeCard({ item, dub }: { item: LatestEpisode; dub?: boolean }) {
         <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
         <span
           className={cn(
-            "absolute top-2 right-2 grid size-8 place-items-center rounded-full glass-btn text-white opacity-0 transition-opacity group-hover:opacity-100"
+            "absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100"
           )}
         >
           <Plus className="size-4" />
@@ -219,19 +219,19 @@ function EpisodeCard({ item, dub }: { item: LatestEpisode; dub?: boolean }) {
         <span className="absolute inset-0 grid place-items-center text-white opacity-0 transition-opacity group-hover:opacity-100">
           <Play className="size-10 fill-current drop-shadow-lg" />
         </span>
-        <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between rounded-lg glass-chip px-2 py-1.5 text-[0.7rem] font-semibold whitespace-nowrap text-white min-[400px]:text-xs sm:px-3 sm:text-sm">
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/80 to-transparent px-2 pt-8 pb-2 text-[0.7rem] font-semibold whitespace-nowrap text-white min-[400px]:text-xs sm:px-3 sm:text-sm">
           <span>EP {item.episode}</span>
           <span>{timeAgo(item.airingAt)}</span>
         </div>
       </div>
       <div className="mt-2 flex flex-wrap gap-1 text-[0.65rem] leading-none text-white/70 sm:gap-1.5 sm:text-xs">
-        <span className="inline-flex items-center gap-1 rounded-full glass-chip px-2 py-1 sm:px-2.5 sm:py-1.5">
+        <span className="inline-flex items-center gap-1 rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5 group-hover:bg-lime-300/10">
           <Captions className="size-3 sm:size-3.5" />
           {item.episode}
         </span>
-        <span className="rounded-full glass-chip px-2 py-1 sm:px-2.5 sm:py-1.5">{meta}</span>
+        <span className="rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5 group-hover:bg-lime-300/10">{meta}</span>
         {a.seasonYear && (
-          <span className="rounded-full glass-chip px-2 py-1 sm:px-2.5 sm:py-1.5">
+          <span className="rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5 group-hover:bg-lime-300/10">
             {a.seasonYear}
           </span>
         )}
@@ -358,7 +358,7 @@ function LatestEpisodes() {
       </div>
 
       {mode === "dub" && items && (
-        <p className="mb-5 flex items-center gap-2 rounded-xl glass-card p-3 text-sm text-white/70">
+        <p className="mb-5 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
           {dub.pending > 0 ? (
             <>
               <Spinner className="size-4" /> Checking which of these episodes have an English dub…
@@ -372,7 +372,7 @@ function LatestEpisodes() {
       )}
 
       {error ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl glass-card p-10 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
           <CircleAlert className="size-8 text-red-400" />
           <p className="text-white/80">{error}</p>
           <Button variant="secondary" onClick={() => setRetry((r) => r + 1)}>
@@ -430,7 +430,7 @@ function RankedPanel({
   const visible = items?.slice(0, shown) ?? []
 
   return (
-    <section className="min-w-0 rounded-2xl glass-card p-3 sm:p-4">
+    <section className="min-w-0 rounded-2xl border border-white/20 p-3 sm:p-4">
       <h2 className="mb-3 flex items-center gap-2 px-1 pt-1 text-base font-semibold tracking-wide text-white uppercase sm:text-lg">
         <ChevronRight className="size-5" />
         {title}
@@ -454,7 +454,7 @@ function RankedPanel({
           {visible.map((a) => {
             const eps = a.nextAiringEpisode ? a.nextAiringEpisode.episode - 1 : a.episodes
             const pill =
-              "inline-flex items-center gap-1 rounded-full glass-chip px-2 py-1 sm:px-2.5 sm:py-1.5"
+              "inline-flex items-center gap-1 rounded bg-white/[0.07] px-1.5 py-1 sm:px-2 sm:py-1.5"
             return (
               <li key={a.id}>
                 <Link

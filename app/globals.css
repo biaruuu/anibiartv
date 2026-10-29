@@ -450,25 +450,3 @@ html {
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
     inset 0 -1px 0 rgba(255, 255, 255, 0.05);
 }
-
-/* Glass cards and chips: panels, rows, tags and badges on posters */
-.glass-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025));
-  -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  backdrop-filter: blur(16px) saturate(1.6);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.03);
-}
-.glass-chip {
-  color: #f2f3f5;
-  background: linear-gradient(180deg, rgba(70, 70, 78, 0.55), rgba(18, 18, 22, 0.62));
-  -webkit-backdrop-filter: blur(12px) saturate(1.7);
-  backdrop-filter: blur(12px) saturate(1.7);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-}
