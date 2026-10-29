@@ -74,7 +74,7 @@ function EditSheet({ field, initial, onClose }: { field: Field; initial: string;
         aria-modal="true"
         aria-label={c.title}
         onClick={(e) => e.stopPropagation()}
-        className="w-full rounded-t-2xl border border-white/20 bg-[#000000] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-2xl sm:pb-5"
+        className="w-full rounded-t-2xl glass-panel p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-2xl sm:pb-5"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">{c.title}</h2>

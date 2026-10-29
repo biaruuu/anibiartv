@@ -258,7 +258,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
       <div className="pointer-events-none fixed inset-0 z-[55] bg-black/40" aria-hidden="true" />
       <div
         ref={panel}
-        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 bg-[#000000]/75 backdrop-blur-md"
+        className="fixed inset-x-0 top-0 z-[60] border-b border-white/15 glass-panel"
       >
         <form onSubmit={submit} className="mx-auto flex h-14 w-full max-w-3xl items-center gap-2 px-3 sm:h-16 sm:px-4">
           <button
@@ -408,7 +408,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function SiteHeader() {
+export function SiteHeader({ inline = false }: { inline?: boolean } = {}) {
   const [searching, setSearching] = React.useState(false)
   const [scrolled, setScrolled] = React.useState(false)
   const [menuOpen, setMenuOpen] = React.useState(false)
@@ -430,9 +430,10 @@ export function SiteHeader() {
     <>
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-40 border-b transition-colors duration-200",
-          scrolled || menuOpen
-            ? "border-white/15 bg-[#000000]/60 backdrop-blur-lg backdrop-saturate-150"
+          "inset-x-0 top-0 z-40 border-b transition-colors duration-200",
+          inline ? "relative" : "fixed",
+          inline || scrolled || menuOpen
+            ? "border-white/15 glass-panel"
             : "border-transparent bg-transparent"
         )}
       >
@@ -464,7 +465,7 @@ export function SiteHeader() {
           <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-30 cursor-default bg-black/60" />
           <nav
             aria-label="Main menu"
-            className="fixed inset-x-3 top-[3.75rem] z-40 mx-auto flex max-h-[calc(100svh-4.5rem)] max-w-md flex-col gap-2 overflow-y-auto rounded-2xl border border-white/15 bg-[#000000]/95 p-2 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:top-[4.25rem] sm:right-8 sm:left-auto sm:mx-0 sm:w-80"
+            className="fixed inset-x-3 top-[3.75rem] z-40 mx-auto flex max-h-[calc(100svh-4.5rem)] max-w-md flex-col gap-2 overflow-y-auto rounded-2xl glass-panel p-2 sm:inset-x-auto sm:top-[4.25rem] sm:right-8 sm:left-auto sm:mx-0 sm:w-80"
           >
             {auth.user ? (
               <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5 hover:bg-white/10">

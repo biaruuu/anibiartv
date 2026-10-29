@@ -131,7 +131,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
         aria-modal="true"
         aria-label="Edit profile"
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[94svh] w-full overflow-y-auto rounded-t-2xl border border-white/20 bg-[#000000] sm:max-w-lg sm:rounded-2xl"
+        className="max-h-[94svh] w-full overflow-y-auto rounded-t-2xl glass-panel sm:max-w-lg sm:rounded-2xl"
       >
         <div className="flex items-center justify-between px-4 pt-4 sm:px-6 sm:pt-5">
           <h2 className="text-lg font-semibold text-white">Edit profile</h2>

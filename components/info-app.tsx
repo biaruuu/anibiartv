@@ -145,7 +145,7 @@ function Dropdown({
         <ul
           role="listbox"
           aria-label={label}
-          className="absolute top-full right-0 z-30 mt-2 max-h-72 w-max min-w-full overflow-y-auto rounded-xl border border-white/20 bg-[#101012]/90 py-1.5 shadow-2xl backdrop-blur-xl"
+          className="absolute top-full right-0 z-30 mt-2 max-h-72 w-max min-w-full overflow-y-auto rounded-xl glass-panel py-1.5"
         >
           {options.map((o) => (
             <li key={o.value} role="option" aria-selected={o.value === value}>

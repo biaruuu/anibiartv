@@ -154,7 +154,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
         aria-modal="true"
         aria-label="Share your profile"
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[96svh] w-full flex-col overflow-hidden rounded-t-2xl border border-white/20 bg-[#000000] sm:max-w-md sm:rounded-2xl"
+        className="flex max-h-[96svh] w-full flex-col overflow-hidden rounded-t-2xl glass-panel sm:max-w-md sm:rounded-2xl"
       >
         <div className="flex items-center justify-between px-4 pt-4 sm:px-5">
           <h2 className="text-lg font-semibold text-white">Share your profile</h2>

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.36.4
+
+- Watch page: the search and menu buttons no longer float over the video. The header is now a normal glass bar above the player (it scrolls away with the page), and the player sits right under it with no gap.
+- Glass panels (`glass-panel`) on the header bar, the menu, dropdown menus (Audio, Server, season and episode pickers), dialogs (Edit profile, Share, Settings) and the desktop-site notice. The remove button on Continue Watching cards is glass too.
+
 ## 1.36.3
 
 - Glass buttons everywhere: primary buttons are white glass, secondary and icon buttons (close, back, menu, share and so on) are dark glass, Edit profile is blue glass, destructive buttons are red glass. They share the same blur, highlight and press effect as the bottom bar and the switches. The shared `Button` component uses the same styles, so new buttons get them too. The video player's own controls are unchanged.

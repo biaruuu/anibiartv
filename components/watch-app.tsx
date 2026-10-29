@@ -140,7 +140,7 @@ function Menu({
         <div
           role="menu"
           className={cn(
-            "absolute inset-x-0 top-full z-30 mt-2 max-h-[min(20rem,60svh)] overflow-y-auto overscroll-contain rounded-xl border border-white/20 bg-[#101012]/95 py-1.5 shadow-2xl backdrop-blur-xl",
+            "absolute inset-x-0 top-full z-30 mt-2 max-h-[min(20rem,60svh)] overflow-y-auto overscroll-contain rounded-xl glass-panel py-1.5",
             "sm:inset-x-auto sm:w-max sm:max-w-[22rem] sm:min-w-full",
             align === "right" ? "sm:right-0" : "sm:left-0"
           )}
@@ -680,7 +680,7 @@ export function WatchApp({ id }: { id: number }) {
   /* ------------------------------ render ------------------------------ */
   return (
     <div className="min-h-svh overflow-x-clip bg-[#000000] text-[#f2f3f5]">
-      <SiteHeader />
+      <SiteHeader inline />
 
       {/* Blurred artwork behind the top of the page, like Miruro */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] overflow-hidden">
@@ -691,7 +691,7 @@ export function WatchApp({ id }: { id: number }) {
         <div className="absolute inset-0 bg-gradient-to-b from-[#000000]/20 via-[#000000]/70 to-[#000000]" />
       </div>
 
-      <main className="relative mx-auto w-full max-w-[96rem] px-0 pt-14 pb-10 sm:px-6 sm:pt-20 lg:px-8">
+      <main className="relative mx-auto w-full max-w-[96rem] px-0 pt-0 pb-10 sm:px-6 sm:pt-3 lg:px-8">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start lg:gap-6">
           <div className="min-w-0">
             {/* Player */}

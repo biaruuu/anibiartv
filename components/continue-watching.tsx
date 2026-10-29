@@ -72,7 +72,7 @@ export function HistoryCard({ h, onRemove, className }: { h: HistoryItem; onRemo
         type="button"
         aria-label={`Remove ${h.title} from history`}
         onClick={onRemove}
-        className="absolute top-2 right-2 grid size-8 place-items-center rounded-full bg-black/55 text-white/90 backdrop-blur transition-colors hover:bg-black/80"
+        className="absolute top-2 right-2 grid size-8 place-items-center rounded-full text-white/90 glass-btn"
       >
         <X className="size-4" />
       </button>
