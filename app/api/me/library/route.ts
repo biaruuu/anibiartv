@@ -9,7 +9,18 @@ export const dynamic = "force-dynamic"
 
 const NO_STORE = { "Cache-Control": "private, no-store" }
 
-async function whoAmI() {
+async function whoAmI(req?: Request) {
+  // The Android app has no cookies: it sends its Supabase access token instead.
+  const header = req?.headers.get("authorization") ?? ""
+  const bearer = /^bearer\s+/i.test(header) ? header.replace(/^bearer\s+/i, "").trim() : null
+  if (bearer) {
+    const supabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
+      cookies: { getAll: () => [], setAll: () => {} },
+      global: { headers: { Authorization: `Bearer ${bearer}` } },
+    })
+    const { data } = await supabase.auth.getUser(bearer)
+    return data.user ? { id: data.user.id, supabase } : null
+  }
   const store = await cookies()
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
     cookies: {
@@ -35,7 +46,7 @@ type Bundle = { v: string; profile: unknown; history: unknown[]; favorites: unkn
  * if nothing changed only `{ changed: false }` comes back (this is what the real-time polling uses).
  */
 export async function GET(req: Request) {
-  const me = await whoAmI()
+  const me = await whoAmI(req)
   if (!me) return NextResponse.json({ error: "Not signed in" }, { status: 401, headers: NO_STORE })
 
   const known = new URL(req.url).searchParams.get("v")
@@ -66,8 +77,8 @@ export async function GET(req: Request) {
 }
 
 /** Called after a write to Supabase: clears the cached copy and moves the version (so other devices update). */
-export async function POST() {
-  const me = await whoAmI()
+export async function POST(req: Request) {
+  const me = await whoAmI(req)
   if (!me) return NextResponse.json({ error: "Not signed in" }, { status: 401, headers: NO_STORE })
   const v = await redisBump(me.id)
   return NextResponse.json({ ok: true, v }, { headers: NO_STORE })

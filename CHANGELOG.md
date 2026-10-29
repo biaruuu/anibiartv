@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.36.6
+
+- `/api/me/library` also accepts a Supabase access token (`Authorization: Bearer ...`), so the AniBiar Android app can refresh the cached library and other devices see its changes right away. Website behaviour is unchanged.
+
 ## 1.36.4
 
 - Watch page: the search and menu buttons no longer float over the video. The header is now a normal glass bar above the player (it scrolls away with the page), and the player sits right under it with no gap.
