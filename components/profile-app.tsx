@@ -119,7 +119,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
   }
 
   const btn =
-    "inline-flex h-10 items-center gap-1.5 rounded-full border border-white/25 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+    "inline-flex h-10 items-center gap-1.5 rounded-full border border-white/25 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50 glass-btn"
   const input =
     "w-full rounded-xl border border-white/20 bg-transparent px-4 text-base text-white outline-none placeholder:text-white/40 focus:border-white/60 sm:text-sm"
   const label = "mb-2 block text-xs font-semibold tracking-wide text-white/50 uppercase"
@@ -135,7 +135,7 @@ function EditProfile({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between px-4 pt-4 sm:px-6 sm:pt-5">
           <h2 className="text-lg font-semibold text-white">Edit profile</h2>
-          <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className="grid size-9 place-items-center rounded-full text-white/80 hover:bg-white/10">
+          <button type="button" aria-label="Close" disabled={busy} onClick={onClose} className="grid size-9 place-items-center rounded-full text-white/80 hover:bg-white/10 glass-btn">
             <X className="size-5" />
           </button>
         </div>
@@ -236,14 +236,14 @@ function EditProfile({ onClose }: { onClose: () => void }) {
           )}
 
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} disabled={busy} className="h-11 rounded-full border border-white/25 px-5 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-50">
+            <button type="button" onClick={onClose} disabled={busy} className="h-11 rounded-full border border-white/25 px-5 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-50 glass-btn">
               Cancel
             </button>
             <button
               type="button"
               onClick={save}
               disabled={busy}
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-60"
+              className="inline-flex h-11 items-center gap-2 rounded-full glass-white px-6 text-sm font-semibold text-black disabled:opacity-60"
             >
               {busy && <Spinner className="size-4" />}
               Save
@@ -354,7 +354,7 @@ export function ProfileApp() {
               type="button"
               aria-label="Close profile"
               onClick={close}
-              className="absolute top-3 left-3 grid size-11 place-items-center rounded-xl bg-black/65 text-white transition-colors hover:bg-black/80 sm:top-4 sm:left-4"
+              className="absolute top-3 left-3 grid size-11 place-items-center rounded-xl bg-black/65 text-white transition-colors hover:bg-black/80 sm:top-4 sm:left-4 glass-btn"
             >
               <X className="size-6" />
             </button>
@@ -378,7 +378,7 @@ export function ProfileApp() {
                   <button
                     type="button"
                     onClick={() => setEditing(true)}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#5865f2] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#4752c4] sm:flex-none"
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl glass-accent px-5 text-sm font-semibold text-white transition-colors sm:flex-none"
                   >
                     <Pencil className="size-4" />
                     Edit profile
@@ -386,7 +386,7 @@ export function ProfileApp() {
                   <button
                     type="button"
                     onClick={() => setSharing(true)}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-white/25 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:flex-none"
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-white/25 px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:flex-none glass-btn"
                   >
                     <Share2 className="size-4" />
                     Share
@@ -396,7 +396,7 @@ export function ProfileApp() {
                 ready && (
                   <Link
                     href="/login?next=/profile"
-                    className="inline-flex h-10 w-full shrink-0 items-center justify-center rounded-xl bg-white px-5 text-sm font-semibold text-black hover:bg-white/90 sm:w-auto"
+                    className="inline-flex h-10 w-full shrink-0 items-center justify-center rounded-xl glass-white px-5 text-sm font-semibold text-black sm:w-auto"
                   >
                     Log in / Sign up
                   </Link>

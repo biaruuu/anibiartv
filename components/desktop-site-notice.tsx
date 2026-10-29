@@ -33,7 +33,7 @@ export function DesktopSiteNotice() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="mt-3 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-black hover:bg-white/90"
+            className="mt-3 rounded-full glass-white px-4 py-1.5 text-xs font-semibold text-black"
           >
             I turned it off, reload
           </button>

@@ -78,7 +78,7 @@ function EditSheet({ field, initial, onClose }: { field: Field; initial: string;
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">{c.title}</h2>
-          <button type="button" aria-label="Close" onClick={onClose} className="grid size-9 place-items-center rounded-full text-white/80 hover:bg-white/10">
+          <button type="button" aria-label="Close" onClick={onClose} className="grid size-9 place-items-center rounded-full text-white/80 hover:bg-white/10 glass-btn">
             <X className="size-5" />
           </button>
         </div>
@@ -109,14 +109,14 @@ function EditSheet({ field, initial, onClose }: { field: Field; initial: string;
         )}
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="h-11 rounded-full border border-white/25 px-5 text-sm font-semibold text-white hover:bg-white/10">
+          <button type="button" onClick={onClose} className="h-11 rounded-full border border-white/25 px-5 text-sm font-semibold text-white hover:bg-white/10 glass-btn">
             {done ? "Close" : "Cancel"}
           </button>
           {!done && (
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-60"
+              className="inline-flex h-11 items-center gap-2 rounded-full glass-white px-6 text-sm font-semibold text-black disabled:opacity-60"
             >
               {busy && <Spinner className="size-4" />}
               Save
@@ -145,7 +145,7 @@ export function SettingsApp() {
     <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
       <header className="sticky top-0 z-10 border-b border-white/15 bg-[#000000]">
         <div className="mx-auto flex h-14 w-full max-w-2xl items-center gap-3 px-4 sm:h-16 sm:px-6">
-          <button type="button" aria-label="Back" onClick={back} className="grid size-10 place-items-center rounded-full text-white hover:bg-white/10">
+          <button type="button" aria-label="Back" onClick={back} className="grid size-10 place-items-center rounded-full text-white hover:bg-white/10 glass-btn">
             <ArrowLeft className="size-6" />
           </button>
           <h1 className="text-lg font-semibold text-white sm:text-xl">Settings</h1>
@@ -156,7 +156,7 @@ export function SettingsApp() {
         {ready && !user ? (
           <div className="rounded-2xl border border-white/20 p-6 text-center">
             <p className="text-white/80">Log in to manage your account.</p>
-            <Link href="/login?next=/settings" className="mt-4 inline-flex h-11 items-center rounded-full bg-white px-6 text-sm font-semibold text-black hover:bg-white/90">
+            <Link href="/login?next=/settings" className="mt-4 inline-flex h-11 items-center rounded-full glass-white px-6 text-sm font-semibold text-black">
               Log in / Sign up
             </Link>
           </div>

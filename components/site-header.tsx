@@ -265,7 +265,7 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
             type="button"
             aria-label="Close search"
             onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-full text-white/90 hover:bg-white/10"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-white/90 hover:bg-white/10 glass-btn"
           >
             <ArrowLeft className="size-6" />
           </button>
@@ -443,7 +443,7 @@ export function SiteHeader() {
               type="button"
               aria-label="Search"
               onClick={() => setSearching(true)}
-              className="grid size-10 place-items-center rounded-full text-white/90 transition-colors hover:bg-white/10"
+              className="grid size-10 place-items-center rounded-full text-white/90 transition-colors hover:bg-white/10 glass-btn"
             >
               <Search className="size-5" />
             </button>
@@ -452,7 +452,7 @@ export function SiteHeader() {
               aria-label="Menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((o) => !o)}
-              className="grid size-10 place-items-center rounded-full text-white/90 transition-colors hover:bg-white/10"
+              className="grid size-10 place-items-center rounded-full text-white/90 transition-colors hover:bg-white/10 glass-btn"
             >
               {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
             </button>

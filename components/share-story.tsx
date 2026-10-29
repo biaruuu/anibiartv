@@ -158,7 +158,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
       >
         <div className="flex items-center justify-between px-4 pt-4 sm:px-5">
           <h2 className="text-lg font-semibold text-white">Share your profile</h2>
-          <button type="button" aria-label="Close" onClick={onClose} className="grid size-9 place-items-center rounded-full text-white/80 hover:bg-white/10">
+          <button type="button" aria-label="Close" onClick={onClose} className="grid size-9 place-items-center rounded-full text-white/80 hover:bg-white/10 glass-btn">
             <X className="size-5" />
           </button>
         </div>
@@ -246,7 +246,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
               type="button"
               onClick={save}
               disabled={!fileUrl}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-white text-sm font-semibold text-black transition-colors hover:bg-white/90 disabled:opacity-50"
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full glass-white text-sm font-semibold text-black transition-colors disabled:opacity-50"
             >
               <Download className="size-4" />
               {kind === "live" ? "Save live photo" : "Save image"}
@@ -256,7 +256,7 @@ export function ShareStory({ tab: startTab, onClose, ...data }: Props) {
                 type="button"
                 onClick={share}
                 disabled={!fileBlob}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-white/25 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-white/25 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50 glass-btn"
               >
                 <Share2 className="size-4" />
                 Share

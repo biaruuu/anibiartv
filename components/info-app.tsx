@@ -465,7 +465,7 @@ function Content({ a }: { a: Detail }) {
               target="_blank"
               rel="noreferrer"
               aria-label="AniList"
-              className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 text-sm font-bold hover:bg-white/10"
+              className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 text-sm font-bold hover:bg-white/10 glass-btn"
             >
               AL
             </a>
@@ -475,7 +475,7 @@ function Content({ a }: { a: Detail }) {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="MyAnimeList"
-                className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 text-xs font-bold text-blue-300 hover:bg-white/10"
+                className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 text-xs font-bold text-blue-300 hover:bg-white/10 glass-btn"
               >
                 MAL
               </a>
@@ -491,7 +491,7 @@ function Content({ a }: { a: Detail }) {
                   rel="noreferrer"
                   aria-label={l.site}
                   title={l.site}
-                  className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 hover:bg-white/10"
+                  className="grid size-9 place-items-center sm:size-11 rounded-lg border border-white/25 hover:bg-white/10 glass-btn"
                   style={l.color ? { color: l.color } : undefined}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -516,7 +516,7 @@ function ActionButtons({ a, title }: { a: Detail; title: string }) {
     <>
       <Button
         asChild
-        className="h-10 flex-[1.4] rounded-lg bg-white text-sm font-semibold text-black hover:bg-white/90 sm:h-11 sm:text-base"
+        className="h-10 flex-[1.4] rounded-lg glass-white text-sm font-semibold text-black sm:h-11 sm:text-base"
       >
         <Link href={`/watch/${a.id}?ep=1`} aria-label={`Watch ${title}`}>
           <Play className="fill-current" />
@@ -526,7 +526,7 @@ function ActionButtons({ a, title }: { a: Detail; title: string }) {
       <Button
         type="button"
         variant="outline"
-        className="h-10 flex-1 rounded-lg border-white/25 bg-white/[0.06] text-sm font-semibold text-white hover:bg-white/10 hover:text-white sm:h-11 sm:text-base"
+        className="h-10 flex-1 rounded-lg border-white/25 bg-white/[0.06] text-sm font-semibold text-white hover:bg-white/10 hover:text-white sm:h-11 sm:text-base glass-btn"
       >
         <Plus />
         Add to List

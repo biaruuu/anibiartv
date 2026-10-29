@@ -144,7 +144,7 @@ function Hero({
           <Button
             asChild
             size="lg"
-            className="h-10 rounded-lg bg-white px-5 text-sm font-semibold text-black hover:bg-white/90 sm:h-11 sm:text-base"
+            className="h-10 rounded-lg glass-white px-5 text-sm font-semibold text-black sm:h-11 sm:text-base"
           >
             <Link href={watchHref(a, 1)}>
               <Play className="fill-current" />

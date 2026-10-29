@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.36.3
+
+- Glass buttons everywhere: primary buttons are white glass, secondary and icon buttons (close, back, menu, share and so on) are dark glass, Edit profile is blue glass, destructive buttons are red glass. They share the same blur, highlight and press effect as the bottom bar and the switches. The shared `Button` component uses the same styles, so new buttons get them too. The video player's own controls are unchanged.
+
 ## 1.36.2
 
 - New glass switch (`components/glass-switch.tsx`): a dark glass track with a white glass bubble that slides to the chosen option, same look as the bottom bar. Used for Sub / Dub on the home page, Screenshot / Live, the tab, size and length pickers in Share, and Log in / Sign up.

@@ -111,7 +111,7 @@ export function AuthForm() {
   const field =
     "h-12 w-full rounded-xl border border-white/20 bg-transparent px-4 text-base text-white outline-none transition-colors placeholder:text-white/40 focus:border-white/60 sm:text-sm"
   const social =
-    "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-white/20 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60"
+    "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-white/20 text-sm font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 glass-btn"
 
   return (
     <div className="min-h-svh bg-[#000000] text-[#f2f3f5]">
@@ -198,7 +198,7 @@ export function AuthForm() {
             <button
               type="submit"
               disabled={!!busy}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-semibold text-black transition-colors hover:bg-white/90 disabled:opacity-60"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl glass-white text-sm font-semibold text-black transition-colors disabled:opacity-60"
             >
               {busy === "email" && <Spinner className="size-4" />}
               {mode === "login" ? "Log in" : "Create account"}

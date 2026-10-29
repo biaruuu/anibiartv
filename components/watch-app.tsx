@@ -326,7 +326,7 @@ function EpisodePanel({
   }, [current, reverse, grid])
 
   const iconBtn =
-    "grid size-10 place-items-center rounded-xl border border-white/20 text-white/90 transition-colors hover:bg-white/10 sm:size-11"
+    "grid size-10 place-items-center rounded-xl border border-white/20 text-white/90 transition-colors hover:bg-white/10 sm:size-11 glass-btn"
 
   return (
     <section className={cn("flex min-h-0 flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b0d]", className)}>
@@ -744,7 +744,7 @@ export function WatchApp({ id }: { id: number }) {
                         <button
                           type="button"
                           onClick={() => (epsError ? setEpsTry((n) => n + 1) : setWatchTry((n) => n + 1))}
-                          className="mt-1 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-white/85"
+                          className="mt-1 inline-flex items-center gap-2 rounded-full glass-white px-4 py-2 text-xs font-semibold text-black"
                         >
                           <RotateCcw className="size-3.5" />
                           Try again
@@ -1011,7 +1011,7 @@ export function WatchApp({ id }: { id: number }) {
                   <button
                     type="button"
                     onClick={() => setEpsTry((n) => n + 1)}
-                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-black"
+                    className="mt-3 inline-flex items-center gap-2 rounded-full glass-white px-4 py-2 text-xs font-semibold text-black"
                   >
                     <RotateCcw className="size-3.5" />
                     Try again
