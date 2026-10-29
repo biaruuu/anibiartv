@@ -160,7 +160,7 @@ function Dropdown({
                 <span>{o.value}</span>
                 <span className="flex items-center gap-3">
                   {o.count !== undefined && (
-                    <span className="rounded-full bg-black/40 px-2 py-0.5 text-[0.65rem] text-white/80 tabular-nums sm:text-xs">
+                    <span className="rounded-full glass-chip px-2 py-0.5 text-[0.65rem] text-white/80 tabular-nums sm:text-xs">
                       {o.count}
                     </span>
                   )}
@@ -190,7 +190,7 @@ function PosterCard({
 }) {
   const body = (
     <>
-      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/15">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={anime.coverImage.extraLarge ?? anime.coverImage.large ?? ""}
@@ -199,7 +199,7 @@ function PosterCard({
           className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         {badge && (
-          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-[0.65rem] leading-none font-semibold text-white sm:text-xs">
+          <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full glass-chip px-2.5 py-1 text-[0.65rem] leading-none font-semibold text-white sm:text-xs">
             {current && <Check className="size-3" />}
             {badge}
           </span>
@@ -884,7 +884,7 @@ function Characters({ a }: { a: Detail }) {
         }
       />
       {error && !edges?.length ? (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-white/15 p-4 text-sm text-white/70">
+        <div className="flex items-center justify-between gap-3 rounded-xl glass-card p-4 text-sm text-white/70">
           <span>Couldn&apos;t load characters.</span>
           <Button variant="secondary" size="sm" onClick={() => setRetry((r) => r + 1)}>
             Try again
@@ -903,7 +903,7 @@ function Characters({ a }: { a: Detail }) {
             return (
               <li
                 key={`${e.node.id}-${i}`}
-                className="flex h-[4.5rem] items-stretch overflow-hidden rounded-xl border border-white/20 bg-[#0b0b0d] sm:h-24"
+                className="flex h-[4.5rem] items-stretch overflow-hidden rounded-xl glass-card sm:h-24"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={e.node.image.large ?? ""} alt="" loading="lazy" className="w-12 shrink-0 object-cover sm:w-16" />
@@ -986,7 +986,7 @@ function Gallery({ a, title }: { a: Detail; title: string }) {
       {open ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
           {list.map((i) => (
-            <div key={i.url} className="overflow-hidden rounded-xl border border-white/15 bg-white/5">
+            <div key={i.url} className="overflow-hidden rounded-xl glass-card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={i.url} alt="" loading="lazy" className="size-full object-cover" />
             </div>

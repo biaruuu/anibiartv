@@ -468,7 +468,7 @@ export function SiteHeader({ inline = false }: { inline?: boolean } = {}) {
             className="fixed inset-x-3 top-[3.75rem] z-40 mx-auto flex max-h-[calc(100svh-4.5rem)] max-w-md flex-col gap-2 overflow-y-auto rounded-2xl glass-panel p-2 sm:inset-x-auto sm:top-[4.25rem] sm:right-8 sm:left-auto sm:mx-0 sm:w-80"
           >
             {auth.user ? (
-              <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5 hover:bg-white/10">
+              <Link href="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl glass-card p-2.5 hover:bg-white/10">
                 <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-[#141416] text-white/70">
                   {auth.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -484,7 +484,7 @@ export function SiteHeader({ inline = false }: { inline?: boolean } = {}) {
                 <ChevronRight className="size-4 text-white/60" />
               </Link>
             ) : (
-              <Link href="/login" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 p-2.5 hover:bg-white/10">
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl glass-card p-2.5 hover:bg-white/10">
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-violet-500/25 text-violet-200">
                   <User className="size-5" />
                 </span>
@@ -497,7 +497,7 @@ export function SiteHeader({ inline = false }: { inline?: boolean } = {}) {
               <Link
                 href="/"
                 onClick={() => setMenuOpen(false)}
-                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/15 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl glass-card py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
               >
                 <Home className="size-5 text-white/70" />
                 Home
@@ -508,7 +508,7 @@ export function SiteHeader({ inline = false }: { inline?: boolean } = {}) {
                   setMenuOpen(false)
                   setSearching(true)
                 }}
-                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/15 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl glass-card py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
               >
                 <Search className="size-5 text-white/70" />
                 Search
@@ -516,7 +516,7 @@ export function SiteHeader({ inline = false }: { inline?: boolean } = {}) {
               <Link
                 href="/settings"
                 onClick={() => setMenuOpen(false)}
-                className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-white/15 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl glass-card py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
               >
                 <Settings className="size-5 text-white/70" />
                 Settings
@@ -531,13 +531,13 @@ export function SiteHeader({ inline = false }: { inline?: boolean } = {}) {
                   setMenuOpen(false)
                   await auth.signOut()
                 }}
-                className="flex items-center gap-3 rounded-xl border border-white/15 px-4 py-3.5 text-sm font-medium text-white hover:bg-white/10"
+                className="flex items-center gap-3 rounded-xl glass-card px-4 py-3.5 text-sm font-medium text-white hover:bg-white/10"
               >
                 <LogOut className="size-5 text-white/70" />
                 Log out
               </button>
             ) : (
-              <Link href="/login" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl border border-white/15 px-4 py-3.5 text-sm font-medium text-white hover:bg-white/10">
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 rounded-xl glass-card px-4 py-3.5 text-sm font-medium text-white hover:bg-white/10">
                 <LogIn className="size-5 text-white/70" />
                 Login / Sign up
               </Link>

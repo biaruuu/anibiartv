@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.36.5
+
+- Glass cards: panels, list rows, menu tiles, dialogs and empty states use the new `glass-card` style (frosted, soft highlight edge). Badges on posters (episode, rating, time left, hover play button) use `glass-chip` pills. Poster images get a thin light ring. The video player is unchanged.
+
 ## 1.36.4
 
 - Watch page: the search and menu buttons no longer float over the video. The header is now a normal glass bar above the player (it scrolls away with the page), and the player sits right under it with no gap.

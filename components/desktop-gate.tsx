@@ -27,7 +27,7 @@ export function DesktopGate({ children }: { children: React.ReactNode }) {
       <div className="app-shell">{desktop ? null : children}</div>
       <main className="desktop-block min-h-svh place-items-center bg-black px-6 text-center text-white">
         <div className="max-w-md">
-          <span className="mx-auto grid size-20 place-items-center rounded-3xl border border-white/15 bg-white/[0.06]">
+          <span className="mx-auto grid size-20 place-items-center rounded-3xl glass-card">
             <Smartphone className="size-10" />
           </span>
           <h1 className="mt-6 text-3xl font-bold tracking-tight">AniBiar TV is mobile only for now</h1>

@@ -271,7 +271,7 @@ function PosterGrid({ items, onRemove, empty }: { items: ListItem[] | null; onRe
       {(items ?? []).map((it) => (
         <div key={it.animeId} className="group relative min-w-0">
           <Link href={`/anime/${it.animeId}`} className="block">
-            <div className="aspect-[2/3] overflow-hidden rounded-xl bg-white/5">
+            <div className="aspect-[2/3] overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/15">
               {it.image && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={it.image} alt="" loading="lazy" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
@@ -283,7 +283,7 @@ function PosterGrid({ items, onRemove, empty }: { items: ListItem[] | null; onRe
             type="button"
             aria-label={`Remove ${it.title}`}
             onClick={() => onRemove(it)}
-            className="absolute top-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80"
+            className="absolute top-1.5 right-1.5 grid size-7 place-items-center rounded-full text-white glass-btn"
           >
             <X className="size-4" />
           </button>

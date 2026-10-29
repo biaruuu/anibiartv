@@ -43,7 +43,7 @@ export function HistoryCard({ h, onRemove, className }: { h: HistoryItem; onRemo
   return (
     <div className={cn("group relative min-w-0", className)}>
       <Link href={resumeHref(h)} className="block">
-        <div className="relative aspect-video overflow-hidden rounded-xl bg-white/5">
+        <div className="relative aspect-video overflow-hidden rounded-xl bg-white/5 ring-1 ring-white/15">
           {h.image && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={h.image} alt="" loading="lazy" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
@@ -53,7 +53,7 @@ export function HistoryCard({ h, onRemove, className }: { h: HistoryItem; onRemo
             <Play className="size-10 fill-current drop-shadow-lg" />
           </span>
           {h.duration > 0 && (
-            <span className="absolute right-2 bottom-3 rounded bg-black/60 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums">
+            <span className="absolute right-2 bottom-3 rounded-full glass-chip px-2 py-0.5 text-xs font-medium tabular-nums">
               {clock(h.duration - h.position)} left
             </span>
           )}
